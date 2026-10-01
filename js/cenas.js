@@ -415,7 +415,11 @@ function voarDragao(f, spr) {
 function desenharDragaoFinal(f) {
   const spr = SPR_CHEFE.dragao;
   if (f.desc <= 0) return;
-  const img = f.etapa === "queda" && f.t % 8 < 4 ? (f.ddir > 0 ? spr.flashD : spr.flashE) : (f.ddir > 0 ? spr.d : spr.e);
+  // quadro do dragão conforme a etapa: tonto girando os olhos, caindo com dano ou parado cansado
+  const tonto = f.etapa === "tonto" || f.etapa === "andando" || f.etapa === "laco" || f.etapa === "puxando";
+  const fr = spr.q[f.etapa === "queda" ? "dano" : tonto ? "tonto" : "pouso1"];
+  const flash = f.etapa === "queda" && f.t % 8 < 4;
+  const img = flash ? (f.ddir > 0 ? fr.flashD : fr.flashE) : (f.ddir > 0 ? fr.d : fr.e);
   sombraCena(f.dx + spr.w / 2, f.dy + spr.h, spr.w * 0.85 * f.desc, 0.36);
   if (f.etapa !== "festa" && f.etapa !== "comendo") luzAditiva(f.dx + spr.w / 2, f.dy + spr.h / 2, 130 * f.desc, "255,110,30", 0.18);
   ctx.save();
@@ -423,16 +427,18 @@ function desenharDragaoFinal(f) {
   ctx.rotate(f.drot);
   ctx.scale(f.desc, f.desc);
   ctx.translate(-spr.w / 2, -spr.h / 2);
-  const asa = SPR_ASA;
-  const bat = f.etapa === "tonto" || f.etapa === "andando" || f.etapa === "laco" ? 0.4 : Math.cos(tempo * 0.4);
-  ctx.save();
-  if (f.ddir > 0) { ctx.translate(48, 54); ctx.scale(1, bat); ctx.drawImage(asa.d, -48, -54); }
-  else { ctx.translate(spr.w - 48, 54); ctx.scale(1, bat); ctx.drawImage(asa.e, -48, -54); }
-  ctx.restore();
+  // asas: dobradas quando está tonto ou andando; senão batendo
+  const dobrada = tonto || f.etapa === "queda" || f.etapa === "festa" || f.etapa === "comendo";
+  const idx = Math.round(((Math.cos(tempo * 0.4) + 1) / 2) * (SPR_ASA.quadros.length - 1));
+  desenharAsasDragao(f.ddir, SPR_ASA.quadros.length - 1 - idx, dobrada, spr.w);
   ctx.drawImage(img, 0, 0);
-  if (f.comBanana) {
-    const bx = f.ddir > 0 ? 7 * 6 + 20 : spr.w - 7 * 6 - 68;
-    ctx.drawImage(SPR_BANANA, bx, 17 * 6 - 28);
+  desenharBananaDragao(f.ddir, fr, spr.w, f.comBanana);
+  if (tonto) {
+    ctx.fillStyle = "#1a0a0a";
+    (fr.olhos || []).forEach(function(o) {
+      const a = tempo * 0.3;
+      ctx.fillRect(Math.round((f.ddir > 0 ? o[0] * 3 : spr.w - o[0] * 3) + Math.cos(a) * 5 - 2), Math.round(o[1] * 3 + Math.sin(a) * 5 - 2), 4, 4);
+    });
   }
   ctx.restore();
   if (f.etapa === "tonto" || f.etapa === "andando" || f.etapa === "laco" || f.etapa === "puxando") {

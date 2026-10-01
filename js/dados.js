@@ -12,7 +12,7 @@ const FUNDO_SELVA_URL = "https://static.vecteezy.com/ti/vetor-gratis/p1/48518715
 const IMAGEM_PERSONAGEM = "file:///C:/Users/info19/Documents/Captura_de_tela_2026-08-20_150440-removebg-preview.png";
 
 // Moeda: por padrão é pixelada feita no código. Para usar seu PNG: imagem: "moeda.png", frames: quadros
-const MOEDA = { imagem: "", frames: 6, tamanho: 32 };
+const MOEDA = { imagem: "", frames: 8, tamanho: 32 };
 
 
 // =========================

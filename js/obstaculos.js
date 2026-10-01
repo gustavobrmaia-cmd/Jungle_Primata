@@ -207,8 +207,11 @@ function desenharPlantas(cam) {
     ctx.beginPath();
     ctx.rect(pl.x - 10, 0, 70, CHAO);
     ctx.clip();
-    const morde = pl.sai >= 1 && Math.floor(tempo / 6) % 2 ? 2 : 0;
-    ctx.drawImage(SPR_PLANTA, pl.x, Math.round(CHAO - 64 * pl.sai) + morde);
+    // Boca: meio aberta ao brotar; depois abre e fecha mordendo (escancarada, meio, fechada, meio)
+    let quadro = 1;
+    if (pl.sai >= 1) quadro = [0, 1, 2, 1][Math.floor((tempo + i * 5) / 7) % 4];
+    const morde = quadro === 2 ? 2 : 0;
+    ctx.drawImage(SPR_PLANTA_Q[quadro], pl.x, Math.round(CHAO - 64 * pl.sai) + morde);
     ctx.restore();
     // folhinhas na base
     ctx.fillStyle = "#2f9e44";

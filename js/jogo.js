@@ -1452,10 +1452,33 @@ function vento() {
   particula({ tipo: "vento", x: cameraX - 100 + Math.random() * 300, y: 200 + Math.random() * 400, vx: 22 + Math.random() * 8, vy: -1, g: 0, vida: 60, max: 60, tam: 40 + Math.random() * 60 });
 }
 
+// Rastro do macaco (dash e super velocidade): cópia do quadro atual tingida e esticada
+const animFantasmas = new WeakMap();
+
+function animTingir(spr, cor) {
+  let m = animFantasmas.get(spr);
+  if (!m) {
+    m = {};
+    animFantasmas.set(spr, m);
+  }
+  if (!m[cor]) {
+    const c = criarCanvas(spr.width, spr.height);
+    const g = c.getContext("2d");
+    g.drawImage(spr, 0, 0);
+    g.globalCompositeOperation = "source-atop";
+    g.globalAlpha = 0.65;
+    g.fillStyle = cor;
+    g.fillRect(0, 0, c.width, c.height);
+    m[cor] = c;
+  }
+  return m[cor];
+}
+
 function fantasma(alfa) {
   const j = jogador;
-  const spr = SPRITES_PRIMATA[poseJogador()][j.dir > 0 ? "d" : "e"];
-  particula({ tipo: "fantasma", img: spr, x: Math.round(j.x + j.w / 2 - 40), y: Math.round(j.y + j.h - 80), vx: 0, vy: 0, g: 0, vida: 14, max: 14, alfa: alfa });
+  const spr = (SPRITES_PRIMATA[poseJogador()] || SPRITES_PRIMATA.parado)[j.dir > 0 ? "d" : "e"];
+  const img = animTingir(spr, j.dash > 0 ? "#5ec8ff" : "#ffd43b");
+  particula({ tipo: "fantasma", img: img, x: Math.round(j.x + j.w / 2 - 40), y: Math.round(j.y + j.h - 80), vx: 0, vy: 0, g: 0, vida: 16, max: 16, alfa: alfa });
 }
 
 function atualizarParticulas() {
@@ -2740,76 +2763,310 @@ function desenharBanana() {
   ctx.restore();
 }
 
+// ----- Animação dos inimigos -----
+// Cada tipo tem quadros e poses em SPR_INIMIGO (js/arte.js); aqui se escolhe a pose pelo que o inimigo está fazendo.
+
+// Guarda o que mudou desde o último desenho (pouso, tiro) para o squash e a pose de recuo
+function animInimigoRastrear(e) {
+  if (e.animOff === undefined) {
+    e.animOff = Math.floor(Math.abs(e.x0)) % 23;
+    e.animNoChao = e.noChao;
+    e.animTimerAnt = e.timer;
+    e.animPouso = -99;
+    e.animTiroT = -99;
+  }
+  if (e.noChao && !e.animNoChao) e.animPouso = tempo;
+  e.animNoChao = e.noChao;
+  if (e.timer > e.animTimerAnt + 5) e.animTiroT = tempo;
+  e.animTimerAnt = e.timer;
+}
+
+// Nome da pose do inimigo vivo
+function animInimigoPose(e) {
+  const c = e.t.comp;
+  const j = jogador;
+  const perto = Math.abs(j.x + j.w / 2 - (e.x + e.w / 2));
+  if (e.lacado) return "lacado";
+  if (c === "pulador") {
+    if (!e.noChao) return e.vy < 0 ? "pulo" : "queda";
+    if (tempo - e.animPouso < 6) return "pouso";
+    if (e.timer < 14 && perto < 520) return "agachar";
+    return "parado";
+  }
+  if (c === "atirador") {
+    if (tempo - e.animTiroT < 9) return "atirar";
+    if (e.timer < 20 && perto < 650 && !j.morto) return "carregar";
+    return "parado";
+  }
+  if (c === "investida") {
+    if (e.estado === "preparar") return "preparar";
+    if (e.estado === "deslizar") return "deslizar";
+    if (e.estado === "cansado") return "cansado";
+    return Math.abs(e.vx) > 0.1 ? "andar" : "parado";
+  }
+  if (c === "mergulhador") return e.estado === "mergulho" ? "mergulho" : e.estado === "subindo" ? "subindo" : "voar";
+  if (c === "aranha") return e.estado === "descendo" ? "descendo" : e.estado === "subindo" ? "subindo" : "parado";
+  if (c === "voador") return "voar";
+  return Math.abs(e.vx) > 0.1 ? "andar" : "parado";
+}
+
+// Pose que o tipo realmente tem (com alternativas quando falta)
+const ANIM_INIMIGO_ALT = {
+  pouso: ["agachar"], queda: ["pulo"], lacado: ["andar", "voar"], subindo: ["voar"], mergulho: ["voar"],
+  descendo: [], cansado: [], preparar: [], atirar: [], carregar: []
+};
+
+function animInimigoQuadro(spr, nome, e) {
+  const lista = [nome].concat(ANIM_INIMIGO_ALT[nome] || [], ["parado", "andar", "voar"]);
+  let p = null;
+  for (let i = 0; i < lista.length && !p; i++) p = spr.poses[lista[i]];
+  if (!p) p = { v: 1, q: [0] };
+  const v = nome === "lacado" ? 3 : p.v;
+  const k = Math.floor((tempo + e.animOff) / v) % p.q.length;
+  return spr.quadros[p.q[k]];
+}
+
 function desenharInimigos(cam) {
   for (let i = 0; i < inimigos.length; i++) {
     const e = inimigos[i];
     if (!visivel(e.x, e.w, cam) && !e.espaco) continue;
     const spr = SPR_INIMIGO[e.tipo];
-    const img = e.dir > 0 ? spr.d : spr.e;
+    animInimigoRastrear(e);
+    const dir = e.dir > 0 ? 1 : -1;
+    const lado = dir > 0 ? "d" : "e";
     if (e.t.comp === "aranha" && e.vivo) {
       ctx.fillStyle = "#dee2e6";
       ctx.fillRect(Math.round(e.x + e.w / 2) - 1, 0, 2, Math.round(e.y) + 4);
+      ctx.fillStyle = "rgba(0,0,0,0.18)";
+      ctx.fillRect(Math.round(e.x + e.w / 2) + 1, 0, 1, Math.round(e.y) + 4);
     }
     ctx.save();
+
+    // Chutado para o espaço ou derrubado: gira com olhos de X
     if (e.espaco || (e.morto && !e.esmagado)) {
+      const img = spr.morto[lado];
       ctx.translate(Math.round(e.x + e.w / 2), Math.round(e.y + e.h / 2));
       ctx.rotate(e.espaco ? e.rot : Math.PI + e.rot * 0.2);
       ctx.scale(e.escala, e.escala);
       ctx.drawImage(img, -e.w / 2, -e.h / 2);
-    } else {
+      ctx.restore();
+      continue;
+    }
+
+    // Esmagado: achatado, olhos de X e estrelinhas girando
+    if (e.esmagado) {
+      const img = spr.morto[lado];
+      const dw = Math.round(e.w * 1.3), dh = Math.max(4, Math.round(e.h * 0.3));
       ctx.translate(Math.round(e.x + e.w / 2), Math.round(e.y + e.h));
-      if (e.esmagado) ctx.scale(1.3, 0.3);
-      else if (e.lacado) ctx.rotate(Math.sin(tempo * 0.8) * 0.3);
-      else if (e.t.voa) ctx.scale(1, 1 + Math.sin(tempo * 0.5) * 0.08);
-      else if (e.t.comp === "atirador" && e.timer < 15) ctx.translate(tempo % 4 < 2 ? -2 : 2, 0);
-      else if (e.t.rolaEspinhoso && e.estado === "deslizar") { ctx.translate(0, -e.h / 2); ctx.rotate(tempo * 0.4 * e.dir); ctx.translate(0, e.h / 2); }
-      else if (e.t.comp === "investida" && e.estado === "deslizar") ctx.rotate(e.dir * 1.2);
-      else if (Math.abs(e.vx) > 0.1 && e.noChao) ctx.translate(0, Math.floor(tempo / 8) % 2 ? -2 : 0);
-      if (e.flash > 0 && e.flash % 4 < 2) ctx.globalAlpha = 0.4;
-      ctx.drawImage(img, -e.w / 2, -e.h);
+      ctx.drawImage(img, -Math.round(dw / 2), -dh, dw, dh);
+      ctx.globalAlpha = Math.min(1, e.esmagado / 10);
+      for (let k = 0; k < 3; k++) {
+        const a = tempo * 0.25 + k * 2.094;
+        const px = Math.round(Math.cos(a) * 12), py = Math.round(-dh - 8 - (20 - e.esmagado) * 0.6 + Math.sin(a) * 3);
+        ctx.fillStyle = "#ffd43b";
+        ctx.fillRect(px - 3, py - 1, 6, 2); ctx.fillRect(px - 1, py - 3, 2, 6);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+      }
+      ctx.restore();
+      continue;
+    }
+
+    const pose = animInimigoPose(e);
+    const q = animInimigoQuadro(spr, pose, e);
+    const img = q[lado];
+    let sx = 1, sy = 1, dx = 0, dy = 0, rot = 0;
+    const c = e.t.comp;
+
+    if (pose === "lacado") {
+      // se debatendo preso no laço
+      rot = Math.sin(tempo * 0.8) * 0.3;
+      sx = 1 + Math.sin(tempo * 1.1) * 0.06;
+      sy = 1 - Math.sin(tempo * 1.1) * 0.06;
+    } else if (c === "pulador") {
+      const t = tempo - e.animPouso;
+      if (!e.noChao) {
+        const f = Math.min(1, Math.abs(e.vy) / 12);
+        sx = 1 - 0.1 * f; sy = 1 + 0.14 * f;
+      } else if (t < 8) {
+        const k = 1 - t / 8;
+        sx = 1 + 0.2 * k; sy = 1 - 0.2 * k;
+      } else if (pose === "agachar") {
+        dx = tempo % 4 < 2 ? -1 : 1;
+      }
+    } else if (c === "atirador") {
+      if (pose === "carregar") {
+        dx = tempo % 4 < 2 ? -1 : 1;
+        const k = 1 - e.timer / 20;
+        sx = 1 + 0.05 * k; sy = 1 - 0.04 * k;
+      } else if (pose === "atirar") {
+        const k = 1 - (tempo - e.animTiroT) / 9;
+        dx = -dir * Math.round(4 * k);
+        sx = 1 - 0.06 * k; sy = 1 + 0.05 * k;
+      }
+    } else if (c === "mergulhador" && pose === "mergulho") {
+      rot = dir * Math.atan2(e.vy, Math.abs(e.vx) + 0.001);
+    } else if (c === "voador" || pose === "voar" || pose === "subindo") {
+      rot = Math.sin(tempo * 0.12 + e.animOff) * 0.05;
+    } else if (c === "investida") {
+      if (pose === "deslizar" && e.t.rolaEspinhoso) rot = tempo * 0.5 * dir;
+      else if (pose === "preparar") dx = tempo % 4 < 2 ? -1 : 1;
+      else if (pose === "cansado") sy = 1 + Math.sin(tempo * 0.4) * 0.03;
+      else if (pose === "deslizar") rot = dir * 0.05;
+    } else if (c === "aranha") {
+      rot = Math.sin(tempo * 0.07 + e.animOff) * 0.05;
+    }
+
+    const dw = Math.round(e.w * sx), dh = Math.round(e.h * sy);
+    ctx.translate(Math.round(e.x + e.w / 2) + dx, Math.round(e.y + e.h) + dy);
+    if (rot) {
+      ctx.translate(0, -e.h / 2);
+      ctx.rotate(rot);
+      ctx.translate(0, e.h / 2);
+    }
+    const ox = -Math.round(dw / 2);
+    ctx.drawImage(img, ox, -dh, dw, dh);
+    // piscar branco ao levar dano
+    if (e.flash > 0 && e.flash % 4 < 2) {
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(silhuetaDe(img, "#ffffff"), ox, -dh, dw, dh);
+    } else if (e.lacado) {
+      // brilho verde do cipó
+      ctx.globalAlpha = 0.18 + 0.12 * Math.sin(tempo * 0.5);
+      ctx.drawImage(silhuetaDe(img, "#b2f2bb"), ox, -dh, dw, dh);
     }
     ctx.restore();
   }
 }
 
+// ---------- ANIMAÇÃO DO MACACO (só visual: não mexe na física) ----------
+
+const animJog = { ref: null, t: 0, fase: 0, parado: 0, pousou: 0, noAr: 0, vyMax: 0, noChaoAntes: true, bal: 0 };
+const CICLO_CORRIDA = ["corre1", "corre2", "corre3", "corre4"];
+
+// Guarda o que a animação precisa lembrar (fase da corrida, tempo parado, aterrissagem...).
+// Roda uma vez por passo do jogo, mesmo que seja chamada várias vezes.
+function animJogadorAtualizar() {
+  const j = jogador;
+  const a = animJog;
+  if (a.ref !== j || tempo < a.t) {
+    a.ref = j;
+    a.t = tempo;
+    a.fase = 0;
+    a.parado = 0;
+    a.pousou = 0;
+    a.noAr = 0;
+    a.vyMax = 0;
+    a.bal = 0;
+    a.noChaoAntes = j.noChao;
+    return;
+  }
+  let dt = tempo - a.t;
+  if (dt <= 0) return;
+  if (dt > 3) dt = 3;
+  a.t = tempo;
+
+  const vel = Math.abs(j.vx);
+  const solo = j.noChao && !j.cipo && !j.morto;
+
+  // Corrida: o ciclo anda mais depressa quanto maior a velocidade
+  if (solo && !j.deslizando && vel > 0.5) a.fase = (a.fase + dt * (0.04 + vel * 0.042)) % 4;
+  else if (solo) a.fase = 0;
+
+  // Tempo parado (para piscar, olhar em volta, coçar a cabeça...)
+  const quieto = solo && vel < 0.5 && !j.deslizando && j.chute === 0 && j.poseTiro === 0 && !j.laco && j.dash === 0 && !j.comemorar && j.invencivel < 74;
+  a.parado = quieto ? a.parado + dt : 0;
+
+  // Aterrissagem: lembra a velocidade da queda para agachar na hora do pouso
+  if (!j.noChao) {
+    a.noAr += dt;
+    a.vyMax = Math.max(a.vyMax, j.vy);
+    a.pousou = 0;
+  } else {
+    if (!a.noChaoAntes) a.pousou = a.vyMax > 9 ? 11 : a.vyMax > 4.5 ? 6 : 0;
+    else if (a.pousou > 0) a.pousou -= dt;
+    a.vyMax = 0;
+    a.noAr = 0;
+  }
+  a.noChaoAntes = j.noChao;
+
+  // Balanço no cipó (velocidade suavizada)
+  a.bal = j.cipo ? a.bal + (Math.abs(j.cipoW) - a.bal) * 0.2 : 0;
+}
+
+// Parado: respira, pisca e, depois de uns segundos, olha em volta, coça a cabeça e boceja
+function poseParadoJogador(p) {
+  if (p >= 240) {
+    const u = (p - 240) % 900;
+    if (u < 36) return "olhar2";
+    if (u >= 50 && u < 90) return "olhar1";
+    if (u >= 110 && u < 230) return Math.floor(u / 9) % 2 ? "coca2" : "coca1";
+    if (u >= 420 && u < 500) return "bocejo";
+  }
+  if (p % 170 < 6) return "piscar";
+  return Math.floor(p / 40) % 2 ? "respira" : "parado";
+}
+
 function poseJogador() {
   const j = jogador;
-  if (j.morto) return "queda";
-  if (j.comemorar > 0) return "vitoria";
-  if (j.cipo) return "pendurado";
-  if (j.chute > 0) return "chute";
-  if (j.poseTiro > 0 || j.laco) return "tiro";
-  if (!j.noChao) return j.vy < 0 ? "pulo" : "queda";
-  if (Math.abs(j.vx) > 0.5) return Math.floor(j.passos / 7) % 2 ? "andar1" : "andar2";
-  return tempo % 190 < 7 ? "piscar" : "parado";
+  const a = animJog;
+  animJogadorAtualizar();
+  if (j.morto) return "morte";
+  if (j.comemorar > 0) return j.noChao && Math.floor(tempo / 7) % 2 ? "vitoria2" : "vitoria";
+  if (j.invencivel > 74) return "dano";
+  if (j.cipo) return a.bal > 0.022 ? "balancoT" : a.bal < 0.012 ? "balancoF" : "pendurado";
+  if (j.dash > 0) return "dash";
+  if (j.deslizando) return "deslizar";
+  if (j.chute > 0) return j.chute > 11 ? "chute" : "chute2";
+  if (j.laco) return "laco";
+  if (j.poseTiro > 0) return j.poseTiro > 10 ? "tiro2" : "tiro";
+  if (!j.noChao) {
+    if (j.giro > 0) return "pulo";
+    if (j.vy < -9 && a.noAr < 4) return "impulso";
+    if (j.vy < -3.5) return "pulo";
+    if (j.vy < 2.5) return "topo";
+    return "queda";
+  }
+  const vel = Math.abs(j.vx);
+  if (a.pousou > 0 && vel < 2.5) return "aterrissa";
+  if (vel > 0.5) return CICLO_CORRIDA[Math.floor(a.fase) % 4];
+  return poseParadoJogador(a.parado);
 }
 
 function desenharJogador() {
   const j = jogador;
-  if (j.invencivel > 0 && !j.morto && Math.floor(j.invencivel / 4) % 2) return;
   const pose = poseJogador();
-  const spr = SPRITES_PRIMATA[pose][j.dir > 0 ? "d" : "e"];
+  const dano = j.invencivel > 74 && !j.morto;
+  // Depois do dano o macaco pisca ficando meio transparente
+  const alfa = !dano && !j.morto && j.invencivel > 0 && Math.floor(j.invencivel / 4) % 2 ? 0.3 : 1;
+  const spr = (SPRITES_PRIMATA[pose] || SPRITES_PRIMATA.parado)[j.dir > 0 ? "d" : "e"];
   const cx = Math.round(j.x + j.w / 2);
   const base = Math.round(j.y + j.h + j.afundar);
+  const vel = Math.abs(j.vx);
 
   // Contorno e clarão branco rápidos quando pega moeda ou power-up
   const kb = (j.brilho || 0) / 10;
   const desenharSpr = function(x, y) {
     if (kb > 0) {
       const s = silhuetaDe(spr, "#fff6a8");
-      ctx.globalAlpha = kb;
+      ctx.globalAlpha = kb * alfa;
       ctx.drawImage(s, x - 4, y);
       ctx.drawImage(s, x + 4, y);
       ctx.drawImage(s, x, y - 4);
       ctx.drawImage(s, x, y + 4);
-      ctx.globalAlpha = 1;
     }
+    ctx.globalAlpha = alfa;
     ctx.drawImage(spr, x, y);
     if (kb > 0) {
-      ctx.globalAlpha = kb * 0.35;
+      ctx.globalAlpha = kb * 0.35 * alfa;
       ctx.drawImage(silhuetaDe(spr, "#ffffff"), x, y);
-      ctx.globalAlpha = 1;
     }
+    // Clarão vermelho piscando logo depois de levar dano
+    if (dano && Math.floor(tempo / 3) % 2 === 0) {
+      ctx.globalAlpha = 0.6;
+      ctx.drawImage(silhuetaDe(spr, "#ff8a8a"), x, y);
+    }
+    ctx.globalAlpha = 1;
   };
 
   // Escudo: bolha pixelada com brilho
@@ -2822,21 +3079,40 @@ function desenharJogador() {
     luzAditiva(cx, base - 44, 70, "90,170,255", piscar ? 0.12 : 0.28);
   }
 
+  // Riscos de velocidade atrás do macaco (dash e super velocidade)
+  if (!j.morto && !j.cipo && (j.dash > 0 || (buffs.velocidade > 0 && vel > 4))) {
+    ctx.fillStyle = j.dash > 0 ? "rgba(214,243,255,0.6)" : "rgba(255,232,130,0.5)";
+    for (let i = 0; i < 4; i++) {
+      const len = 24 + (tempo * 7 + i * 31) % 40;
+      const yy = base - 10 - i * 17 - (i % 2) * 5;
+      ctx.fillRect(j.dir > 0 ? cx - 30 - len : cx + 30, yy, len, 3);
+    }
+  }
+
   ctx.save();
-  ctx.translate(cx, base);
 
   if (j.morto) {
-    ctx.translate(0, -40);
+    ctx.translate(cx, base - 40);
     ctx.rotate(j.giro);
-    ctx.drawImage(spr, -40, -40);
+    desenharSpr(-40, -40);
     ctx.restore();
     return;
   }
 
+  // Pendurado: o corpo acompanha o balanço do cipó, preso pela cabeça
+  if (j.cipo) {
+    ctx.translate(cx, Math.round(j.y + 6));
+    ctx.rotate(-j.cipoTh * 0.85);
+    desenharSpr(-40, -10);
+    ctx.restore();
+    return;
+  }
+
+  // Deslizando: deitado de costas, pés para a frente
   if (j.deslizando) {
-    ctx.translate(0, -24);
-    ctx.rotate(j.dir * Math.PI / 2);
-    ctx.scale(0.7, 0.7);
+    ctx.translate(cx, base - 26);
+    ctx.rotate(-j.dir * 1.4);
+    ctx.scale(0.78, 0.78);
     desenharSpr(-40, -40);
     ctx.restore();
     return;
@@ -2846,32 +3122,70 @@ function desenharJogador() {
   const e = j.esticar;
   let sx = 1;
   let sy = 1;
+  let bob = 0;
+  let incl = 0;
   if (e > 0) { sx = 1 - 0.15 * e; sy = 1 + 0.2 * e; }
-  else if (e < 0) { sx = 1 - 0.25 * e; sy = 1 + 0.25 * e; }
-  else if (pose === "parado") { sy = 1 + Math.sin(tempo * 0.08) * 0.02; }
+  else if (e < 0) {
+    // correndo, o impacto da aterrissagem é mais leve
+    const forca = pose.indexOf("corre") === 0 ? 0.14 : 0.24;
+    sx = 1 - forca * e;
+    sy = 1 + forca * e;
+  }
 
+  if (pose === "dash") {
+    // dash: lança o corpo para a frente
+    sx *= 1.08;
+    sy *= 0.94;
+    incl = j.dir * 0.24;
+  } else if (!j.noChao) {
+    // no ar: estica um pouco conforme a velocidade e inclina para o lado em que vai
+    const k = limitar(Math.abs(j.vy) / 22, 0, 0.1);
+    sy *= 1 + k;
+    sx *= 1 - k * 0.7;
+    incl = limitar(j.vx * 0.012, -0.12, 0.12);
+  } else if (pose.indexOf("corre") === 0) {
+    // corrida: corpo quica a cada passo e se inclina para a frente
+    const passagem = Math.floor(animJog.fase) % 2 === 1;
+    bob = passagem ? -4 : 0;
+    sy *= passagem ? 1.03 : 0.97;
+    sx *= passagem ? 0.98 : 1.03;
+    incl = limitar(j.vx / VEL, -1.7, 1.7) * 0.09;
+  } else if (pose === "parado" || pose === "respira" || pose === "piscar") {
+    sy *= 1 + Math.sin(tempo * 0.08) * 0.02;
+  }
+
+  ctx.translate(cx, base + bob);
+  if (incl) ctx.rotate(incl);
   if (j.giro > 0) {
     ctx.translate(0, -40);
     ctx.rotate(j.giro * j.dir);
     ctx.translate(0, 40);
   }
   ctx.scale(sx, sy);
-  const bob = pose === "andar1" ? -4 : 0;
-  const sprY = j.cipo ? -80 + 4 : -80 + bob;
+  const sprY = -80;
   desenharSpr(-40, sprY);
 
-  if (pose === "tiro" && !j.laco) {
+  // Revólver na mão (a mão fica em x 28..36 do centro, linhas 15-16 do sprite)
+  if ((pose === "tiro" || pose === "tiro2") && !j.laco) {
     const r = SPR_REVOLVER;
-    if (j.dir > 0) ctx.drawImage(r.d, 26, sprY + 52);
-    else ctx.drawImage(r.e, -26 - r.w, sprY + 52);
+    const recuo = pose === "tiro2";
+    ctx.save();
+    ctx.scale(j.dir, 1);
+    if (recuo) {
+      ctx.translate(32, sprY + 56);
+      ctx.rotate(-0.35);
+      ctx.translate(-32, -(sprY + 56));
+    }
+    ctx.drawImage(r.d, 26, sprY + 52 - (recuo ? 8 : 0));
+    ctx.restore();
     if (j.poseTiro > 10) {
       ctx.fillStyle = "#fff3bf";
-      ctx.fillRect(j.dir > 0 ? 52 : -64, sprY + 50, 12, 10);
+      ctx.fillRect(j.dir > 0 ? 52 : -64, sprY + (recuo ? 40 : 50), 12, 10);
     }
   }
   ctx.restore();
 
-  if (j.poseTiro > 10 && pose === "tiro" && !j.laco) {
+  if (j.poseTiro > 10 && (pose === "tiro" || pose === "tiro2") && !j.laco) {
     luzAditiva(cx + j.dir * 58, base - 23, 36, "255,220,100", (j.poseTiro - 10) / 4 * 0.6);
   }
 

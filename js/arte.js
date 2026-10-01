@@ -5,92 +5,208 @@
 // =========================
 
 // ---------- MACACO (grade 20x20, cada pixel vira 4x4 = 80x80) ----------
-// D contorno, F pelo, S pelo na sombra, L pelo com luz, P pele, R bochecha, B barriga, W/E olho, M boca
+// D contorno, F pelo, S pelo na sombra, L pelo com luz, P pele, Q pele na sombra, R bochecha/língua,
+// B barriga, C barriga na sombra, G barriga com luz, W/E olho (W = brilho), M boca
+// A cabeça fica nas linhas 3-13 (olhos nas linhas 8-9), o corpo nas 14-18 e os pés na 19:
+// os cosméticos e os detalhes das skins são desenhados em cima dessas posições fixas.
+// Cada pose é montada em camadas (cauda, braços de trás, tronco, cabeça, pernas, braços da frente).
 
-const CORPO = [
-  "....................",
-  "....................",
-  "....................",
-  ".......DDDDDD.......",
-  ".....DDLLFFFFDD.....",
-  "....DFLLFFFFFFSD....",
-  ".DD.DFLFFFFFFFSD.DD.",
-  "DPPDFFPPPPPPPPFSDPPD",
-  "DPPDFPWEPPPPWEPFDPPD",
-  ".DDDFPWEPPPPWEPSDDD.",
-  "...DFPRPPPPPPRPSD...",
-  "....DFPPMMMMPPSD....",
-  ".....DFPPPPPPSD.....",
-  "......DDDDDDDD......",
-  ".....DFFBBBBFSD.....",
-  "....DFFBBBBBBFSD..D.",
-  "...DPDFBBBBBBSDPD..D",
-  "...DPDFFBBBBFSDPD..D",
-  ".....DFFFFFFSSDDDDD.",
-  ".....DPPD..DPPD....."
+// Um "bloco" é [linha, coluna, "texto"]; "." é transparente
+function mirarBloco(b) {
+  const troca = { L: "F", F: "S", S: "F" };
+  const t = b[2].split("").reverse().map(function(c) { return troca[c] || c; }).join("");
+  return [b[0], 20 - b[1] - b[2].length, t];
+}
+function espelharBlocos(lista) { return lista.map(mirarBloco); }
+
+const CABECA = [
+  [3, 0, ".......DDDDDD......."],
+  [4, 0, ".....DDLLLFFSDD....."],
+  [5, 0, "....DLLLFFFFFFSD...."],
+  [6, 0, ".DD.DLLFFFFFFFSSD.DD."],
+  [7, 0, "DPRDFFPPPFFPPPFSDRPD"],
+  [8, 0, "DPRDFPPPPPPPPPPSDRPD"],
+  [9, 0, ".DDDFPPPPPPPPPPSDDD."],
+  [10, 0, "...DFPRPPPPPPRPSD..."],
+  [11, 0, "....DFPPPPPPPPSD...."],
+  [12, 0, ".....DFPPPPPPSD....."],
+  [13, 0, "......DDDDDDDD......"]
 ];
 
-// Cada pose troca algumas linhas do corpo
-const BRACOS_CIMA = {
-  11: "..P.DFPPMMMMPPSD.P..",
-  12: "..D..DFPPPPPPSD..D..",
-  13: "..DD..DDDDDDDD..DD..",
-  14: "...DDDFFBBBBFSDDD...",
-  15: "....DFFBBBBBBFSD..D.",
-  16: "....DFBBBBBBBBSD...D",
-  17: ".....DFFBBBBFSD....D"
+const TRONCO = [
+  [14, 5, "DFFBBBBFSD"],
+  [15, 5, "DFGGBBBCSD"],
+  [16, 5, "DFBBBBCCSD"],
+  [17, 5, "DFFBBBBSSD"]
+];
+
+// Olhos (dx desloca o olhar de lado), narizes e bocas
+function olhos(tipo, dx) {
+  dx = dx || 0;
+  const a = 6 + dx;
+  const b = 12 + dx;
+  switch (tipo) {
+    case "fechados": return [[9, a, "DD"], [9, b, "DD"]];
+    case "felizes": return [[8, a - 1, ".DD."], [9, a - 1, "D..D"], [8, b - 1, ".DD."], [9, b - 1, "D..D"]];
+    case "surpresos": return [[8, a, "WW"], [9, a, "WE"], [8, b, "WW"], [9, b, "WE"]];
+    case "dor": return [[7, a - 1, "D"], [8, a, "DD"], [9, a - 1, "D"], [7, b + 2, "D"], [8, b, "DD"], [9, b + 2, "D"]];
+    case "x": return [[7, a - 1, "D.D"], [8, a, "D"], [9, a - 1, "D.D"], [7, b, "D.D"], [8, b + 1, "D"], [9, b, "D.D"]];
+    case "determinado": return [[7, a, "DD"], [7, b, "DD"], [8, a, "WE"], [9, a, "EE"], [8, b, "WE"], [9, b, "EE"]];
+    default: return [[8, a, "WE"], [9, a, "EE"], [8, b, "WE"], [9, b, "EE"]];
+  }
+}
+
+function boca(tipo, dx) {
+  dx = dx || 0;
+  switch (tipo) {
+    case "reta": return [[11, 8 + dx, "MMMM"]];
+    case "aberta": return [[11, 7 + dx, "MWWWWM"], [12, 7 + dx, "MMRRMM"]];
+    case "oh": return [[11, 9 + dx, "MM"], [12, 9 + dx, "MM"]];
+    case "grito": return [[11, 7 + dx, "MMMMMM"], [12, 7 + dx, "MRRRRM"]];
+    case "bocejo": return [[11, 8 + dx, "MMMM"], [12, 8 + dx, "MRRM"]];
+    case "lingua": return [[11, 8 + dx, "MMMM"], [12, 10 + dx, "RR"]];
+    default: return [[11, 7 + dx, "M"], [11, 12 + dx, "M"], [12, 8 + dx, "MMMM"]];
+  }
+}
+
+function nariz(dx) { return [[10, 9 + (dx || 0), "QQ"]]; }
+
+// Braços (esquerdo); o direito é o espelho (a luz vem da esquerda)
+const BRACOS = {
+  baixo: [[14, 3, "DD"], [15, 2, "DLFD"], [16, 2, "DLFD"], [17, 2, "DPPD"], [18, 3, "DD"]],
+  tras: [[14, 3, "DD"], [15, 2, "DLFD"], [16, 1, "DLFD"], [17, 0, "DPPD"], [18, 1, "DD"]],
+  bomba: [[12, 1, "DD"], [13, 0, "DPPD"], [14, 0, "DLFD"], [15, 0, "DLFFD"], [16, 1, "DDFFD"], [17, 3, "DDD"]],
+  cima: [[10, 0, "DD"], [11, 0, "DPPD"], [12, 0, "DLFD"], [13, 1, "DLFD"], [14, 2, "DLFD"], [15, 3, "DFD"]],
+  abre: [[14, 2, "DDDD"], [15, 0, "DPPFFD"], [16, 0, "DDDDDD"]],
+  // lá em cima, atrás da cabeça (comemoração e espreguiçar)
+  alto: [[1, 0, "DDDD"], [2, 0, "DPPD"], [3, 0, "DPPD"], [4, 0, "DLFD"], [5, 0, "DLFD"], [6, 0, "DLFD"], [7, 0, "DLFD"], [8, 0, "DLFD"], [9, 0, "DLFD"], [10, 0, "DLFD"], [11, 0, "DLFD"], [12, 1, "DLFD"], [13, 2, "DLFD"], [14, 3, "DFD"]],
+  // segurando o cipó
+  pendura: [[0, 0, "DDDD"], [1, 0, "DPPD"], [2, 0, "DPPD"], [3, 0, "DLFD"], [4, 0, "DLFD"], [5, 0, "DLFD"], [6, 0, "DLFD"], [7, 0, "DLFD"], [8, 0, "DLFD"], [9, 0, "DLFD"], [10, 0, "DLFD"], [11, 0, "DLFD"], [12, 1, "DLFD"], [13, 2, "DLFD"], [14, 3, "DFD"]]
 };
 
+// Braços só do lado direito (olhando para a direita)
+const BRACOS_D = {
+  mira: [[14, 14, "DDDDD"], [15, 14, "DFFPPD"], [16, 14, "DSSPPD"], [17, 15, "DDDD"]],
+  recuo: [[12, 14, "DDDDD"], [13, 14, "DFFPPD"], [14, 14, "DSSPPD"], [15, 15, "DDDD"]],
+  coca2: [[3, 15, "DDDD"], [4, 15, "DPPD"], [5, 16, "DPPD"], [6, 16, "DFSD"], [7, 16, "DFSD"], [8, 16, "DFSD"], [9, 16, "DFSD"], [10, 16, "DFSD"], [11, 16, "DFSD"], [12, 15, "DFSD"], [13, 14, "DFSD"], [14, 14, "DFSD"], [15, 14, "DFSD"]],
+  coca: [[3, 14, "DDDD"], [4, 14, "DPPD"], [5, 15, "DPPD"], [6, 16, "DFSD"], [7, 16, "DFSD"], [8, 16, "DFSD"], [9, 16, "DFSD"], [10, 16, "DFSD"], [11, 16, "DFSD"], [12, 15, "DFSD"], [13, 14, "DFSD"], [14, 14, "DFSD"], [15, 14, "DFSD"]]
+};
+
+// Pernas
+const PERNAS = {
+  em_pe: [[18, 5, "DFFDDDDFSD"], [19, 4, "DPPPD..DPPPD"]],
+  abrir: [[18, 4, "DFFDDDDDDFSD"], [19, 2, "DPPPD"], [19, 13, "DPPPD"]],
+  esq_alta: [[18, 5, "DPPDDDDFSD"], [19, 11, "DPPPD"]],
+  dir_alta: [[18, 5, "DFFDDDDPPD"], [19, 4, "DPPPD"]],
+  agachar: [[18, 3, "DFFDDDDDDDDFFD"], [19, 1, "DPPPD"], [19, 14, "DPPPD"]],
+  encolhe: [[18, 5, "DPPDDDDPPD"]],
+  topo: [[18, 4, "DPPD"], [18, 8, "DDDD"], [18, 12, "DPPD"]],
+  queda: [[18, 5, "DFFDDDDFSD"], [19, 5, "DPPD..DPPD"]],
+  chute: [[16, 14, "DDDDDD"], [17, 14, "DFFFPP"], [18, 14, "DDDDDD"], [18, 5, "DFFDDDDDDD"], [19, 4, "DPPPD"]],
+  frente: [[18, 7, "DFFDDDDFSD"], [19, 7, "DPPD..DPPD"]],
+  tras: [[18, 3, "DFFDDDDFSD"], [19, 3, "DPPD..DPPD"]]
+};
+
+// Cauda (fica atrás do braço direito): sobe pela beirada e termina num gancho
+function gancho(y, folga) {
+  // y = linha do topo do gancho; a parte reta desce até o chão
+  const l = [
+    [y, 15, "DDDDD"],
+    [y + 1, 15, "DFFFD"],
+    [y + 2, 15, "DLDSD"],
+    [y + 3, 15, ".DDSD"]
+  ];
+  for (let r = y + 4; r <= 18; r++) l.push([r, 17, "DSD"]);
+  l.push([19, 16, "DSSD"]);
+  return l;
+}
+const CAUDAS = {
+  repouso: gancho(10),
+  baixa: gancho(12),
+  alta: gancho(9),
+  enrolada: gancho(16)
+};
+
+function montarPose(d) {
+  const g = [];
+  for (let y = 0; y < 20; y++) g.push(new Array(20).fill("."));
+  const poe = function(lista) {
+    lista.forEach(function(b) {
+      for (let i = 0; i < b[2].length; i++) {
+        const c = b[2][i];
+        const x = b[1] + i;
+        if (c !== "." && x >= 0 && x < 20 && b[0] >= 0 && b[0] < 20) g[b[0]][x] = c;
+      }
+    });
+  };
+  const dx = d.dx || 0;
+  poe(d.cauda || CAUDAS.repouso);
+  poe(d.atras || []);
+  poe(d.tronco || TRONCO);
+  poe(CABECA);
+  poe(nariz(dx));
+  poe(olhos(d.olhos, dx));
+  poe(boca(d.boca, dx));
+  poe(d.pernas || PERNAS.em_pe);
+  const bE = d.bracoE || BRACOS.baixo;
+  poe(bE);
+  poe(d.bracoD || espelharBlocos(bE));
+  return g.map(function(l) { return l.join(""); });
+}
+
+const TRONCO_R = [
+  [14, 5, "DFBBBBBSSD"],
+  [15, 5, "DFGGBBBCSD"],
+  [16, 5, "DFBBBBBCSD"],
+  [17, 5, "DFFBBBBSSD"]
+];
+
+const BD = BRACOS_D;
+const ESP = espelharBlocos;
 const POSES = {
+  // ----- parado e divertimentos -----
   parado: {},
-  piscar: { 8: "DPPDFPPPPPPPPPPFDPPD", 9: ".DDDFPDDPPPPDDPSDDD." },
-  andar1: { 19: "....DPPD....DPPD...." },
-  andar2: { 19: "......DPPDDPPD......" },
-  pulo: {
-    13: "..PD..DDDDDDDD..DP..",
-    14: "...DDDFFBBBBFSDDD...",
-    15: "....DFFBBBBBBFSD..D.",
-    16: "....DFBBBBBBBBSD...D",
-    17: ".....DFFBBBBFSD....D",
-    18: "....DPPFFFFFSPPDDDD.",
-    19: "...................."
-  },
-  queda: BRACOS_CIMA,
-  vitoria: Object.assign({}, BRACOS_CIMA, { 11: "..P.DFPMMMMMMPSD.P.." }),
-  pendurado: {
-    1: "...PP..........PP...",
-    2: "...DF..........FD...",
-    3: "...DF..DDDDDD..FD...",
-    4: "...DFDDLLFFFFDDFD...",
-    5: "...DFFFFFFFFFFFSD...",
-    6: "..DDFFFFFFFFFFFSDD..",
-    7: "..DDFFPPPPPPPPFSDD..",
-    8: "...DFPWEPPPPWEPFD...",
-    9: "...DFPWEPPPPWEPSD...",
-    15: ".....DFBBBBBBSD...D.",
-    16: ".....DFBBBBBBSD....D",
-    17: ".....DFFBBBBFSD....D"
-  },
-  chute: {
-    16: "...DPDFBBBBBBSDPD...",
-    17: "...DPDFFBBBBFSDDDDD.",
-    18: ".....DFFFFFFSSFFFPPD",
-    19: ".....DPPD..........."
-  },
-  tiro: {
-    15: "....DFFBBBBBBFSDDDD.",
-    16: "...DPDFBBBBBBSFFFPPD",
-    17: "...DPDFFBBBBFSDDDD.."
-  }
+  respira: { tronco: TRONCO_R },
+  piscar: { olhos: "fechados" },
+  olhar1: { dx: -1 },
+  olhar2: { dx: 1 },
+  coca1: { olhos: "felizes", bracoD: BD.coca },
+  coca2: { olhos: "felizes", boca: "aberta", bracoD: BD.coca2 },
+  bocejo: { olhos: "fechados", boca: "bocejo", bracoE: [], bracoD: [], atras: BRACOS.alto.concat(ESP(BRACOS.alto)) },
+  // ----- andar / correr -----
+  andar1: { bracoE: BRACOS.tras, bracoD: ESP(BRACOS.bomba), pernas: PERNAS.esq_alta },
+  andar2: { bracoE: BRACOS.bomba, bracoD: ESP(BRACOS.tras), pernas: PERNAS.dir_alta },
+  corre1: { bracoE: BRACOS.tras, bracoD: ESP(BRACOS.bomba), pernas: PERNAS.abrir },
+  corre2: { bracoE: BRACOS.bomba, bracoD: ESP(BRACOS.bomba), pernas: PERNAS.esq_alta, cauda: CAUDAS.baixa },
+  corre3: { bracoE: BRACOS.bomba, bracoD: ESP(BRACOS.tras), pernas: PERNAS.abrir },
+  corre4: { bracoE: BRACOS.bomba, bracoD: ESP(BRACOS.bomba), pernas: PERNAS.dir_alta, cauda: CAUDAS.baixa },
+  // ----- ar -----
+  pulo: { olhos: "determinado", boca: "oh", bracoE: BRACOS.cima, pernas: PERNAS.encolhe, cauda: CAUDAS.baixa },
+  impulso: { olhos: "determinado", boca: "oh", bracoE: BRACOS.tras, pernas: PERNAS.queda, cauda: CAUDAS.baixa },
+  topo: { olhos: "felizes", bracoE: BRACOS.abre, pernas: PERNAS.topo },
+  queda: { olhos: "surpresos", boca: "oh", bracoE: BRACOS.cima, pernas: PERNAS.queda, cauda: CAUDAS.alta },
+  aterrissa: { bracoE: BRACOS.abre, pernas: PERNAS.agachar, cauda: CAUDAS.baixa },
+  deslizar: { olhos: "determinado", boca: "aberta", bracoE: BRACOS.tras, pernas: PERNAS.queda },
+  dash: { olhos: "determinado", boca: "grito", bracoE: BRACOS.tras, pernas: PERNAS.tras, cauda: CAUDAS.baixa },
+  // ----- cipó -----
+  pendurado: { bracoE: BRACOS.pendura, pernas: PERNAS.queda, cauda: CAUDAS.baixa },
+  balancoF: { bracoE: BRACOS.pendura, pernas: PERNAS.frente, boca: "aberta", cauda: CAUDAS.alta },
+  balancoT: { bracoE: BRACOS.pendura, pernas: PERNAS.tras, boca: "aberta", cauda: CAUDAS.baixa },
+  // ----- ação -----
+  chute: { olhos: "determinado", boca: "grito", bracoE: BRACOS.abre, pernas: PERNAS.chute, cauda: CAUDAS.enrolada },
+  chute2: { olhos: "determinado", boca: "reta", bracoE: BRACOS.bomba, pernas: PERNAS.chute, cauda: CAUDAS.enrolada },
+  tiro: { olhos: "determinado", boca: "reta", bracoD: BD.mira, cauda: CAUDAS.enrolada },
+  tiro2: { olhos: "determinado", boca: "reta", bracoD: BD.recuo, cauda: CAUDAS.enrolada },
+  laco: { olhos: "determinado", boca: "aberta", bracoD: BD.mira, cauda: CAUDAS.enrolada },
+  // ----- emoções -----
+  vitoria: { olhos: "felizes", boca: "aberta", bracoE: [], bracoD: [], atras: BRACOS.alto.concat(ESP(BRACOS.alto)) },
+  vitoria2: { olhos: "felizes", boca: "aberta", bracoE: BRACOS.cima, bracoD: ESP(BRACOS.bomba), pernas: PERNAS.abrir },
+  dano: { olhos: "dor", boca: "grito", bracoE: BRACOS.bomba, pernas: PERNAS.abrir, cauda: CAUDAS.alta },
+  morte: { olhos: "x", boca: "lingua", bracoE: BRACOS.abre, pernas: PERNAS.abrir }
 };
 
 const MAPAS_POSE = {};
-Object.keys(POSES).forEach(function(nome) {
-  const m = CORPO.slice();
-  const mod = POSES[nome];
-  Object.keys(mod).forEach(function(k) { m[+k] = mod[k]; });
-  MAPAS_POSE[nome] = m;
-});
+Object.keys(POSES).forEach(function(nome) { MAPAS_POSE[nome] = montarPose(POSES[nome]); });
 
 const imgPersonagem = new Image();
 let personagemOk = false;
@@ -101,7 +217,11 @@ function paletaSkin(skin, corPelo) {
   if (corPelo) p.F = corPelo;
   p.S = !corPelo && skin.cores.S ? skin.cores.S : escurecer(p.F, 0.25);
   p.L = !corPelo && skin.cores.L ? skin.cores.L : clarear(p.F, 0.22);
-  if (!p.R) p.R = "rgba(255,105,120,0.4)";
+  p.Q = escurecer(p.P, 0.14);
+  p.C = escurecer(p.B, 0.14);
+  p.G = clarear(p.B, 0.3);
+  // bochecha opaca (mistura rosada sobre a pele), senão o fundo aparece pelo buraco
+  p.R = skin.cores.R || misturarCor(p.P, [255, 105, 120], 0.4);
   return p;
 }
 
@@ -716,426 +836,1290 @@ const TEMAS = [criarTemaSelva(), criarTemaDeserto(), criarTemaGelo(), criarTemaL
 
 
 // ---------- INIMIGOS (todos olhando para a direita) ----------
+// Cada inimigo tem vários quadros de animação, todos do MESMO tamanho (a caixa de colisão sai desse tamanho).
+// SPR_INIMIGO[tipo] = { d, e, w, h,            primeiro quadro (direita / esquerda), como sempre
+//                       quadros: [{ d, e }],   todos os quadros
+//                       poses: { nome: { q: [índices], v: ticks por quadro } },
+//                       morto: { d, e } }      mesmo desenho com olhos de "X" (morto, esmagado, chutado)
+// Os desenhos são feitos por código numa grade de letras (g*) e ganham contorno automático.
 
 const SPR_INIMIGO = {};
 
-function registrarInimigo(tipo, mapa, paleta, escala) {
-  const s = spriteDuplo(mapa, paleta, escala);
+function gGrade(w, h) {
+  const g = [];
+  for (let y = 0; y < h; y++) g.push(new Array(w).fill("."));
+  return g;
+}
+
+function gPonto(g, x, y, ch) {
+  x = Math.floor(x);
+  y = Math.floor(y);
+  if (y >= 0 && y < g.length && x >= 0 && x < g[0].length) g[y][x] = ch;
+}
+
+function gRet(g, x, y, w, h, ch) {
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) gPonto(g, x + i, y + j, ch);
+}
+
+// Elipse cheia; ch pode ser uma letra ou uma função (u, v, x, y) com u,v de -1 a 1 dentro da elipse
+function gElipse(g, cx, cy, rx, ry, ch) {
+  const x0 = Math.floor(cx - rx), x1 = Math.ceil(cx + rx);
+  const y0 = Math.floor(cy - ry), y1 = Math.ceil(cy + ry);
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const u = (x + 0.5 - cx) / rx;
+      const v = (y + 0.5 - cy) / ry;
+      if (u * u + v * v <= 1) gPonto(g, x, y, typeof ch === "function" ? ch(u, v, x, y) : ch);
+    }
+  }
+}
+
+// Bola com luz de cima: tons = "base luz sombra brilho"
+function gBola(g, cx, cy, rx, ry, tons) {
+  const b = tons[0], l = tons[1], d = tons[2], h = tons[3] || tons[1];
+  const grande = rx * ry > 10;
+  gElipse(g, cx, cy, rx, ry, function(u, v) {
+    if (grande && Math.hypot(u + 0.38, v + 0.52) < 0.2) return h;
+    const t = -(0.28 * u + 0.82 * v);
+    if (t > 0.36) return l;
+    if (t < -0.42) return d;
+    return b;
+  });
+}
+
+// Bloco de pedra/caixa com cantos cortados: luz em cima e à esquerda, sombra embaixo e à direita
+function gBloco(g, x, y, w, h, tons) {
+  const b = tons[0], l = tons[1], d = tons[2];
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      if ((i === 0 || i === w - 1) && (j === 0 || j === h - 1)) continue;
+      let c = b;
+      if (j === 0 || (i === 0 && j < h - 1)) c = l;
+      else if (j === h - 1 || i === w - 1) c = d;
+      gPonto(g, x + i, y + j, c);
+    }
+  }
+}
+
+// Traço grosso com raio que vai de r0 a r1 (cobra, rabos, penas, patas)
+function gFio(g, x0, y0, x1, y1, r0, r1, ch) {
+  const n = Math.max(2, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const r = Math.max(0.5, r0 + (r1 - r0) * t);
+    gElipse(g, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, r, r, ch);
+  }
+}
+
+// Linha de 1 pixel
+function gLinha(g, x0, y0, x1, y1, ch) {
+  x0 = Math.floor(x0); y0 = Math.floor(y0); x1 = Math.floor(x1); y1 = Math.floor(y1);
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  for (;;) {
+    gPonto(g, x0, y0, ch);
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+}
+
+// Polígono cheio (pontos [x, y])
+function gPoli(g, pts, ch) {
+  let ymin = 1e9, ymax = -1e9;
+  for (const p of pts) { ymin = Math.min(ymin, p[1]); ymax = Math.max(ymax, p[1]); }
+  for (let y = Math.floor(ymin); y <= Math.ceil(ymax); y++) {
+    const yy = y + 0.5;
+    const xs = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      if ((a[1] <= yy && b[1] > yy) || (b[1] <= yy && a[1] > yy)) xs.push(a[0] + (yy - a[1]) / (b[1] - a[1]) * (b[0] - a[0]));
+    }
+    xs.sort(function(p, q) { return p - q; });
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      for (let x = Math.ceil(xs[k] - 0.5); x <= Math.floor(xs[k + 1] - 0.5); x++) {
+        gPonto(g, x, y, typeof ch === "function" ? ch(x, y) : ch);
+      }
+    }
+  }
+}
+
+// Cola um pedaço de mapa de letras ("." = transparente, "_" = apaga)
+function gPeca(g, x, y, mapa) {
+  for (let j = 0; j < mapa.length; j++) {
+    for (let i = 0; i < mapa[j].length; i++) {
+      const c = mapa[j][i];
+      if (c === ".") continue;
+      gPonto(g, x + i, y + j, c === "_" ? "." : c);
+    }
+  }
+}
+
+// Borda de luz em cima e de sombra embaixo de uma região de uma letra só (formas livres)
+function gBorda(g, base, luz, sombra, grossura) {
+  const copia = g.map(function(l) { return l.slice(); });
+  const vaza = function(x, y) { return y < 0 || y >= g.length || x < 0 || x >= g[0].length || copia[y][x] === "."; };
+  for (let y = 0; y < g.length; y++) {
+    for (let x = 0; x < g[0].length; x++) {
+      if (copia[y][x] !== base) continue;
+      if (luz !== "." && vaza(x, y - 1)) g[y][x] = luz;
+      else if (sombra !== "." && (vaza(x, y + 1) || (grossura > 1 && vaza(x, y + 2)))) g[y][x] = sombra;
+    }
+  }
+}
+
+// Troca uma letra por outra só onde a condição vale
+function gTroca(g, de, para, cond) {
+  for (let y = 0; y < g.length; y++) for (let x = 0; x < g[0].length; x++) if (g[y][x] === de && (!cond || cond(x, y))) g[y][x] = para;
+}
+
+// Pontinhos de textura (rochas, pelos) sempre iguais para a mesma semente
+function gRuido(g, semente, de, para, prob) {
+  const r = criarRng(semente);
+  for (let y = 0; y < g.length; y++) for (let x = 0; x < g[0].length; x++) if (g[y][x] === de && r() < prob) g[y][x] = para;
+}
+
+// Contorno de 1 pixel em volta de tudo; sel muda a cor do contorno conforme a letra vizinha
+function gContorno(g, ch, sel) {
+  const h = g.length, w = g[0].length;
+  const copia = g.map(function(l) { return l.slice(); });
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (copia[y][x] !== ".") continue;
+      const viz = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
+      for (const v of viz) {
+        if (v[0] < 0 || v[0] >= w || v[1] < 0 || v[1] >= h) continue;
+        const c = copia[v[1]][v[0]];
+        if (c !== ".") { g[y][x] = (sel && sel[c]) || ch; break; }
+      }
+    }
+  }
+}
+
+function gMapa(g) {
+  return g.map(function(l) { return l.join(""); });
+}
+
+function gCurva(p0, p1, p2, t) {
+  const a = (1 - t) * (1 - t), b = 2 * (1 - t) * t, c = t * t;
+  return [a * p0[0] + b * p1[0] + c * p2[0], a * p0[1] + b * p1[1] + c * p2[1]];
+}
+
+// Registra um inimigo: quadros = lista de mapas (ou um mapa só); opc.poses, opc.olhos (centros dos olhos para o "X")
+function registrarInimigo(tipo, quadros, paleta, escala, opc) {
+  opc = opc || {};
+  if (typeof quadros[0] === "string") quadros = [quadros];
+  const lista = quadros.map(function(q) { return spriteDuplo(q, paleta, escala); });
+  const s = { d: lista[0].d, e: lista[0].e, w: lista[0].w, h: lista[0].h, quadros: lista, poses: opc.poses || {} };
+  // quadro "morto": olhos de X
+  const base = lista[opc.quadroMorto || 0].d;
+  const m = criarCanvas(base.width, base.height);
+  const g = m.getContext("2d");
+  g.drawImage(base, 0, 0);
+  (opc.olhos || []).forEach(function(o) {
+    g.fillStyle = "#1a1018";
+    g.fillRect((o[0] - 1) * escala, (o[1] - 1) * escala, escala * 3, escala * 3);
+    g.fillStyle = "#ffffff";
+    [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]].forEach(function(p) {
+      g.fillRect((o[0] - 1 + p[0]) * escala, (o[1] - 1 + p[1]) * escala, escala, escala);
+    });
+  });
+  s.morto = { d: m, e: espelhar(m) };
   SPR_INIMIGO[tipo] = s;
   TIPOS_INIMIGO[tipo].w = s.w;
   TIPOS_INIMIGO[tipo].h = s.h;
 }
 
+// atalho para descrever uma animação: P(ticks por quadro, ...quadros)
+function P(v) { return { v: v, q: Array.prototype.slice.call(arguments, 1) }; }
+
+
+// ---------- Selva ----------
+
+// Cobra 24x18: corpo ondulando no chão, pescoço erguido, capelo e língua
+function quadroCobra(f, lingua) {
+  const g = gGrade(24, 18);
+  const fase = f * Math.PI / 2;
+  const N = 36;
+  // corpo, do rabo até o pescoço
+  const corpo = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const x = 1.5 + t * 12.5;
+    const amp = 0.4 + 1.0 * t;
+    const y = 13.1 + Math.sin(x * 0.7 - fase) * amp * 0.9;
+    corpo.push([x, y, 0.8 + 1.5 * Math.pow(t, 0.7)]);
+  }
+  corpo.forEach(function(p) { gElipse(g, p[0], p[1], p[2], p[2], "B"); });
+  // pescoço levantado
+  for (let i = 0; i <= 14; i++) {
+    const p = gCurva([13.5, 13], [17.2, 12.8], [16.2, 6.6], i / 14);
+    gElipse(g, p[0], p[1], 2.3 - i * 0.02, 2.3 - i * 0.02, "B");
+  }
+  // losangos escuros nas costas
+  corpo.forEach(function(p, i) { if (i % 6 === 2 && i > 3) gElipse(g, p[0], p[1] - 0.2, 1.1, 1.1, "M"); });
+  gBorda(g, "B", "L", "D", 1);
+  // capelo e cabeça
+  gBola(g, 16, 6.4, 3.4, 4.4, "BLDH");
+  gElipse(g, 16, 6.4, 1.6, 2.6, "M");
+  gBola(g, 18.6, 4.8, 3.2, 2.5, "BLDH");
+  // garganta clara
+  for (let y = 5; y < 13; y++) for (let x = 12; x < 22; x++) if (g[y][x] !== "." && g[y][x + 1] === "." && x > 15 && (g[y][x] === "B" || g[y][x] === "D" || g[y][x] === "L")) g[y][x] = "P";
+  gPonto(g, 20, 6, "P"); gPonto(g, 19, 6, "P"); gPonto(g, 21, 5, "P");
+  // olho (amarelo com pupila vertical)
+  gPonto(g, 18, 3, "Y"); gPonto(g, 19, 3, "Y"); gPonto(g, 18, 4, "Y"); gPonto(g, 19, 4, "E");
+  gPonto(g, 19, 3, "E");
+  // narina
+  gPonto(g, 21, 4, "K");
+  // língua
+  if (lingua === 1) { gPonto(g, 22, 6, "R"); gPonto(g, 23, 6, "R"); }
+  if (lingua === 2) { gPonto(g, 22, 6, "R"); gPonto(g, 23, 6, "R"); gPonto(g, 24 - 1, 5, "R"); gPonto(g, 23, 7, "R"); }
+  gContorno(g, "K");
+  return gMapa(g);
+}
+
 registrarInimigo("cobra", [
-  "...........KKK..",
-  "..........KGGGK.",
-  "..........KGWEK.",
-  "..........KGGGGR",
-  "...........KGGK.",
-  "...KKKK....KGK..",
-  "..KGGGGK..KGGK..",
-  ".KGLLLLGKKGGK...",
-  "KGLK..KLGGGK....",
-  "KGGK...KKKK.....",
-  ".KGGKKKKGGK.....",
-  "..KKGGGGKK......"
-], { K: "#1b4d1b", G: "#40c057", L: "#b2f2bb", W: "#ffffff", E: "#111111", R: "#e03131" }, 3);
+  quadroCobra(0, 0), quadroCobra(1, 1), quadroCobra(2, 2), quadroCobra(3, 0)
+], { K: "#12361c", D: "#1f7a35", B: "#40c057", L: "#8ce99a", H: "#d3f9d8", M: "#2b8a3e", P: "#f3e9a8", Y: "#ffd43b", E: "#111111", R: "#e03131" }, 2, {
+  poses: { parado: P(8, 0, 1, 2, 3), andar: P(7, 0, 1, 2, 3) },
+  olhos: [[18, 4]]
+});
+
+// Sapo 24x15: sentado, coaxando, agachado, no ar
+function quadroSapo(pose) {
+  const g = gGrade(24, 15);
+  const T = "BLDH";
+  const pul = pose === "pulo", qda = pose === "queda", ag = pose === "agachar";
+  if (pul || qda) {
+    // pernas esticadas para trás (pulo) ou abertas (queda)
+    if (pul) { gFio(g, 8, 7, 1.5, 11.5, 2, 1.2, "B"); gElipse(g, 2.5, 12, 2.4, 1, "D"); }
+    else { gFio(g, 8, 8, 3, 10, 2.2, 1.4, "B"); gFio(g, 3, 10, 5, 12.5, 1.4, 1, "B"); gElipse(g, 6, 13, 2.8, 1, "D"); }
+    gBola(g, 12, 7, 7.5, 4, T);
+    gBola(g, 17.5, 6.2, 4.6, 3.4, T);
+    if (pul) { gFio(g, 17, 9, 22, 10, 1.2, 1, "B"); gElipse(g, 22, 10.4, 1.6, 1, "D"); }
+    else { gFio(g, 17, 9, 20, 12, 1.5, 1.1, "B"); gElipse(g, 21, 12.6, 2, 0.9, "D"); }
+    gElipse(g, 12, 9.5, 5, 1.6, "P");
+    gElipse(g, 18, 3.8, 2.4, 2.3, "B"); gElipse(g, 18.5, 3.8, 1.8, 1.8, "W");
+    gRet(g, 19, 3, 2, 2, "E"); gPonto(g, 19, 3, "W");
+    // boca aberta ao cair
+    if (qda) { gRet(g, 18, 8, 5, 1, "M"); gPonto(g, 22, 8, "R"); }
+    else { gRet(g, 19, 7, 4, 1, "M"); }
+  } else {
+    const dy = ag ? 2 : 0;       // agachado: tudo desce
+    const alto = ag ? 3.3 : 4.4;
+    // pata de trás
+    gBola(g, 6.5, 10.4 + dy * 0.5, 4.6, ag ? 3.2 : 3.4, T);
+    gElipse(g, 10, 12.7, 3.6, 1.1, "D"); gPonto(g, 12, 12, "B");
+    // corpo
+    gBola(g, 11.5, 8.4 + dy, 8.2, alto, T);
+    gBola(g, 17, 7.6 + dy, 5.2, 3.7, T);
+    // barriga e papo
+    gElipse(g, 13, 11.2 + dy * 0.2, 5.6, 1.5, "P");
+    if (pose === "coaxar") { gBola(g, 19.2, 10.2, 2.9, 2.3, "PQQQ"); gElipse(g, 19.2, 10.2, 2.9, 2.3, function(u, v) { return v < 0.2 ? "Q" : "P"; }); }
+    // pata da frente
+    gBola(g, 17, 11.6, 2.2, 1.7, T);
+    gElipse(g, 19.4, 12.8, 2.2, 0.9, "D");
+    // olho
+    const ey = 3.7 + dy;
+    gElipse(g, 14, ey + 0.6, 1.8, 1.8, "D");
+    gElipse(g, 17.8, ey, 2.7, 2.6, "B");
+    gElipse(g, 18.3, ey, 2.1, 2.1, "W");
+    gRet(g, 18, ey - 1, 2, 3, "E"); gPonto(g, 18, ey - 1, "W");
+    // boca
+    gRet(g, 18, 8 + dy, 5, 1, "M");
+    gPonto(g, 23 - 1, 7 + dy, "B");
+    // manchas
+    gPonto(g, 8, 6 + dy, "S"); gPonto(g, 9, 6 + dy, "S"); gPonto(g, 11, 5 + dy, "S"); gPonto(g, 12, 5 + dy, "S"); gPonto(g, 10, 7 + dy, "S");
+  }
+  gContorno(g, "K");
+  return gMapa(g);
+}
 
 registrarInimigo("sapo", [
-  "..KKK.....KKK...",
-  ".KWEGK...KWEGK..",
-  ".KGGGKKKKKGGGK..",
-  "KGGGGGGGGGGGGGK.",
-  "KGGKKKKKKKKKGGK.",
-  "KGGGGGGGGGGGGGGK",
-  ".KGLLLLLLLLLLGK.",
-  "KGGKLLLLLLLLKGGK",
-  "KGGK.KKKKKK.KGGK",
-  ".KK..........KK."
-], { K: "#1b4d1b", G: "#37b24d", L: "#d8f5a2", W: "#ffffff", E: "#111111" }, 3);
+  quadroSapo("parado"), quadroSapo("coaxar"), quadroSapo("agachar"), quadroSapo("pulo"), quadroSapo("queda")
+], { K: "#143d1f", D: "#2b8a3e", B: "#51cf66", L: "#9be8a3", H: "#e0fbd5", P: "#e9fac8", Q: "#f4a8b5", S: "#2f9e44", M: "#7a1f1f", R: "#e03131", W: "#ffffff", E: "#111111" }, 2, {
+  poses: { parado: P(40, 0, 1), agachar: P(1, 2), pulo: P(1, 3), queda: P(1, 4) },
+  olhos: [[18, 4]]
+});
 
-registrarInimigo("abelha", [
-  "....WW.WW.....",
-  "...WCCWCCW....",
-  "....WWWWW.....",
-  "...KKKKKKKK...",
-  "..KYYKKYYKYK..",
-  ".KYYKKYYKYYWEK",
-  "KKYYKKYYKYYYYK",
-  ".KYYKKYYKYYYK.",
-  "..KKKKKKKKKK..",
-  "....K..K.K...."
-], { K: "#1a1a1a", Y: "#fcc419", W: "#ffffff", C: "#d0ebff", E: "#111111" }, 3);
+// Abelha 21x15: asas batendo rápido
+function quadroAbelha(f) {
+  const g = gGrade(22, 15);
+  // asas (duas, uma atrás da outra): no alto, meio, para baixo, meio
+  const A = [[3.2, 3.4], [4.6, 3], [7.4, 2.2], [4.6, 3]][f];
+  gElipse(g, 7.2, A[0] + 0.6, 2.4, A[1] - 0.2, "C");
+  gElipse(g, 11.4, A[0], 3.2, A[1], "C");
+  gElipse(g, 11.2, A[0] - 0.8, 1.4, Math.max(1, A[1] - 2), "W");
+  // corpo: abdômen listrado, tórax e cabeça
+  gBola(g, 8.4, 9.8, 5.2, 3.7, "YLOH");
+  for (const x0 of [5, 9]) for (let y = 5; y < 14; y++) for (let x = x0; x < x0 + 2; x++) if ("YLOH".indexOf(g[y][x]) >= 0) g[y][x] = "S";
+  gBola(g, 13.6, 9.6, 3.3, 3.2, "YLOH");
+  gBola(g, 16.8, 9.4, 3.2, 3, "FLOH");
+  // olho grande
+  gElipse(g, 18.2, 9, 1.6, 2, "E");
+  gPonto(g, 17, 8, "W"); gPonto(g, 18, 8, "W"); gPonto(g, 18, 10, "H");
+  // sorriso
+  gPonto(g, 19, 12, "M"); gPonto(g, 20, 11, "M");
+  // ferrão
+  gPoli(g, [[3.6, 8.9], [0.8, 10.4], [3.6, 10.9]], "T");
+  // perninhas
+  gPonto(g, 8, 13, "K"); gPonto(g, 11, 13, "K"); gPonto(g, 14, 13, "K");
+  gContorno(g, "K", { C: "N", W: "N" });
+  // antenas (depois do contorno, para ficarem finas)
+  gLinha(g, 16, 5, 17, 3, "K"); gLinha(g, 17, 3, 19, 2, "K"); gPonto(g, 20, 2, "O"); gPonto(g, 20, 1, "K");
+  gLinha(g, 14, 6, 14, 3, "K"); gPonto(g, 13, 2, "K"); gPonto(g, 14, 2, "K");
+  return gMapa(g);
+}
 
-registrarInimigo("escorpiao", [
-  "......KKKK........",
-  ".....KOOOOK.......",
-  "....KOK..KOK......",
-  "....KOK...KRK.....",
-  "....KOK....K......",
-  "....KOK...........",
-  "....KOOKKKKKKKK...",
-  "...KOOOOOOOOOOOK..",
-  "..KOLLOLLOLLOOWEK.",
-  "..KOOOOOOOOOOOOOKK",
-  "...KKOKKOKKOKKKOOK",
-  "....K..K..K..K..KK"
-], { K: "#3d1f00", O: "#c77d2a", L: "#e0a458", R: "#8a1c1c", W: "#ffffff", E: "#111111" }, 3);
+registrarInimigo("abelha", [0, 1, 2, 3].map(quadroAbelha),
+  { K: "#2a1a00", T: "#8a6200", N: "#4a7dbf", S: "#2a1a00", Y: "#ffd43b", L: "#ffe680", O: "#e8a300", H: "#fff7c2", F: "#ffe27a", W: "#ffffff", C: "#cfe8ff", E: "#1b1b1b", M: "#7a3b00" }, 2, {
+  poses: { voar: P(2, 0, 1, 2, 3), parado: P(2, 0, 1, 2, 3) },
+  olhos: [[18, 9]]
+});
 
-registrarInimigo("abutre", [
-  "..................",
-  "...........KKK....",
-  "..........KPPPK...",
-  "..........KPWEKYY.",
-  "KKKK......KPPPKY..",
-  "KLLLKK...KCCCK....",
-  ".KLLLLKKKNNNNNKKKK",
-  "..KLLLLLNNNNNNLLLK",
-  "...KKLLLNNNNNLLKK.",
-  ".....KKKNNNNNKK...",
-  ".......KKKNNKK....",
-  "........Y...Y....."
-], { K: "#1a1a1a", N: "#4a3728", L: "#6b5240", P: "#e599a8", Y: "#f2c94c", W: "#ffffff", E: "#111111", C: "#e9ecef" }, 3);
-
-registrarInimigo("cacto", [
-  "....KPPK....",
-  "...KGGGGK...",
-  "...KGLGGK...",
-  "...KWEWEK...",
-  "...KGMMGK...",
-  ".K.KGLGGK.K.",
-  "KGKKGLGGKKGK",
-  "KGGGGLGGGGGK",
-  "KLKKGLGGKKLK",
-  ".K.KGLGGK.K.",
-  "...KGLGGK...",
-  "...KGLGGK...",
-  "...KGLGGK...",
-  "..KNNNNNNK..",
-  "..KNNNNNNK..",
-  "...KKKKKK..."
-], { K: "#1b4d1b", G: "#2f9e44", L: "#69db7c", P: "#f783ac", W: "#ffffff", E: "#111111", M: "#5c1010", N: "#a0703a" }, 3);
-
-registrarInimigo("pinguim", [
-  "...KKKKK....",
-  "..KBBBBBK...",
-  ".KBBBBWEBK..",
-  ".KBBWWWWBYY.",
-  ".KBWWWWWWBK.",
-  "KBBWWWWWWBBK",
-  "KBWWWWWWWWBK",
-  "KBWWWWWWWWBK",
-  "KBWWWWWWWWBK",
-  ".KBWWWWWWBK.",
-  ".KBBWWWWBBK.",
-  "..KKKKKKKK..",
-  "..YYY..YYY.."
-], { K: "#111111", B: "#1e2a44", W: "#ffffff", Y: "#ff922b", E: "#111111" }, 4);
-
-const MAPA_MORCEGO = [
-  "K......KK......K",
-  "KK....KBBK....KK",
-  "KLK..KBEEBK..KLK",
-  "KLLKKBBBBBBKKLLK",
-  "KLLLLKBBBBKLLLLK",
-  ".KLLLKKBBKKLLLK.",
-  "..KKK..KK..KKK.."
-];
-registrarInimigo("morcegoGelo", MAPA_MORCEGO, { K: "#1c3d5a", B: "#a5d8ff", L: "#74c0fc", E: "#ffffff" }, 3);
-registrarInimigo("morcegoFogo", MAPA_MORCEGO, { K: "#4a1500", B: "#e8590c", L: "#ff922b", E: "#ffe066" }, 3);
-
-registrarInimigo("boneco", [
-  "....KKKKKK....",
-  "....KKKKKK....",
-  "...KKKKKKKK...",
-  "....SWWWWS....",
-  "...SWKWWKWS...",
-  "...SWWWOOOO...",
-  "...SWKKKWWS...",
-  "....RRRRRRR...",
-  "N...SWWWWS...N",
-  ".N.SWWKWWWS.N.",
-  "..NSWWWWWWWSN.",
-  "...SWWKWWWWS..",
-  "...SWWWWWWWS..",
-  "..SWWWWWWWWWS.",
-  ".SWWWWKWWWWWWS",
-  ".SWWWWWWWWWWWS",
-  ".SWWWWWWWWWWWS",
-  ".SWWWWWWWWWWWS",
-  "..SWWWWWWWWWS.",
-  "...SSSSSSSSS.."
-], { K: "#111111", W: "#ffffff", S: "#ced4da", O: "#ff922b", R: "#e03131", N: "#6b4220" }, 3);
-
-registrarInimigo("slime", [
-  ".....KKKK.....",
-  "...KKOOOOKK...",
-  "..KOOYYOOOOK..",
-  ".KOOYOOOOOOOK.",
-  ".KOOOWEOOWEOK.",
-  "KRROOOOOOOOORK",
-  "KRRROOKKOOORRK",
-  "KRRRRROORRRRRK",
-  "KRRRRRRRRRRRRK",
-  ".KKKKKKKKKKKK."
-], { K: "#2b0a0a", R: "#e8590c", O: "#ff922b", Y: "#ffe066", W: "#ffffff", E: "#111111" }, 4);
-
-registrarInimigo("diabinho", [
-  ".H......H...",
-  ".HK....KH...",
-  "..KRRRRK....",
-  ".KRRRRRRK...",
-  ".KRYERYERK..",
-  ".KRRRRRRK...",
-  ".KRRWWWRK...",
-  "..KKRRRK....",
-  ".KRRRRRRRK.N",
-  "KRDRRRRRDRKN",
-  "KK.KRRRRK.NN",
-  "...KRRRRK..N",
-  "...KRK.KRK.N",
-  "...KKK.KKK.."
-], { K: "#2b0a0a", R: "#e03131", D: "#a51111", Y: "#ffe066", E: "#111111", W: "#ffffff", H: "#f1f3f5", N: "#495057" }, 4);
-
+// Macaco Ladrão 21x21: máscara de bandido, rabo enrolado, joga cocos
+function quadroMacaco(pose) {
+  const g = gGrade(21, 21);
+  const T = "BLDH";
+  const respira = pose === "respira" ? 1 : 0;
+  const carrega = pose === "carregar", atira = pose === "atirar";
+  // rabo
+  for (let i = 0; i <= 14; i++) {
+    const p = gCurva([5.5, 17.5], [-1.5, 17], [1.2, 9.5], i / 14);
+    gElipse(g, p[0] + 1.2, p[1], 1.3, 1.3, "B");
+  }
+  gBorda(g, "B", "L", "D", 1);
+  gElipse(g, 2.6, 10.4, 1.4, 1.4, "L");
+  // pernas e pés
+  gBola(g, 8, 18, 2.4, 1.6, T); gBola(g, 13.4, 18, 2.4, 1.6, T);
+  gElipse(g, 8.8, 19.3, 2.8, 1, "F"); gElipse(g, 14.2, 19.3, 2.8, 1, "F");
+  // braço de trás
+  gFio(g, 7.2, 12.6 + respira, 6.2, 16.6, 1.4, 1.3, "D");
+  gElipse(g, 6.2, 17, 1.4, 1.2, "F");
+  // corpo e barriga
+  gBola(g, 10.5, 14.4 + respira * 0.5, 4.8, 4.6, T);
+  gElipse(g, 11.4, 15 + respira * 0.5, 2.8, 3.4, "F");
+  gElipse(g, 11.4, 16.3 + respira * 0.5, 2.4, 1.6, "f");
+  gElipse(g, 11.4, 14.4 + respira * 0.5, 2.5, 2.6, "F");
+  // cabeça
+  const hy = 6.2 + respira;
+  gBola(g, 5.2, hy - 0.4, 2.1, 2.1, T); gElipse(g, 5.6, hy - 0.4, 1.1, 1.2, "F");
+  gBola(g, 16.4, hy - 0.4, 2.1, 2.1, T); gElipse(g, 16, hy - 0.4, 1.1, 1.2, "F");
+  gBola(g, 10.8, hy, 5.4, 4.7, T);
+  gElipse(g, 9.2, hy + 1.5, 2.7, 2.3, "F"); gElipse(g, 12.6, hy + 1.5, 2.7, 2.3, "F");
+  gElipse(g, 11.2, hy + 3, 3.3, 1.9, "F");
+  gElipse(g, 11.2, hy + 3.8, 2.8, 1.1, "f");
+  // máscara
+  gRet(g, 6, hy - 1, 10, 3, "M"); gPonto(g, 5, hy, "M"); gPonto(g, 16, hy, "M");
+  gRet(g, 7, hy - 1, 3, 3, "W"); gRet(g, 12, hy - 1, 3, 3, "W");
+  gRet(g, 9, hy - 1, 1, 3, "E"); gRet(g, 14, hy - 1, 1, 3, "E");
+  gPonto(g, 7, hy - 1, "H"); gPonto(g, 12, hy - 1, "H");
+  gPonto(g, 11, hy + 1, "M"); gPonto(g, 12, hy + 1, "M");   // nariz
+  // boca
+  if (atira) { gRet(g, 9, hy + 3, 5, 2, "R"); gRet(g, 9, hy + 3, 5, 1, "W"); gRet(g, 10, hy + 4, 3, 1, "S"); }
+  else if (carrega) { gRet(g, 9, hy + 3, 5, 1, "R"); gPonto(g, 8, hy + 2, "R"); gPonto(g, 14, hy + 2, "R"); }
+  else { gRet(g, 9, hy + 3, 4, 1, "R"); gPonto(g, 13, hy + 2, "R"); }
+  // braço da frente
+  if (atira) {
+    gFio(g, 14, 12, 18.6, 10.2, 1.4, 1.3, "B");
+    gElipse(g, 19.4, 10, 1.5, 1.6, "F"); gPonto(g, 20, 8, "F"); gPonto(g, 20, 12, "F");
+  } else if (carrega) {
+    gFio(g, 14.4, 12, 17.6, 8, 1.5, 1.3, "B");
+    gBola(g, 17.6, 3.4, 2.8, 2.8, "QqOh");
+    gPonto(g, 16, 3, "o"); gPonto(g, 17, 3, "o"); gPonto(g, 16.5, 4.5, "o");
+    gElipse(g, 17.6, 6, 1.6, 1.5, "F");
+  } else {
+    gFio(g, 14.4, 12.6 + respira, 15.4, 17, 1.4, 1.3, "B");
+    gElipse(g, 15.6, 17.4, 1.5, 1.3, "F");
+  }
+  gContorno(g, "K");
+  return gMapa(g);
+}
 
 registrarInimigo("macacoLadrao", [
-  "....KKKKKK....",
-  "...KGGGGGGK...",
-  ".KKGGGGGGGGKK.",
-  "KPKKKKKKKKKKPK",
-  "KPKKWEKKWEKKPK",
-  ".KKPPPPPPPPKK.",
-  "...KPPMMPPK...",
-  "....KKKKKK....",
-  "...KGGGGGGK.NN",
-  "..KGGPPPPGGKNN",
-  "..KGGPPPPGGK..",
-  "...KGGGGGGK...",
-  "...KGK..KGK...",
-  "...KKK..KKK..."
-], { K: "#2b1d14", G: "#6b5a4e", P: "#d9b99b", W: "#ffffff", E: "#111111", M: "#5c1010", N: "#5c3a1a" }, 3);
+  quadroMacaco("parado"), quadroMacaco("respira"), quadroMacaco("carregar"), quadroMacaco("atirar")
+], { K: "#2a1810", D: "#5a3a22", B: "#8a5a36", L: "#b98652", H: "#dcb27a", F: "#f1cfa3", f: "#d5a979", M: "#241c2e", W: "#ffffff", E: "#111111", R: "#d6336c", S: "#7a1d3d",
+     Q: "#6d4a2b", q: "#a9794a", O: "#432a14", h: "#d9a86f", o: "#2a1808" }, 2, {
+  poses: { parado: P(34, 0, 1), carregar: P(1, 2), atirar: P(1, 3) },
+  olhos: [[9, 7], [14, 7]]
+});
+
+// Aranha 21x15: vista de frente, pendurada no fio; as pernas mexem
+function quadroAranha(pose) {
+  const g = gGrade(21, 15);
+  const T = "BLDH";
+  const alerta = pose === "alerta";
+  // corpo
+  gBola(g, 10.5, 9, 4.8, 4.6, T);
+  gPoli(g, [[8.4, 6.4], [12.6, 6.4], [11.4, 9], [12.6, 11.6], [8.4, 11.6], [9.6, 9]], "R");   // ampulheta
+  gElipse(g, 10.5, 9, 0.9, 0.9, "r");
+  gBola(g, 10.5, 4.6, 3.6, 2.9, T);
+  // olhos
+  gRet(g, 8, 3, 2, 3, "W"); gRet(g, 11, 3, 2, 3, "W");
+  gRet(g, 9, 4, 1, 2, "E"); gRet(g, 11, 4, 1, 2, "E");
+  gPonto(g, 8, 3, "H");
+  gPonto(g, 7, 2, "R"); gPonto(g, 14, 2, "R"); gPonto(g, 9, 2, "R"); gPonto(g, 12, 2, "R");
+  // presas
+  gPonto(g, 9, 7, "F"); gPonto(g, 12, 7, "F");
+  if (alerta) { gPonto(g, 9, 8, "F"); gPonto(g, 12, 8, "F"); gPonto(g, 8, 7, "F"); gPonto(g, 13, 7, "F"); }
+  gContorno(g, "K");
+  // pernas (depois do contorno, finas): âncora, joelho, pé
+  const A = pose === "a" ? 1 : pose === "b" ? -1 : 0;
+  const pernas = [
+    [[7, 5], [3, 1.5 - (alerta ? 1 : 0) + A], [0.5, 5 + A]],
+    [[6.3, 7], [2, 4 + (alerta ? -1 : 0) - A], [0.5, 9]],
+    [[6, 9], [1.5, 7 + A * 0.5], [0.5, 12.6 + (alerta ? 1 : 0)]],
+    [[6.7, 10.6], [3, 10.4 - A], [2, 14]]
+  ];
+  pernas.forEach(function(p, i) {
+    const lado = i % 2 === 0 ? A : -A;
+    const k = [p[1][0] + lado * 0.5, p[1][1] + (lado > 0 ? -1 : lado < 0 ? 1 : 0) * 0.5];
+    for (const s of [1, -1]) {
+      const X = function(x) { return s > 0 ? x : 20 - x; };
+      gLinha(g, X(p[0][0]), p[0][1], X(k[0]), k[1], "Z");
+      gLinha(g, X(k[0]), k[1], X(p[2][0]), p[2][1], "Z");
+      gPonto(g, X(k[0]), k[1], "z");
+    }
+  });
+  return gMapa(g);
+}
 
 registrarInimigo("aranha", [
-  "..K..KKKK..K..",
-  ".K..KKKKKK..K.",
-  "K..KKRKKRKK..K",
-  "K.KKKKKKKKKK.K",
-  ".KKKKKKKKKKKK.",
-  "K.KKKKKKKKKK.K",
-  "K..KKVKKVKK..K",
-  ".K..KKKKKK..K.",
-  "..K..KKKK..K..",
-  ".K....KK....K."
-], { K: "#1a1a1a", R: "#e03131", V: "#7048e8" }, 3);
+  quadroAranha("a"), quadroAranha("m"), quadroAranha("b"), quadroAranha("m"), quadroAranha("alerta")
+], { K: "#140f1f", D: "#2a2040", B: "#4a3b6b", L: "#6e5a9a", H: "#a190d1", R: "#e03131", r: "#ff8787", W: "#ffffff", E: "#111111", F: "#f1e9d2", Z: "#54428a", z: "#9c88d8" }, 2, {
+  poses: { parado: P(8, 0, 1, 2, 1), descendo: P(1, 4), subindo: P(5, 0, 1, 2, 1) },
+  olhos: [[8, 4], [12, 4]]
+});
 
-registrarInimigo("mumia", [
-  "...SWWWWS...",
-  "..SWWSWWWS..",
-  "..WKEWWKEW..",
-  "..SWWWWWWS..",
-  "..WWSSWWWW..",
-  "...SWWWWS...",
-  "..SWWWWWS...",
-  ".SWWSWWWWWWW",
-  ".SWWWWWSWWWS",
-  ".SWWWSWWW...",
-  ".SWWWWWWS...",
-  "..WWSWWWS...",
-  "..SWWWWWW...",
-  "..WW.SWW....",
-  "..SW..WS....",
-  "..WW..WW....",
-  ".SWW..WWS..."
-], { W: "#e9e4d4", S: "#b8ae94", K: "#2b2620", E: "#ffd43b" }, 3);
+// ---------- Deserto ----------
 
-registrarInimigo("tatu", [
-  "....KKKKKK......",
-  "...KAAABAAK.....",
-  "..KAAABAAABK....",
-  ".KAAABAAABAAK...",
-  ".KAABAAABAAABKK.",
-  "KAAABAAABAAABPEK",
-  "KAAABAAABAAABPPN",
-  ".KKKKKKKKKKKKKK.",
-  "..KP..KP..KP.KP.",
-  "................"
-], { K: "#3b2a1a", A: "#a68a64", B: "#7a6040", P: "#d9b99b", E: "#111111", N: "#5c3a1a" }, 3);
+// Escorpião 27x18: anda balançando o ferrão, pinças abrindo e fechando
+function quadroEscorpiao(f) {
+  const g = gGrade(27, 18);
+  const T = "BLDH";
+  const bal = [0, 1, 0, -1][f];          // balanço do rabo
+  const pinca = [0, 1, 1, 0][f];         // pinça aberta
+  // rabo em contas, curvado por cima do corpo
+  const cauda = [[6.2, 11.6], [3.8, 9.6], [3.2, 6.6 + bal * 0.4], [4.6, 3.8 + bal * 0.6], [7.8, 2.6 + bal], [10.6, 3.8 + bal]];
+  const seg = [];
+  for (let i = 0; i < cauda.length - 1; i++) {
+    for (let t = 0; t < 1; t += 0.4) seg.push([cauda[i][0] + (cauda[i + 1][0] - cauda[i][0]) * t, cauda[i][1] + (cauda[i + 1][1] - cauda[i][1]) * t]);
+  }
+  seg.forEach(function(p, i) { gBola(g, p[0], p[1], 1.55, 1.55, i % 2 ? "LHBH" : "BLDH"); });
+  // ferrão: bulbo e gancho
+  const fim = cauda[cauda.length - 1];
+  gBola(g, fim[0] + 1.6, fim[1] + 1.4, 1.9, 1.9, "CcnH");
+  gPoli(g, [[fim[0] + 0.8, fim[1] + 2.8], [fim[0] + 2.4, fim[1] + 2.8], [fim[0] + 1.6, fim[1] + 5.2]], "R");
+  // abdômen em placas e carapaça
+  gBola(g, 8.4, 12.4, 3.2, 2.7, T);
+  gBola(g, 11.8, 12.2, 3.3, 2.9, T);
+  gBola(g, 17.2, 11.8, 4.7, 3.3, "DBdL");
+  gBola(g, 17.4, 11.2, 3.6, 2.2, T);
+  gRet(g, 10, 10, 1, 4, "D"); gRet(g, 13, 10, 1, 4, "D");
+  // pinças: braço, palma e dois dedos que abrem e fecham
+  gFio(g, 20, 12.8, 21.6, 12, 1.2, 1.2, "D");
+  gBola(g, 22.2, 11, 2.2, 2.2, "CcCh");
+  gPoli(g, [[23, 8.6 - pinca], [26, 8.2 - pinca], [25.6, 9.4 - pinca * 0.6], [24.2, 10.2]], "C");
+  gPoli(g, [[24, 11.8], [25.6, 11.8 + pinca * 1.4], [26, 13.6 + pinca], [24, 13], [22.8, 12.8]], "n");
+  gPonto(g, 25, 8.6 - pinca, "c");
+  // olhos
+  gPonto(g, 19, 9, "E"); gPonto(g, 21, 10, "E"); gPonto(g, 18, 8, "H");
+  gContorno(g, "K");
+  // pernas finas (depois do contorno)
+  const alt = f % 2 === 0;
+  [[8, 14.5], [11.4, 14.8], [14.8, 15], [18, 15]].forEach(function(p, i) {
+    const par = (i % 2 === 0) === alt;
+    const fx = p[0] + (par ? 1.8 : -0.6);
+    const fy = par ? 17 : 16;
+    gLinha(g, p[0], p[1], p[0] + (par ? 1.2 : -0.5), p[1] + 1.2, "G");
+    gLinha(g, p[0] + (par ? 1.2 : -0.5), p[1] + 1.2, fx, fy, "G");
+  });
+  return gMapa(g);
+}
 
-registrarInimigo("foca", [
-  "..........KKK...",
-  ".........KGGGK..",
-  ".........KGWEGK.",
-  "........KGGGGGNK",
-  "...KKKKKGGGGGK..",
-  "..KGGGGGGGLLGK..",
-  ".KGGGGGGGLLLGK..",
-  "KGGKGGGGLLLLGK..",
-  "KKK.KKGGGGGGKK..",
-  ".....KKK..KKK..."
-], { K: "#1c2a3a", G: "#8ba3b8", L: "#d0dde8", W: "#ffffff", E: "#111111", N: "#111111" }, 3);
+registrarInimigo("escorpiao", [0, 1, 2, 3].map(quadroEscorpiao),
+  { K: "#3a1c05", D: "#a2601c", B: "#dd8f2e", L: "#f2b866", H: "#ffe0a8", R: "#c92a2a", r: "#ff8787", C: "#d9561e", c: "#f08a4b", n: "#9c3410", E: "#111111", G: "#6e3c0f" }, 2, {
+  poses: { andar: P(7, 0, 1, 2, 3), parado: P(14, 0, 1, 2, 3) },
+  olhos: [[20, 9]]
+});
 
-registrarInimigo("lobo", [
-  ".............K.K..",
-  "............KGKGK.",
-  "...........KGGGGGK",
-  "...........KGWEGGK",
-  "K........KGGGGLLLN",
-  "GK.....KKKGGGGGKK.",
-  ".GKKKKKGGGGGGGGK..",
-  "..KGGGGGGGGGLLGK..",
-  "..KGGGGGGGGGLLGK..",
-  "..KGGKKKKKKGGGK...",
-  "..KGK......KGK....",
-  "..KKK......KKK...."
-], { K: "#2b3440", G: "#adb5bd", L: "#f1f3f5", W: "#ffd43b", E: "#111111", N: "#111111" }, 3);
+// Abutre 27x18: asas batendo; quadro 4 = mergulho
+function asaAbutre(g, pts, sombra, raiz) {
+  gPoli(g, pts, function(x, y) {
+    const d = Math.hypot(x - raiz[0], y - raiz[1]);
+    if (sombra) return "d";
+    return d < 4.5 ? "L" : d < 7.5 ? "N" : "d";
+  });
+  // penas: linhas da raiz até as pontas
+  for (let i = 1; i < pts.length - 1; i++) gLinha(g, raiz[0], raiz[1], pts[i][0], pts[i][1], sombra ? "K" : "D");
+  // borda da asa
+  for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; gLinha(g, a[0], a[1], b[0], b[1], "K"); }
+}
+
+function quadroAbutre(f) {
+  const g = gGrade(27, 18);
+  const T = "dNDH";
+  const mergulho = f === 4;
+  const raiz = [12.5, 9.2];
+  const asas = [
+    [[9, 9.5], [5.5, 4.2], [7.2, 1], [11, 0.2], [15.5, 1.2], [17.5, 4.5], [16.5, 9]],
+    [[9, 9.5], [2.5, 6.6], [3.2, 3.8], [7, 3], [12, 3], [17, 5.5], [16.5, 9]],
+    [[9, 9.5], [3.5, 13.6], [6.5, 16.6], [11, 17], [16, 15.4], [18, 12], [16.5, 9.5]],
+    [[9, 9.5], [1.5, 10.5], [2.4, 13], [7, 13.4], [12, 13.4], [17, 12], [16.5, 9.5]]
+  ];
+  if (mergulho) {
+    // rabo, corpo esticado, asas coladas para trás
+    gPoli(g, [[8, 11], [1.5, 12.2], [2, 14.4], [8.6, 14.4]], "d");
+    gLinha(g, 8, 12, 2.5, 13, "K");
+    gBola(g, 12.5, 11, 6.5, 3.3, T);
+    gPoli(g, [[16, 9.2], [2.5, 10.2], [1.5, 12.6], [7, 13.2], [15, 12.4]], function(x, y) { return Math.hypot(x - 14, y - 11) < 5 ? "L" : "N"; });
+    gLinha(g, 15, 10, 3, 11, "D"); gLinha(g, 14, 11.5, 3, 12.3, "D");
+  } else {
+    // asa de trás (mais escura) e rabo
+    const p = asas[f];
+    asaAbutre(g, p.map(function(q) { return [q[0] - 2, q[1] - 0.6]; }), true, [raiz[0] - 2, raiz[1]]);
+    gPoli(g, [[8, 10], [1.5, 11.6], [2.4, 14], [8.6, 13.4]], "d");
+    gLinha(g, 8, 11, 2.5, 12.6, "K"); gLinha(g, 8, 12, 3.4, 13.6, "K");
+    gBola(g, 12.5, 11.2, 5.8, 3.6, T);
+    // patas
+    gLinha(g, 11.5, 14.5, 11, 16.5, "Y"); gLinha(g, 14, 14.5, 14.5, 16.5, "Y");
+    gPonto(g, 10, 17, "Y"); gPonto(g, 15.5, 17, "Y");
+    asaAbutre(g, p, false, raiz);
+  }
+  // pescoço com gola branca, cabeça pelada e bico
+  const hx = mergulho ? 1.5 : 0;
+  gBola(g, 17.6 + hx, 9 - (mergulho ? 0.5 : 0), 3.1, 2.9, "CVSC");
+  gBola(g, 21.6 + hx, 7.4 + (mergulho ? 1.5 : 0), 2.4, 2.3, "PQqH");
+  const hy = mergulho ? 1.5 : 0;
+  gPoli(g, [[23.2 + hx, 6.4 + hy], [25.6 + hx, 7.6 + hy], [25 + hx, 9.4 + hy], [23.8 + hx, 8.6 + hy]], "Y");
+  gPonto(g, 25 + hx, 8.6 + hy, "y"); gPonto(g, 24 + hx, 8.6 + hy, "y");
+  gPonto(g, 22.2 + hx, 6.6 + hy, "E"); gPonto(g, 21.4 + hx, 6.6 + hy, "G");
+  gLinha(g, 20.6 + hx, 5.2 + hy, 23.2 + hx, 6 + hy, "K");
+  gContorno(g, "K");
+  return gMapa(g);
+}
+
+registrarInimigo("abutre", [0, 1, 2, 3, 4].map(quadroAbutre),
+  { K: "#1d130c", D: "#3a281c", d: "#4a3427", N: "#8b6a4b", L: "#b3916b", H: "#d2b48c", C: "#f1ece0", V: "#c9c0ad", S: "#9c9582", P: "#e69aa6", Q: "#c9707e", q: "#f5bcc4", Y: "#f2c94c", y: "#9c7a14", E: "#111111", G: "#fff0a0" }, 2, {
+  poses: { voar: P(4, 0, 1, 2, 3), parado: P(4, 0, 1, 2, 3), subindo: P(3, 0, 1, 2, 3), mergulho: P(1, 4) },
+  olhos: [[22, 7]]
+});
+
+// Cacto Atirador 18x24: vaso, braços, flor na cabeça
+function quadroCacto(pose) {
+  const g = gGrade(18, 24);
+  const T = "BLDH";
+  const car = pose === "carregar", ati = pose === "atirar", resp = pose === "respira";
+  const dy = resp ? 0.5 : 0;
+  // vaso
+  gRet(g, 4, 18, 10, 2, "T"); gRet(g, 4, 18, 10, 1, "t");
+  gRet(g, 5, 20, 8, 3, "T"); gRet(g, 5, 22, 8, 1, "u"); gRet(g, 11, 20, 2, 3, "u");
+  gPonto(g, 6, 20, "t"); gPonto(g, 7, 20, "t");
+  // braços
+  const bE = car ? 3 : 8.2, bD = car ? 3 : 6.6;
+  gRet(g, 2, 13, 4, 3, "B"); gBola(g, 3, (bE + 13) / 2, 1.8, (13 - bE) / 2 + 1.9, T);
+  gRet(g, 12, 11, 4, 3, "B"); gBola(g, 15, (bD + 11) / 2, 1.8, (11 - bD) / 2 + 1.9, T);
+  // corpo
+  gBola(g, 9, 11 + dy * 0.5, 4.2, 8.2 - dy * 0.3, T);
+  gRet(g, 7, 6, 1, 11, "D"); gRet(g, 11, 6, 1, 11, "D"); gRet(g, 9, 5, 1, 12, "L");
+  gTroca(g, "L", "L");
+  // rosto (limpa uma faixa)
+  gRet(g, 6, 8, 7, 4, "B");
+  gRet(g, 6, 8, 7, 1, "L");
+  // olhos bravos
+  gRet(g, 7, 9, 2, 2, "W"); gRet(g, 11, 9, 2, 2, "W");
+  gRet(g, 8, 9, 1, 2, "E"); gRet(g, 12, 9, 1, 2, "E");
+  gPonto(g, 6, 8, "K"); gPonto(g, 7, 8, "K"); gPonto(g, 8, 8, "D"); gPonto(g, 13, 8, "K"); gPonto(g, 12, 8, "K"); gPonto(g, 11, 8, "D");
+  // bochechas e boca
+  gPonto(g, 6, 11, "Z"); gPonto(g, 13, 11, "Z");
+  if (car || ati) { gRet(g, 8, 12, 4, 2, "M"); gRet(g, 9, 12, 2, 1, "W"); }
+  else { gRet(g, 8, 12, 4, 1, "M"); gPonto(g, 7, 11, "M"); gPonto(g, 12, 11, "M"); }
+  // flor
+  const fy = 2.2 + dy;
+  [[-2, 0], [2, 0], [0, -1.6], [-1.4, 1.2], [1.4, 1.2]].forEach(function(o) { gElipse(g, 9 + o[0], fy + o[1] + 0.5, 1.3, 1.3, "P"); });
+  gElipse(g, 9, fy + 0.5, 1.2, 1.2, "Y");
+  gPonto(g, 9, fy - 1, "p"); gPonto(g, 7, fy, "p");
+  gContorno(g, "K");
+  // espinhos claros (depois do contorno)
+  const esp = car || ati ? [[4, 7], [14, 5], [5, 15], [13, 15], [3, 11], [15, 9], [8, 4], [10, 17]] : [[4, 7], [14, 6], [5, 16]];
+  esp.forEach(function(p) { gPonto(g, p[0], p[1], "S"); gPonto(g, p[0] + (p[0] < 9 ? -1 : 1), p[1] - 1, "S"); });
+  return gMapa(g);
+}
+
+registrarInimigo("cacto", [
+  quadroCacto("parado"), quadroCacto("respira"), quadroCacto("carregar"), quadroCacto("atirar")
+], { K: "#123a1a", D: "#1f7a36", B: "#34a84b", L: "#6fdc87", H: "#c1f5c9", S: "#fff3bf", P: "#f06595", p: "#ffa8c5", Y: "#ffd43b", W: "#ffffff", E: "#111111", M: "#6b1414", Z: "#f783ac", T: "#b5683a", t: "#d89a62", u: "#7a4220" }, 2, {
+  poses: { parado: P(36, 0, 1), carregar: P(1, 2), atirar: P(1, 3) },
+  olhos: [[8, 10], [12, 10]]
+});
+
+// Múmia 18x26: anda arrastando os pés, braços esticados, bandagem solta balançando
+function quadroMumia(f) {
+  const g = gGrade(18, 26);
+  const T = "WLSH";
+  const pas = [[-1.5, 1.5], [0, 0.5], [1.5, -1.5], [0.5, 0]][f];      // posição dos pés (trás, frente)
+  const bob = [0, 1, 0, 1][f];                                      // sobe e desce
+  const braco = [0, 1, 0, -1][f];
+  const perna = function(x, dx, escura) {
+    gFio(g, x, 18 + bob, x + dx * 0.6, 22, 1.7, 1.5, escura ? "S" : "W");
+    gElipse(g, x + dx + 1.2, 23.4, 2.5, 1.3, escura ? "S" : "W");
+  };
+  perna(6.2, pas[0], true);
+  perna(11, pas[1], false);
+  // braço de trás
+  gFio(g, 10.5, 11.8 + bob, 15.4, 10.8 + bob + braco * 0.5, 1.5, 1.3, "S");
+  // tronco
+  gBola(g, 8.8, 13.6 + bob, 4.7, 5.6, T);
+  // braço da frente
+  gFio(g, 11, 12.8 + bob, 15.8, 12.8 + bob - braco, 1.7, 1.5, "W");
+  gElipse(g, 16.4, 12.8 + bob - braco, 1.5, 1.5, "L");
+  // cabeça
+  gBola(g, 9.4, 5.8 + bob, 4.7, 4.5, T);
+  // faixas de ataduras (diagonais finas) em tudo
+  const faixa = function(x, y) { return Math.floor((y + x * 0.5) / 3); };
+  const dobra = function(x, y) { return faixa(x, y) !== faixa(x, y - 1); };
+  gTroca(g, "W", "S", dobra);
+  gTroca(g, "L", "W", dobra);
+  // faixa escura dos olhos com brilho
+  gRet(g, 6, 4 + bob, 8, 3, "M");
+  gRet(g, 7, 5 + bob, 2, 1, "Y"); gRet(g, 11, 5 + bob, 2, 1, "Y");
+  gPonto(g, 7, 4 + bob, "y"); gPonto(g, 11, 4 + bob, "y");
+  // cinto de ataduras na cintura
+  gRet(g, 4, 17 + bob, 10, 1, "S");
+  // fita solta nas costas
+  const fx = [[0, 0, -1, -1], [0, -1, -1, 0], [0, -1, 0, 1], [0, 0, 1, 1]][f];
+  gRet(g, 3, 7 + bob, 2, 1, "W");
+  for (let i = 0; i < 4; i++) gRet(g, 3 - (i > 1 ? 1 : 0) + fx[i], 8 + i + bob, 2, 1, i % 2 ? "S" : "W");
+  // ponta solta no cotovelo
+  gPonto(g, 12, 14 + bob, "S"); gPonto(g, 12, 15 + bob, "W");
+  gContorno(g, "K");
+  return gMapa(g);
+}
+
+registrarInimigo("mumia", [0, 1, 2, 3].map(quadroMumia),
+  { K: "#2a2217", W: "#eadfc3", L: "#f7f0dc", S: "#b2a27c", H: "#ffffff", M: "#2a1d12", Y: "#ffe45c", y: "#ff9f1c" }, 2, {
+  poses: { andar: P(10, 0, 1, 2, 3), parado: P(20, 0, 1) },
+  olhos: [[7, 5], [12, 5]]
+});
+
+// Tatu-bola 24x15: anda, enrola e vira bola (quadro 5 gira no jogo)
+function quadroTatu(pose) {
+  const g = gGrade(24, 15);
+  const T = "BLDH";
+  const idx = { a: 0, b: 1, c: 2, d: 3 }[pose];
+  const placas = function(cx, cy, rx, ry, n) {
+    const larg = 3.2;
+    const ind = function(x, y) { return Math.floor((x + 0.45 * (y - cy)) / larg); };
+    gElipse(g, cx, cy, rx, ry, function(u, v, x, y) {
+      const topo = -(0.28 * u + 0.82 * v);
+      if (ind(x, y) !== ind(x - 1, y)) return "D";
+      if (Math.hypot(u + 0.38, v + 0.5) < 0.16) return "H";
+      if (topo > 0.42) return "L";
+      if (topo < -0.5) return "D";
+      return ind(x, y) % 2 ? "A" : "B";
+    });
+  };
+  if (pose === "bola") {
+    const cx = 12, cy = 7.5, R = 6.6;
+    gElipse(g, cx, cy, R, R, function(u, v) {
+      const ang = Math.atan2(v, u) + Math.PI * 2;
+      const t = ang / (Math.PI / 3);
+      const fr = t - Math.floor(t);
+      const raio = Math.hypot(u, v);
+      if (raio < 0.2) return "H";
+      if (fr < 0.14 + 0.1 * raio) return "D";
+      if (raio > 0.8) return "D";
+      return Math.floor(t) % 2 ? "A" : "L";
+    });
+    gPonto(g, cx + 5, cy + 1, "P"); gPonto(g, cx + 5, cy + 2, "P"); gPonto(g, cx + 6, cy + 2, "p");
+  } else if (pose === "enrola") {
+    placas(11, 8.2, 7.8, 5.8, 4.5);
+    gBola(g, 18.8, 11.8, 2.4, 1.9, "PQpq");
+    gPonto(g, 20, 11, "E");
+    gElipse(g, 15.4, 13.4, 2, 1, "Q"); gElipse(g, 8, 13.4, 2, 1, "Q");
+    gPoli(g, [[3, 11], [0.8, 12.6], [3, 13]], "P");
+  } else {
+    const bob = idx % 2;
+    // rabo
+    gPoli(g, [[4, 8.4 + bob], [0.8, 11.4], [1.6, 12.4], [5, 11]], "P");
+    gPonto(g, 1, 12, "p");
+    // patas (alternando)
+    const pa = idx === 0 || idx === 3;
+    gElipse(g, 7 + (pa ? 1 : -1), 12.9, 1.8, 1.4, "Q");
+    gElipse(g, 15 + (pa ? -1 : 1), 12.9, 1.8, 1.4, "Q");
+    // carapaça em placas
+    placas(10, 7.8 + bob, 8.4, 5.4, 5.2);
+    gRet(g, 3, 11 + bob, 14, 1, "D");
+    // cabeça pontuda
+    gElipse(g, 18.6, 10.6 + bob, 2.6, 2.4, "P");
+    gPoli(g, [[19.6, 9.4 + bob], [23.4, 11.6 + bob], [22.8, 13 + bob], [19.2, 12.8 + bob]], "P");
+    gRet(g, 18, 12 + bob, 5, 1, "Q");
+    gPoli(g, [[16.4, 8 + bob], [17.6, 4.8 + bob], [19.8, 8.2 + bob]], "Q");
+    gPonto(g, 17.6, 6.2 + bob, "p");
+    gPonto(g, 22.6, 11.6 + bob, "E");
+    gRet(g, 20, 9 + bob, 1, 2, "E"); gPonto(g, 20, 9 + bob, "H");
+    gPonto(g, 17, 14, "Y"); gPonto(g, 8, 14, "Y");
+  }
+  gContorno(g, "K");
+  return gMapa(g);
+}
+
+registrarInimigo("tatu", ["a", "b", "c", "d", "enrola", "bola"].map(quadroTatu),
+  { K: "#3a2616", D: "#6e4f32", B: "#a8825a", A: "#bf9a70", L: "#d3b088", H: "#f0dab2", P: "#ecae9f", Q: "#d98878", p: "#b86a5e", E: "#111111", Y: "#fff0c2" }, 2, {
+  poses: { andar: P(6, 0, 1, 2, 3), parado: P(14, 0, 1), preparar: P(1, 4), deslizar: P(1, 5), cansado: P(12, 0, 1) },
+  olhos: [[20, 10]]
+});
+
+// ---------- Era do Gelo ----------
+
+// Pinguim 24x26: anda gingando, se prepara e escorrega de barriga (quadro 5)
+function quadroPinguim(pose, f) {
+  const g = gGrade(24, 26);
+  const T = "BLDH";
+  if (pose === "barriga") {
+    // deitado de barriga, deslizando para a direita
+    gFio(g, 8, 18, 2, 13.4, 2.4, 1.6, "Y");
+    gPonto(g, 1, 12, "Y"); gPonto(g, 2, 12, "Y");
+    gFio(g, 13, 19.4, 4, 22, 1.8, 1, "D");
+    gBola(g, 10.4, 19, 8.8, 5, T);
+    gElipse(g, 11.6, 21.4, 7.6, 2.4, function(u, v) { return v > 0.3 ? "S" : "W"; });
+    gBola(g, 17.6, 17.2, 4.4, 3.8, T);
+    gElipse(g, 19, 18, 3, 2.4, "W");
+    gRet(g, 19, 16, 2, 2, "E"); gPonto(g, 19, 16, "W");
+    gPoli(g, [[21.4, 17.4], [24, 18.6], [21.4, 19.6]], "Y"); gRet(g, 21, 19, 3, 1, "y");
+    gRet(g, 13, 15, 2, 7, "R"); gPonto(g, 14, 15, "Q");
+    gFio(g, 13, 15.6, 6, 14, 0.9, 0.9, "R"); gFio(g, 12, 16.4, 7, 15.4, 0.9, 0.9, "r");
+    gFio(g, 12, 20.4, 5, 24, 1.8, 0.9, "B");
+  } else {
+    const prep = pose === "preparar";
+    const dx = pose === "andar" ? [-1, 0, 1, 0][f] : 0;
+    const cx = 12 + dx + (prep ? 1.5 : 0);
+    const bh = prep ? 1.5 : 0;
+    // pés
+    const pa = pose === "andar" ? f % 2 === 0 : true;
+    gElipse(g, 8.4, pa ? 24.3 : 23.4, 3, 1.3, "Y"); gElipse(g, 15.8, pa ? 23.4 : 24.3, 3, 1.3, "Y");
+    gRet(g, 6, pa ? 24 : 23, 5, 1, "y"); gRet(g, 14, pa ? 23 : 24, 5, 1, "y");
+    // flipper de trás e corpo
+    gFio(g, cx + 4.6, 12 + bh, cx + (prep ? 7 : 6.4), 17.4, 1.7, 1.1, "D");
+    gBola(g, cx, 15.8 + bh * 0.5, 7.8, 8.6 - bh * 0.4, T);
+    gBola(g, cx, 7.8 + bh, 5.8, 5.5, T);
+    gElipse(g, cx + 1.4, 17 + bh * 0.4, 4.8, 6.6, function(u, v) { return v > 0.55 ? "S" : "W"; });
+    // rosto branco, olho, bico
+    gElipse(g, cx + 3.2, 8.8 + bh, 3.4, 3, "W");
+    gElipse(g, cx + 3.2, 9.8 + bh, 3, 1.8, "S");
+    gElipse(g, cx + 3.2, 8.6 + bh, 3.4, 2.5, "W");
+    gRet(g, cx + 3, 7 + bh, 2, 2, "E"); gPonto(g, cx + 3, 7 + bh, "W");
+    if (prep) { gLinha(g, cx + 2, 6 + bh, cx + 6, 7 + bh, "K"); }
+    gPonto(g, cx + 1, 10 + bh, "Q"); gPonto(g, cx + 2, 10 + bh, "Q");
+    gPoli(g, [[cx + 5.4, 9 + bh], [cx + 10, 10.2 + bh], [cx + 5.4, 11.4 + bh]], "Y");
+    gRet(g, cx + 5, 11 + bh, 4, 1, "y");
+    // cachecol vermelho
+    gElipse(g, cx, 12.6 + bh, 6.3, 1.5, function(u, v) { return v > 0.2 ? "r" : "R"; });
+    gRet(g, cx - 6, 13 + bh, 2, 4, "R"); gRet(g, cx - 6, 16 + bh, 2, 1, "r");
+    gPonto(g, cx - 6, 13 + bh, "Q");
+    // flipper da frente
+    const sw = pose === "andar" ? [1.5, 0, -1.5, 0][f] : 0;
+    gFio(g, cx - 5.4, 13 + bh, cx - 7.8 - (prep ? 1 : 0) + sw, 18.6 - (prep ? 1 : 0), 1.8, 1, "B");
+  }
+  gContorno(g, "K");
+  return gMapa(g);
+}
+
+registrarInimigo("pinguim", [
+  quadroPinguim("andar", 0), quadroPinguim("andar", 1), quadroPinguim("andar", 2), quadroPinguim("andar", 3),
+  quadroPinguim("preparar", 0), quadroPinguim("barriga", 0)
+], { K: "#0b1220", D: "#16203b", B: "#26356a", L: "#41579e", H: "#7088c8", W: "#ffffff", S: "#c3d2e8", Y: "#ff9f2e", y: "#d9650a", E: "#111111", R: "#e8343a", r: "#a8161e", Q: "#ffa0a8" }, 2, {
+  poses: { andar: P(7, 0, 1, 2, 3), parado: P(20, 0, 2), preparar: P(1, 4), deslizar: P(1, 5), cansado: P(14, 0, 2) },
+  olhos: [[15, 8]]
+});
+
+// Morcegos 24x12 (gelo e fogo): vista de frente, asas batendo
+function quadroMorcego(f, fogo) {
+  const g = gGrade(24, 12);
+  const u = [1, 0.4, -0.9, -0.2][f];
+  const asa = function(s) {
+    const X = function(x) { return s > 0 ? x : 23 - x; };
+    const pts = [[14.2, 5.2], [18, 4.2 - 3.2 * u], [22.8, 6 - 5 * u], [21, 8.4 - 3 * u], [19.6, 7 - 2.4 * u], [18.6, 9.8 - 2 * u], [17.2, 8.2 - 1.4 * u], [15.6, 10 - u], [14.2, 8.6]].map(function(p) { return [X(p[0]), p[1]]; });
+    gPoli(g, pts, function(x, y) { return Math.abs(x - 11.5) > 8 ? "L" : "M"; });
+    [[18, 4.2 - 3.2 * u], [22.8, 6 - 5 * u], [18.6, 9.8 - 2 * u]].forEach(function(p) { gLinha(g, X(14.4), 5.6, X(p[0]), p[1], "D"); });
+    gLinha(g, X(14.4), 5.6, X(21), 8.4 - 3 * u, "D");
+  };
+  asa(1); asa(-1);
+  // corpo e cabeça
+  gBola(g, 11.6, 8, 2.6, 3.3, "BLDH");
+  if (!fogo) { gElipse(g, 11.6, 9, 1.2, 1.4, "W"); } else { gElipse(g, 11.6, 9, 1.3, 1.5, "Y"); }
+  gBola(g, 11.6, 5, 3, 2.7, "BLDH");
+  // orelhas
+  gPoli(g, [[8.6, 4.4], [8.4, 0.6], [10.8, 3]], "B"); gPoli(g, [[14.4, 4.4], [14.8, 0.6], [12.4, 3]], "B");
+  gPonto(g, 9, 2.6, "I"); gPonto(g, 14, 2.6, "I");
+  // olhos e presas
+  gRet(g, 9, 4, 2, 2, "E"); gRet(g, 13, 4, 2, 2, "E");
+  gPonto(g, 9, 4, "G"); gPonto(g, 13, 4, "G");
+  gPonto(g, 10, 7, "W"); gPonto(g, 13, 7, "W");
+  gContorno(g, "K");
+  if (fogo) { gPonto(g, 11, 0, "Y"); gPonto(g, 12, 1 - (f % 2), "O"); gPonto(g, 12, 0, "Y"); }
+  return gMapa(g);
+}
+
+registrarInimigo("morcegoGelo", [0, 1, 2, 3].map(function(f) { return quadroMorcego(f, false); }),
+  { K: "#0f2a4a", D: "#1f5fa8", B: "#8fd0ff", L: "#2f7fd0", M: "#3f93e6", H: "#eaf6ff", W: "#ffffff", E: "#16243a", G: "#8be9ff", I: "#7cc4fb" }, 2, {
+  poses: { voar: P(3, 0, 1, 2, 3), parado: P(3, 0, 1, 2, 3) },
+  olhos: [[10, 5], [14, 5]]
+});
+registrarInimigo("morcegoFogo", [0, 1, 2, 3].map(function(f) { return quadroMorcego(f, true); }),
+  { K: "#3a0a10", D: "#8a1730", B: "#ffb347", L: "#c2304a", M: "#e0485a", H: "#fff0b0", W: "#fff3bf", E: "#ffffff", G: "#ff3b3b", I: "#ffd27a", Y: "#ffd43b", O: "#ff922b" }, 2, {
+  poses: { voar: P(3, 0, 1, 2, 3), parado: P(3, 0, 1, 2, 3) },
+  olhos: [[10, 5], [14, 5]]
+});
+
+// Boneco de Neve 21x30: chapéu, cenoura, cachecol; arremessa bolas de neve
+function quadroBoneco(pose) {
+  const g = gGrade(21, 30);
+  const T = "WLDH";
+  const resp = pose === "respira" ? 0.5 : 0;
+  const car = pose === "carregar", ati = pose === "atirar";
+  // braço da frente fica por trás do corpo? (desenha depois)
+  gBola(g, 10.5, 23.4, 8.4, 5.4, T);
+  gBola(g, 10.5, 16.4 + resp, 6.6, 5.2, T);
+  gBola(g, 10.5, 9.4 + resp, 5.5, 4.9, T);
+  // chapéu
+  const hy = resp;
+  gRet(g, 7, 1 + hy, 7, 4, "C"); gRet(g, 7, 1 + hy, 1, 4, "c");
+  gRet(g, 7, 3.6 + hy, 7, 1, "R");
+  gRet(g, 4.5, 5 + hy, 12, 1, "C"); gRet(g, 4.5, 5 + hy, 12, 1, "C"); gRet(g, 5, 5 + hy, 2, 1, "c");
+  // olhos de carvão e sobrancelhas
+  gRet(g, 8, 8 + resp, 2, 2, "E"); gRet(g, 13, 8 + resp, 2, 2, "E");
+  gPonto(g, 8, 8 + resp, "W");  gPonto(g, 13, 8 + resp, "W");
+  if (car || ati) { gLinha(g, 7, 7 + resp, 10, 8 + resp, "E"); gLinha(g, 15, 7 + resp, 13, 8 + resp, "E"); }
+  // cenoura
+  gPoli(g, [[11.4, 10 + resp], [17.4, 11.2 + resp], [11.4, 12.4 + resp]], "O");
+  gRet(g, 11, 10 + resp, 6, 1, "o"); gPonto(g, 17, 11 + resp, "n");
+  // bochechas e sorriso de carvão
+  gPonto(g, 6, 11 + resp, "Q"); gPonto(g, 7, 11 + resp, "Q"); gPonto(g, 15, 12 + resp, "Q");
+  [[7, 12.6], [8, 13.4], [10, 13.8], [12, 13.6], [13.4, 13]].forEach(function(p) { gPonto(g, p[0], p[1] + resp, "E"); });
+  // cachecol
+  gElipse(g, 10.5, 14.6 + resp, 5.8, 1.4, function(u, v) { return v > 0.1 ? "r" : "R"; });
+  gRet(g, 5, 15 + resp, 2, 5, "R"); gRet(g, 5, 19 + resp, 2, 1, "r"); gPonto(g, 5, 15 + resp, "Q");
+  // botões
+  gRet(g, 10, 17 + resp, 2, 2, "E"); gRet(g, 10, 21, 2, 2, "E"); gRet(g, 10, 25, 2, 2, "E");
+  gPonto(g, 10, 17 + resp, "W"); gPonto(g, 10, 21, "W"); gPonto(g, 10, 25, "W");
+  // flocos de sombra azulada
+  gPonto(g, 5, 24, "D"); gPonto(g, 6, 26, "D");
+  // bola de neve nas mãos
+  if (car) gBola(g, 18, 3.4, 2.9, 2.9, "WLDH");
+  gContorno(g, "K");
+  // braços de galho (depois do contorno)
+  gLinha(g, 4.6, 16 + resp, 0.8, 12.6 + resp, "N"); gLinha(g, 2.4, 14.4 + resp, 0.6, 14.2 + resp, "N"); gLinha(g, 2.6, 14 + resp, 2, 11.6 + resp, "N");
+  if (car) {
+    gLinha(g, 16.4, 15, 18, 8, "N"); gLinha(g, 17.6, 10, 15.4, 8.6, "N"); gLinha(g, 17.8, 9, 20, 8, "N");
+  } else if (ati) {
+    gLinha(g, 16.4, 15.4, 20.4, 15.8, "N"); gLinha(g, 19.2, 15.6, 20.4, 13.4, "N"); gLinha(g, 19.4, 15.8, 20.4, 18, "N");
+  } else {
+    gLinha(g, 16.4, 16 + resp, 20.2, 12.8 + resp, "N"); gLinha(g, 18.4, 14.4 + resp, 20.4, 14.6 + resp, "N"); gLinha(g, 18.4, 14.4 + resp, 18.4, 12 + resp, "N");
+  }
+  return gMapa(g);
+}
+
+registrarInimigo("boneco", [
+  quadroBoneco("parado"), quadroBoneco("respira"), quadroBoneco("carregar"), quadroBoneco("atirar")
+], { K: "#2c3a58", W: "#eef4fc", L: "#ffffff", D: "#b3c3dc", H: "#ffffff", C: "#1d1d26", c: "#4a4a5c", R: "#e03131", r: "#a51d1d", Q: "#ffa8b4", E: "#16161c", O: "#ff922b", o: "#ffc078", n: "#c2560a", N: "#7a4a22" }, 2, {
+  poses: { parado: P(36, 0, 1), carregar: P(1, 2), atirar: P(1, 3) },
+  olhos: [[9, 9], [14, 9]]
+});
+
+// Foca 24x15: pula com a barriga, cabeça redonda, bigodes
+function quadroFoca(pose) {
+  const g = gGrade(24, 15);
+  const T = "BLDH";
+  // corpo: [cx, cy, rx, ry] da cauda até o peito; cab = centro da cabeça
+  const forma = {
+    parado:  { corpo: [[7.4, 10.4, 5.6, 3.2], [11.8, 9.8, 5.2, 3.7], [15, 8.6, 4.2, 4]], cab: [17.6, 5.6], rab: [[1.2, 8.6], [4, 8.8], [3.6, 12], [1.2, 12.4]], nad: [14.4, 12.2] },
+    agachar: { corpo: [[7.6, 11.6, 6, 2.7], [12, 11, 5.2, 3], [15.4, 10.4, 4, 3]], cab: [18, 8.6], rab: [[1.2, 10.4], [4, 10.8], [3.6, 13.4], [1.2, 13.4]], nad: [15, 13.2] },
+    pulo:    { corpo: [[6.4, 9, 4.8, 2.9], [10.6, 8.2, 5, 3.4], [14.4, 7.2, 4.2, 3.6]], cab: [17.8, 4.8], rab: [[0.8, 4], [3.4, 5.4], [3.8, 8.4], [1, 7.4]], nad: [10.6, 10.6] },
+    queda:   { corpo: [[6.4, 6.4, 4.8, 2.9], [10.6, 7.4, 5, 3.4], [14.4, 8.4, 4.2, 3.6]], cab: [17.8, 9.4], rab: [[0.8, 2.6], [3.4, 3.8], [3.8, 6.6], [1, 5.6]], nad: [17.6, 12.2] }
+  }[pose];
+  gPoli(g, forma.rab, "D");
+  forma.corpo.forEach(function(c) { gBola(g, c[0], c[1], c[2], c[3], T); });
+  // barriga clara
+  const c1 = forma.corpo[1];
+  gElipse(g, c1[0] + 0.8, c1[1] + c1[3] * 0.66, c1[2] - 0.8, c1[3] * 0.4, "P");
+  // manchas das costas
+  const cc = forma.corpo[0];
+  [[0, -1.6], [1, -1.6], [4, -2.6], [5, -2.6], [3, -0.6], [7, -2.8]].forEach(function(o) { gPonto(g, cc[0] + o[0], cc[1] + o[1], "S"); });
+  // cabeça grande e clara, com focinho, nariz e olhão
+  const h = forma.cab;
+  gElipse(g, h[0] + 0.5, h[1] + 3.2, 3.6, 2.4, "B");
+  gBola(g, h[0], h[1], 4.4, 4, "LHBH");
+  gElipse(g, h[0] + 2.8, h[1] + 1.8, 3.1, 2.3, "P");
+  gElipse(g, h[0] + 2.8, h[1] + 2.9, 2.5, 1.1, "Q");
+  gRet(g, h[0] + 4.4, h[1] + 0.6, 2, 2, "E");                 // nariz
+  gPonto(g, h[0] + 2, h[1] + 2.4, "S"); gPonto(g, h[0] + 3, h[1] + 3, "S");
+  gRet(g, h[0] - 0.6, h[1] - 2, 3, 3, "E");                   // olhão
+  gPonto(g, h[0] - 0.6, h[1] - 2, "W"); gPonto(g, h[0] + 0.4, h[1] - 1, "H");
+  gPoli(g, [[h[0] - 3.4, h[1] - 0.6], [h[0] - 2.4, h[1] - 3.2], [h[0] - 1, h[1] - 3.6]], "L");   // topo da cabeça
+  if (pose === "queda" || pose === "pulo") gRet(g, h[0] + 2.4, h[1] + 3.2, 3, 1, "M");
+  // nadadeira da frente
+  gFio(g, forma.nad[0], forma.nad[1] - 1.4, forma.nad[0] + (pose === "queda" ? 2.6 : -1.6), forma.nad[1] + (pose === "queda" ? 0.4 : 0.8), 1.7, 1.1, "D");
+  gContorno(g, "K");
+  // bigodes (depois do contorno)
+  gLinha(g, h[0] + 5, h[1] + 2.6, h[0] + 6.6, h[1] + 3.4, "W"); gLinha(g, h[0] + 4.6, h[1] + 3, h[0] + 5.6, h[1] + 4.4, "W");
+  return gMapa(g);
+}
+
+registrarInimigo("foca", ["parado", "agachar", "pulo", "queda"].map(quadroFoca),
+  { K: "#14202e", D: "#3d5a78", B: "#648aa8", L: "#9dbbd2", H: "#dcebf6", P: "#e4eef6", Q: "#b4cce0", S: "#41607e", E: "#101820", W: "#ffffff", M: "#4a1a22" }, 2, {
+  poses: { parado: P(1, 0), agachar: P(1, 1), pulo: P(1, 2), queda: P(1, 3) },
+  olhos: [[18, 5]]
+});
+
+// Lobo do Gelo 27x18: corre (4 quadros), rosna agachado, ofega
+function quadroLobo(pose) {
+  const g = gGrade(27, 18);
+  const T = "BLDH";
+  const idx = { c0: 0, c1: 1, c2: 2, c3: 3 }[pose];
+  const corre = idx !== undefined;
+  const rosna = pose === "rosna", ofega = pose === "ofega";
+  const by = rosna ? 1.8 : (corre ? [-0.4, 0.4, -0.2, 0.6][idx] : 0);
+  // pernas: [ombro/quadril, pé]
+  const patas = {
+    c0: { fn: [[19, 11], [24.4, 15.4]], ff: [[17.4, 11], [22, 14.6]], hn: [[8.6, 11.4], [3.4, 15.2]], hf: [[10.4, 11.4], [6, 15.8]] },
+    c1: { fn: [[18.6, 11.4], [17.4, 15.6]], ff: [[17.2, 11.4], [15, 15.2]], hn: [[9.4, 11.6], [11.6, 15.6]], hf: [[10.8, 11.6], [13.6, 15]] },
+    c2: { fn: [[19, 11], [21.4, 15.8]], ff: [[17.4, 11], [24, 14]], hn: [[8.6, 11.4], [6, 15.8]], hf: [[10.4, 11.4], [2.8, 14.6]] },
+    c3: { fn: [[18.6, 11.4], [20, 15.6]], ff: [[17.2, 11.4], [18.4, 14.8]], hn: [[9.4, 11.6], [8, 15.6]], hf: [[10.8, 11.6], [9.4, 15]] },
+    rosna: { fn: [[19, 12], [20.4, 16]], ff: [[17.4, 12], [16.4, 15.6]], hn: [[8.6, 12.4], [6.6, 16]], hf: [[10.4, 12.4], [9.6, 15.6]] },
+    ofega: { fn: [[19, 11.4], [19.4, 16]], ff: [[17.4, 11.4], [16.6, 15.8]], hn: [[8.6, 11.8], [7.4, 16]], hf: [[10.4, 11.8], [10.2, 15.8]] }
+  }[pose];
+  const perna = function(p, cor, fina) {
+    const mx = (p[0][0] + p[1][0]) / 2 + 0.6, my = (p[0][1] + p[1][1]) / 2 + 0.4;
+    gFio(g, p[0][0], p[0][1] + by, mx, my + by * 0.5, fina ? 1.4 : 1.8, fina ? 1.1 : 1.4, cor);
+    gFio(g, mx, my + by * 0.5, p[1][0], p[1][1], 1.2, 1.1, cor);
+    gElipse(g, p[1][0] + 0.8, p[1][1] + 0.4, 1.6, 0.9, cor === "D" ? "d" : "Q");
+  };
+  perna(patas.hf, "D", true); perna(patas.ff, "D", true);
+  // rabo felpudo
+  const ry = rosna ? 5 : ofega ? 10 : 4 + by;
+  gFio(g, 5.6, 9 + by, 2, ry + 1.4, 2.2, 1.4, "B"); gElipse(g, 1.8, ry + 0.8, 1.5, 1.5, "H");
+  // corpo
+  gBola(g, 9.6, 9.6 + by, 5.2, 4.4, T);
+  gBola(g, 14.4, 9.2 + by, 5.2, 3.8, T);
+  gBola(g, 18.4, 8.8 + by, 4.6, 4.2, T);
+  gElipse(g, 14.4, 12 + by, 7.4, 1.4, "P");
+  gElipse(g, 19, 10.4 + by, 2.6, 2.2, "P");
+  perna(patas.hn, "B", false); perna(patas.fn, "B", false);
+  // cabeça
+  const hx = rosna ? 1 : 0, hy = rosna ? 2.4 : ofega ? 3 : 0;
+  gBola(g, 22.4 + hx, 6.6 + by + hy, 3.2, 3, T);
+  gElipse(g, 25 + hx, 8.2 + by + hy, 2, 1.5, "L");
+  gPonto(g, 26 + hx, 7.4 + by + hy, "E"); gPonto(g, 25.6 + hx, 7.4 + by + hy, "E");
+  // orelhas
+  gPoli(g, [[19.8 + hx, 4.2 + by + hy], [20.4 + hx, 0.8 + by + hy], [22.6 + hx, 3.4 + by + hy]], "B");
+  gPoli(g, [[22.2 + hx, 3.6 + by + hy], [24.2 + hx, 1 + by + hy], [24.6 + hx, 4.2 + by + hy]], "D");
+  gPonto(g, 20.8 + hx, 3 + by + hy, "I");
+  // olho amarelo bravo
+  gRet(g, 22.6 + hx, 5.4 + by + hy, 2, 1, "Y"); gPonto(g, 24 + hx, 5.4 + by + hy, "E");
+  gLinha(g, 22 + hx, 4.4 + by + hy, 25 + hx, 5.4 + by + hy, "D");
+  // pelos da bochecha
+  gPoli(g, [[19.8 + hx, 8 + by + hy], [21.6 + hx, 10 + by + hy], [22.4 + hx, 8.6 + by + hy]], "H");
+  // boca
+  if (rosna) { gRet(g, 23 + hx, 9.2 + by + hy, 4, 1, "M"); gPonto(g, 23 + hx, 10 + by + hy, "W"); gPonto(g, 25 + hx, 10 + by + hy, "W"); gPonto(g, 24 + hx, 9 + by + hy, "W"); gPonto(g, 26 + hx, 9 + by + hy, "W"); }
+  else if (ofega) { gRet(g, 23 + hx, 9.4 + by + hy, 3, 1, "M"); gRet(g, 24 + hx, 10.4 + by + hy, 2, 2, "R"); }
+  else { gRet(g, 23 + hx, 9.4 + by + hy, 3, 1, "M"); }
+  gContorno(g, "K");
+  return gMapa(g);
+}
+
+registrarInimigo("lobo", ["c0", "c1", "c2", "c3", "rosna", "ofega"].map(quadroLobo),
+  { K: "#1a2230", D: "#5a6573", d: "#434d5a", Q: "#2f3846", B: "#8c96a4", L: "#c4cbd4", H: "#eef1f5", P: "#e6eaef", I: "#e8a0b0", Y: "#ffd43b", E: "#111111", W: "#ffffff", M: "#5a1620", R: "#e8445a" }, 2, {
+  poses: { andar: P(4, 0, 1, 2, 3), parado: P(20, 1), preparar: P(1, 4), deslizar: P(3, 0, 1, 2, 3), cansado: P(10, 5, 1) },
+  olhos: [[23, 6]]
+});
+
+// ---------- Mundo de Lava ----------
+
+// Slime de Magma 28x20: pulsa, amassa, estica; espinhos de obsidiana nas costas
+function quadroSlime(pose) {
+  const g = gGrade(28, 20);
+  const P_ = {
+    a:      { rx: 11.4, ry: 8.2, cx: 14 },
+    b:      { rx: 10.8, ry: 9.0, cx: 14 },
+    agachar:{ rx: 13, ry: 6.2, cx: 14 },
+    esticar:{ rx: 8.4, ry: 9.6, cx: 14 },
+    pouso:  { rx: 13.4, ry: 5, cx: 14 }
+  }[pose];
+  const chao = 19;                      // primeira linha abaixo do slime
+  const cy = chao - P_.ry + 1.6;
+  const cx = P_.cx;
+  // gotas e poças ao lado quando amassa
+  if (pose === "pouso") { gElipse(g, 1.8, 17.4, 1.4, 1.4, "B"); gElipse(g, 26.2, 17.2, 1.4, 1.4, "B"); gPonto(g, 2, 14, "L"); gPonto(g, 25, 13, "L"); }
+  // corpo de lava
+  gBola(g, cx, cy, P_.rx, P_.ry, "BLDH");
+  const topo = cy - P_.ry;
+  // espinhos de obsidiana (cravados nas costas)
+    [[-5.2, 1.6], [0, 3.6], [5.2, 2]].forEach(function(s) {
+    const x = cx + s[0] * (P_.rx / 11.4);
+    const ty = topo + 2.4 + Math.abs(s[0]) * 0.16;
+    const alt = Math.min(s[1] * 1.5 * (pose === "pouso" || pose === "agachar" ? 0.7 : 1), ty - 1.2);
+    gPoli(g, [[x - 1.9, ty + 1.2], [x + 1.9, ty + 1.2], [x + 0.4, ty - alt - 0.6]], "O");
+    gPoli(g, [[x - 0.6, ty + 1.2], [x + 1.9, ty + 1.2], [x + 0.6, ty - alt]], "o");
+    gPonto(g, x, ty - alt, "Y");
+  });
+  for (let y = chao; y < 20; y++) for (let x = 0; x < 28; x++) if (g[y][x] !== "." && !(pose === "pouso" && 0)) g[y][x] = ".";
+  // brilho do miolo e bolhas
+  gElipse(g, cx - 2, cy + 1.2, P_.rx * 0.45, P_.ry * 0.38, function(u, v) { return v < -0.2 ? "L" : "B"; });
+  [[-4.5, -0.5], [5.2, 1.6], [1.2, 3]].forEach(function(b) {
+    if (cy + b[1] > chao - 1.2) return;
+    gPonto(g, cx + b[0], cy + b[1], "H"); gPonto(g, cx + b[0] + 1, cy + b[1], "L"); gPonto(g, cx + b[0], cy + b[1] + 1, "L");
+  });
+  // rachaduras brilhantes na base
+  gPonto(g, cx - 6, chao - 2, "Y"); gPonto(g, cx - 5, chao - 2, "Y"); gPonto(g, cx + 4, chao - 1.6, "Y"); gPonto(g, cx + 5, chao - 1.6, "Y");
+  // olhos bravos e boca
+  const ey = cy - P_.ry * 0.12;
+  const exs = cx + 1.4;
+  gRet(g, exs - 5, ey - 1.4, 4, 4, "W"); gRet(g, exs + 1.5, ey - 1.4, 4, 4, "W");
+  gRet(g, exs - 3, ey - 0.4, 2, 3, "E"); gRet(g, exs + 3.5, ey - 0.4, 2, 3, "E");
+  gPonto(g, exs - 3, ey - 0.4, "W"); gPonto(g, exs + 3.5, ey - 0.4, "W");
+  gLinha(g, exs - 6, ey - 3, exs - 1, ey - 1.6, "D"); gLinha(g, exs + 6.4, ey - 3, exs + 1.6, ey - 1.6, "D");
+  gLinha(g, exs - 6, ey - 2.6, exs - 1, ey - 1.2, "D"); gLinha(g, exs + 6.4, ey - 2.6, exs + 1.6, ey - 1.2, "D");
+  const my = ey + 4.4;
+  if (pose === "esticar") { gRet(g, exs - 1, my, 4, 2, "M"); gRet(g, exs, my, 2, 1, "Y"); }
+  else { gRet(g, exs - 2.4, my, 7, 1, "M"); gPonto(g, exs - 2.4, my - 1, "M"); gPonto(g, exs + 4.4, my - 1, "M"); gPonto(g, exs - 1, my + 1, "Y"); gPonto(g, exs + 1, my + 1, "Y"); gPonto(g, exs - 1, my, "W"); gPonto(g, exs + 3, my, "W"); }
+  gContorno(g, "K");
+  // escorre uma gotinha
+  if (pose === "a" || pose === "b") { gPonto(g, cx - 9, chao, "B"); }
+  return gMapa(g);
+}
+
+registrarInimigo("slime", ["a", "b", "agachar", "esticar", "pouso"].map(quadroSlime),
+  { K: "#3a0d06", D: "#c2330a", B: "#f76c0b", L: "#ffa11f", H: "#ffe08a", Y: "#ffd43b", O: "#2c2128", o: "#5b4655", W: "#ffffff", E: "#1a0a0a", M: "#3a0d06" }, 2, {
+  poses: { parado: P(16, 0, 1), agachar: P(1, 2), pulo: P(1, 3), queda: P(1, 3), pouso: P(1, 4) },
+  olhos: [[11, 9], [18, 9]]
+});
+
+// Diabinho 24x28: asinhas, rabo de seta, bola de fogo nas mãos
+function quadroDiabinho(pose, f) {
+  const g = gGrade(24, 28);
+  const T = "BLDH";
+  const car = pose === "carregar", ati = pose === "atirar";
+  const bat = f ? 1 : 0;
+  // asa de trás
+  const wy = bat ? -1 : 0;
+  gPoli(g, [[9, 14], [2.4, 9.6 + wy], [3.6, 12.6 + wy], [1.8, 14.6 + wy], [4.8, 15.4], [4, 18.4], [9, 18.4]], "I");
+  gLinha(g, 9, 15, 2.6, 10 + wy, "V"); gLinha(g, 9, 16, 2.2, 14.8 + wy, "V"); gLinha(g, 9, 17, 4.2, 18, "V");
+  // rabo com ponta de seta
+  const tipo = [[8, 22], [1.4, 24], [1.8 + bat, 17]];
+  for (let i = 0; i <= 12; i++) { const p = gCurva(tipo[0], tipo[1], tipo[2], i / 12); gElipse(g, p[0], p[1], 0.9, 0.9, "B"); }
+  gPoli(g, [[1.8 + bat - 1.8, 17.4], [1.8 + bat + 1.8, 17.4], [1.8 + bat, 14.6]], "D");
+  // pernas e cascos
+  gBola(g, 9.4, 23.6, 2.1, 2.6, T); gBola(g, 14.4, 23.6, 2.1, 2.6, T);
+  gRet(g, 7, 25, 4, 2, "N"); gRet(g, 12, 25, 4, 2, "N");
+  gRet(g, 7, 26, 4, 1, "n"); gRet(g, 12, 26, 4, 1, "n");
+  // corpo
+  gBola(g, 12, 18.8, 4.8, 5.4, T);
+  gElipse(g, 12.8, 19.8, 2.8, 3.8, "Q");
+  // cabeça e orelhas
+  gPoli(g, [[6.8, 8.6], [2, 5.8], [7.2, 11.6]], "B"); gPoli(g, [[17.2, 8.6], [22, 5.8], [16.8, 11.6]], "B");
+  gPoli(g, [[6.8, 9], [3.8, 7.2], [7, 10.6]], "I"); gPoli(g, [[17.2, 9], [20.2, 7.2], [17, 10.6]], "I");
+  gBola(g, 12, 9.2, 6, 5.3, T);
+  // chifres
+  gFio(g, 8.2, 5.4, 6.6, 1.2, 1.5, 0.6, "N"); gFio(g, 15.8, 5.4, 17.6, 1.2, 1.5, 0.6, "N");
+  gPonto(g, 8, 4, "n"); gPonto(g, 16, 4, "n");
+  // olhos bravos
+  gRet(g, 8.6, 8, 3, 2, "Y"); gRet(g, 13.4, 8, 3, 2, "Y");
+  gRet(g, 10.4, 8, 1, 2, "E"); gRet(g, 15.4, 8, 1, 2, "E");
+  gLinha(g, 8, 6.4, 11.4, 7.8, "D"); gLinha(g, 16.6, 6.4, 13, 7.8, "D");
+  gLinha(g, 8, 6.8, 11.4, 8.2, "D"); gLinha(g, 16.6, 6.8, 13, 8.2, "D");
+  // sorriso com dentes
+  if (ati || car) { gRet(g, 9.4, 11.4, 6, 2, "M"); gRet(g, 9.4, 11.4, 6, 1, "W"); }
+  else { gRet(g, 9.4, 11.8, 6, 1, "M"); gPonto(g, 8.4, 11, "M"); gPonto(g, 15.4, 11, "M"); gPonto(g, 10, 12.8, "W"); gPonto(g, 14, 12.8, "W"); gPonto(g, 10, 11.8, "W"); gPonto(g, 14, 11.8, "W"); }
+  // braços
+  if (ati) {
+    gFio(g, 15.6, 15.6, 20.6, 16.6, 1.5, 1.3, "B"); gFio(g, 8.6, 15.6, 6, 20, 1.5, 1.3, "D");
+    gElipse(g, 21.4, 16.6, 1.4, 1.6, "D"); gPonto(g, 22.6, 14.6, "N"); gPonto(g, 22.8, 18.4, "N");
+  } else if (car) {
+    gFio(g, 15.6, 15.6, 18.4, 15.8, 1.5, 1.3, "B"); gFio(g, 9, 15.8, 16, 17.6, 1.5, 1.3, "D");
+    // bola de fogo nas mãos
+    gPoli(g, [[18.2, 12.6], [19.4, 8.2], [20.6, 11.6], [22.6, 9.4], [22.2, 13]], "F");
+    gBola(g, 20.2, 15.6, 3, 3, "OYFW");
+    gElipse(g, 20.2, 15.8, 1.2, 1.2, "W");
+  } else {
+    gFio(g, 15.8, 15.4, 18.4, 20.4, 1.5, 1.3, "B"); gFio(g, 8.4, 15.4, 5.8, 20.2, 1.5, 1.3, "D");
+    gPonto(g, 18.6, 21.4, "N"); gPonto(g, 19.6, 21.4, "N"); gPonto(g, 5.4, 21.4, "N"); gPonto(g, 6.4, 21.4, "N");
+  }
+  gContorno(g, "K");
+  return gMapa(g);
+}
+
+registrarInimigo("diabinho", [
+  quadroDiabinho("parado", 0), quadroDiabinho("parado", 1), quadroDiabinho("carregar", 0), quadroDiabinho("atirar", 0)
+], { K: "#2e0707", D: "#a31515", B: "#e03a2e", L: "#ff6b57", H: "#ffa8a0", Q: "#ff8a6e", I: "#7a1010", V: "#4a0a0a", W: "#ffffff", N: "#f4ead4", n: "#c7b88f", Y: "#ffe45c", E: "#1a0505", M: "#4a0a0a", O: "#ff922b", F: "#e8590c" }, 2, {
+  poses: { parado: P(20, 0, 1), carregar: P(1, 2), atirar: P(1, 3) },
+  olhos: [[10, 9], [15, 9]]
+});
+
+// Golem de Pedra 24x26: bloco de rocha com musgo e o coração de lava no peito
+function quadroGolem(pose) {
+  const g = gGrade(24, 26);
+  const T = "BLD";
+  const car = pose === "carregar", ati = pose === "atirar", resp = pose === "respira";
+  const sh = resp ? 1 : 0;
+  // pernas
+  gBloco(g, 6, 18, 5, 6, T); gBloco(g, 13, 18, 5, 6, T);
+  gBloco(g, 5, 23, 7, 2, T); gBloco(g, 12, 23, 7, 2, T);
+  // braços e punhos
+  const braco = function(x, esq) {
+    if (car) {
+      gBloco(g, x, 4, 3, 10, T);
+      gBola(g, x + 1.5, 3.2, 3.2, 3, "BLDL");
+    } else if (ati && !esq) {
+      gBloco(g, 17, 11, 6, 3, T);
+      gBola(g, 22, 12.6, 2.2, 3, "BLDL");
+    } else {
+      gBloco(g, x, 12 - sh, 3, 8, T);
+      gBola(g, x + 1.5, 21 - sh, 3.2, 2.8, "BLDL");
+    }
+  };
+  braco(1.5, true); braco(19.5, false);
+  // tronco
+  gBloco(g, 6, 10 - sh, 12, 10, T);
+  gBloco(g, 4, 10 - sh, 16, 4, T);
+  // ombros arredondados
+  gBola(g, 4.2, 11.4 - sh, 3.6, 3, "BLDH"); gBola(g, 19.8, 11.4 - sh, 3.6, 3, "BLDH");
+  // cabeça
+  const hy = car ? 3 : 0;
+  gBloco(g, 8, 3 + hy - sh, 8, 7, T);
+  gRet(g, 8, 6 + hy - sh, 8, 1, "D");
+  // olhos de lava
+  gRet(g, 9, 7 + hy - sh, 2, 2, "O"); gRet(g, 13, 7 + hy - sh, 2, 2, "O");
+  gPonto(g, 9, 7 + hy - sh, "Y"); gPonto(g, 13, 7 + hy - sh, "Y");
+  gRet(g, 10, 5 + hy - sh, 5, 1, "k");
+  // coração de lava e rachaduras
+  const cy = 15 - sh;
+  gPoli(g, [[12, cy - 3], [14.6, cy], [12, cy + 3], [9.4, cy]], resp ? "Y" : "O");
+  gPoli(g, [[12, cy - 1.4], [13.2, cy], [12, cy + 1.4], [10.8, cy]], resp ? "W" : "Y");
+  gLinha(g, 9, cy, 7, cy - 2, "O"); gLinha(g, 15, cy, 17, cy + 2, "O"); gLinha(g, 12, cy + 3, 11, cy + 5, "O");
+  gLinha(g, 7, cy - 2, 6, cy - 4, "k"); gLinha(g, 17, cy + 2, 18, cy + 4, "k");
+  // pedra jogada no alto
+  if (car) gBola(g, 12, 2.6, 4.8, 2.8, "BLDH");
+  // textura e musgo
+  gRuido(g, 7, "B", "L", 0.10); gRuido(g, 11, "B", "D", 0.08);
+  [[9, 3], [10, 3], [15, 10], [16, 10], [5, 9], [6, 9], [7, 10]].forEach(function(p) { if (g[p[1] - sh] && "BLD".indexOf(g[p[1] - sh][p[0]]) >= 0) gPonto(g, p[0], p[1] - sh, "G"); });
+  gContorno(g, "K");
+  return gMapa(g);
+}
 
 registrarInimigo("golem", [
-  "....KKKKKKKK....",
-  "...KRRRRRRRRK...",
-  "..KRRrRRRRrRRK..",
-  "..KRROORROORRK..",
-  "..KRRRRRRRRRRK..",
-  "...KRRKKKKRRK...",
-  ".KKKRRRRRRRRKKK.",
-  "KRRRKRRrRRRKRRRK",
-  "KRrRKRRRRRrKRrRK",
-  "KRRRKRRRRRRKRRRK",
-  "KRRRKRRORRRKRRRK",
-  "KKKKKRRRRRRKKKKK",
-  "KRRK.KRRRRK.KRRK",
-  "KKKK.KRRRRK.KKKK",
-  ".....KRRKRRK....",
-  "....KRRK.KRRK...",
-  "....KKKK.KKKK..."
-], { K: "#1a1d20", R: "#6c6f73", r: "#8a8d91", O: "#ff922b" }, 3);
+  quadroGolem("parado"), quadroGolem("respira"), quadroGolem("carregar"), quadroGolem("atirar")
+], { K: "#181b1f", D: "#4c525a", B: "#7b838c", L: "#a6aeb7", H: "#d3d8dd", O: "#ff922b", Y: "#ffe066", W: "#ffffff", k: "#2b2f35", G: "#5ea04c" }, 2, {
+  poses: { parado: P(26, 0, 1), carregar: P(1, 2), atirar: P(1, 3) },
+  olhos: [[10, 8], [14, 8]]
+});
 
-registrarInimigo("fenix", [
-  "...........Y.Y....",
-  "...........YRRK...",
-  "..........KRRWEK..",
-  "Y........KRRRRRYY.",
-  "YR.....KKRRRRRK...",
-  ".YRR.KROOORRRK....",
-  "..YRRROOOOOORK....",
-  "...YRRYYOOOORK....",
-  "..YYRRRRYYOOK.....",
-  ".Y..YRRRRRKK......",
-  "......YY.Y........",
-  ".......K..K......."
-], { K: "#5c1a03", R: "#e8590c", O: "#ff922b", Y: "#ffd43b", W: "#ffffff", E: "#111111" }, 3);
+// Fênix 27x18: penas de fogo, crista e cauda flamejante; quadro 4 = mergulho
+function quadroFenix(f) {
+  const g = gGrade(27, 18);
+  const T = "ROdH";
+  const mergulho = f === 4;
+  const flick = f % 2;
+  const raiz = mergulho ? [14, 10.4] : [12.6, 8.8];
+  const centro = [-105, -150, 125, 170][f];
+  // pena: do ombro até a ponta, em 3 cores (vermelho, laranja, amarelo)
+  const pena = function(x0, y0, ang, comp, cores, r0) {
+    const a = ang * Math.PI / 180;
+    const x1 = x0 + Math.cos(a) * comp, y1 = y0 + Math.sin(a) * comp;
+    const p1 = [x0 + (x1 - x0) * 0.45, y0 + (y1 - y0) * 0.45], p2 = [x0 + (x1 - x0) * 0.78, y0 + (y1 - y0) * 0.78];
+    gFio(g, x0, y0, p1[0], p1[1], r0, r0 * 0.8, cores[0]);
+    gFio(g, p1[0], p1[1], p2[0], p2[1], r0 * 0.8, r0 * 0.5, cores[1]);
+    gFio(g, p2[0], p2[1], x1, y1, r0 * 0.5, 0.4, cores[2]);
+  };
+  // cauda flamejante (atrás de tudo)
+  const cauda = mergulho ? [[2, 11 + flick], [0.6, 13], [3, 15]] : [[2, 8 + flick], [1, 11.4 - flick], [2.4, 14.6]];
+  cauda.forEach(function(c, i) { pena(8, 10.6, Math.atan2(c[1] - 10.6, c[0] - 8) * 180 / Math.PI, Math.hypot(c[0] - 8, c[1] - 10.6), i % 2 ? ["O", "Y", "Y"] : ["R", "O", "Y"], 1.5); });
+  // asas: leque de penas pontudas (triângulos) com degradê de fogo
+  const leque = function(sx, sy, ang, comp, larg, sombra) {
+    const a = ang * Math.PI / 180;
+    const tx = sx + Math.cos(a) * comp, ty = sy + Math.sin(a) * comp;
+    const nx = -Math.sin(a) * larg, ny = Math.cos(a) * larg;
+    gPoli(g, [[sx + nx, sy + ny], [tx, ty], [sx - nx, sy - ny]], function(x, y) {
+      if (sombra) return "d";
+      const d = Math.hypot(x - sx, y - sy) / comp;
+      return d < 0.38 ? "R" : d < 0.7 ? "O" : "Y";
+    });
+    gLinha(g, sx, sy, tx, ty, sombra ? "K" : "d");
+  };
+  if (mergulho) {
+    [[172, 12.5, 1.6], [186, 13.5, 1.7], [160, 10.5, 1.5]].forEach(function(p) { leque(raiz[0], raiz[1], p[0], p[1], p[2], false); });
+  } else {
+    // asa de trás, escura, um pouco deslocada
+    [-2, 0, 2].forEach(function(i) { leque(raiz[0] - 2.2, raiz[1] - 0.6, centro + i * 20, 10 - Math.abs(i) * 0.4, 1.7, true); });
+  }
+  const asaPerto = function() {
+    [-2, -1, 0, 1, 2].forEach(function(i) { leque(raiz[0], raiz[1], centro + i * 17, 11.4 - Math.abs(i) * 0.9, 2.1, false); });
+  };
+  if (!mergulho && (f === 0 || f === 1)) asaPerto();
+  // corpo
+  gElipse(g, 13.6, 10, 6.5, 4.3, "K");
+  gBola(g, 13.6, 10, 5.6, 3.4, "CRsH");
+  gElipse(g, 14.8, 11.4, 3.8, 1.6, function(u, v) { return v < 0 ? "Y" : "O"; });
+  // pescoço e cabeça
+  gElipse(g, 19, 7, 3.9, 3.8, "K");
+  gBola(g, 19, 7, 3, 2.9, "CRsH");
+  gElipse(g, 19.6, 8, 1.8, 1.2, "Y");
+  // crista de chamas
+  [[18.4, 4.4, -118, 4], [19.8, 4.2, -88 + flick * 8, 4.6], [21, 4.8, -52, 3.6]].forEach(function(c, i) { pena(c[0], c[1], c[2], c[3], i === 1 ? ["O", "Y", "Y"] : ["R", "O", "Y"], 1.2); });
+  // bico dourado
+  gPoli(g, [[21.6, 6.2], [25, 7.4], [21.8, 8.8]], "G");
+  gPoli(g, [[21.8, 7.6], [24.6, 7.6], [21.8, 8.8]], "g");
+  gPonto(g, 24, 8, "g");
+  // olho
+  gRet(g, 19.6, 5.8, 2, 2, "W"); gPonto(g, 20.4, 6.4, "E"); gPonto(g, 20.4, 5.8, "E"); gPonto(g, 21, 6.4, "E");
+  gLinha(g, 19, 5, 22, 5.6, "d");
+  if (!mergulho && (f === 2 || f === 3)) { gElipse(g, raiz[0], raiz[1], 2.2, 1.6, "K"); asaPerto(); }
+  // patas
+  if (!mergulho) { gLinha(g, 12.6, 12.8, 12, 15, "G"); gLinha(g, 15, 12.8, 15.6, 15, "G"); gPonto(g, 11, 15, "G"); gPonto(g, 16.6, 15, "G"); }
+  gContorno(g, "K");
+  return gMapa(g);
+}
+
+registrarInimigo("fenix", [0, 1, 2, 3, 4].map(quadroFenix),
+  { K: "#5a1a05", R: "#e8431a", O: "#ff8a1f", Y: "#ffd43b", d: "#b42d10", C: "#c42a0c", s: "#8f1a08", H: "#ffe9a8", G: "#ffcf3a", g: "#b8860b", W: "#ffffff", E: "#16080a" }, 2, {
+  poses: { voar: P(4, 0, 1, 2, 3), parado: P(4, 0, 1, 2, 3), subindo: P(3, 0, 1, 2, 3), mergulho: P(1, 4) },
+  olhos: [[20, 6]]
+});
 
 
 // ---------- OBSTÁCULOS ----------
 
-const SPR_COGUMELO = spriteDeMapa([
-  "....RRRRRRRR....",
-  "..RRWWRRRRWWRR..",
-  ".RRWWWRRRRRWWRR.",
-  "RRRRRRRWWRRRRRRR",
-  "KKKKKKKKKKKKKKKK",
-  ".....SSSSSS.....",
-  ".....SSSSSS....."
-], { R: "#e03131", W: "#ffffff", K: "#a51111", S: "#f1e3c8" }, 4);
-
-const SPR_TRONCO = spriteDeMapa([
-  "..KKKKKK..",
-  ".KNNNNNNK.",
-  "KNNLLLLNNK",
-  "KNLNNNNLNK",
-  "KNLNKKNLNK",
-  "KNLNKKNLNK",
-  "KNLNNKNLNK",
-  "KNNLLLLNNK",
-  ".KNNNNNNK.",
-  "..KKKKKK.."
-], { K: "#3b2412", N: "#8a5a2b", L: "#c4915a" }, 4);
-
-const SPR_PLANTA = spriteDeMapa([
-  "...RRRRRR...",
-  ".RRWRRRRWRR.",
-  "RRRRRRRRRRRR",
-  "RWRWRWRWRWRW",
-  "KKKKKKKKKKKK",
-  "WRWRWRWRWRWR",
-  "RRRRRRRRRRRR",
-  ".RRRRRRRRRR.",
-  "...RRRRRR...",
-  ".....GG.....",
-  "..GG.GG.GG..",
-  ".GGGGGGGGGG.",
-  "..GG.GG.GG..",
-  ".....GG.....",
-  ".....GG.....",
-  ".....GG....."
-], { R: "#e03131", W: "#ffffff", K: "#5c1010", G: "#2f9e44" }, 4);
-
-const SPR_ARMADILHA = spriteDeMapa([
-  "MMMMMMMM",
-  "MLLLLLLM",
-  "MLKKKKLM",
-  "MLKDDKLM",
-  "MLKDDKLM",
-  "MLKKKKLM",
-  "MLLLLLLM",
-  "MMMMMMMM"
-], { M: "#8a6420", L: "#d9a648", K: "#3b2a1a", D: "#000000" }, 4);
-
-const SPR_BOLHA = bolaPixel(11, "rgba(255,255,255,0.18)", "rgba(255,255,255,0.9)", "rgba(255,255,255,0.85)", 2);
+// Desenhados com o motor de pixel art (js/pixelarte.js e js/arte_objetos.js)
+const SPR_COGUMELO = construirCogumelo();
+const SPR_TRONCO = construirTronco();
+// Planta carnívora: três quadros da boca (escancarada, meio aberta, fechada mordendo)
+const SPR_PLANTA_Q = [construirPlanta(1), construirPlanta(0.5), construirPlanta(0)];
+const SPR_PLANTA = SPR_PLANTA_Q[1];
+const SPR_ARMADILHA = construirArmadilha();
+const SPR_BOLHA = construirBolha();
 
 
 // ---------- CHEFES ----------
+// Os chefes são desenhados por js/arte_chefes.js (motor de pixel art em js/pixelarte.js).
+// Cada um tem vários quadros de animação em SPR_CHEFE[nome].q; d/e/flashD/flashE são o quadro de descanso.
 
 const SPR_CHEFE = {};
 
-function registrarChefe(nome, mapa, paleta, escala) {
-  const s = spriteDuplo(mapa, paleta, escala);
-  s.flashD = silhueta(s.d);
-  s.flashE = silhueta(s.e);
+function registrarChefe(nome, quadros, padrao) {
+  const s = Object.assign({}, quadros[padrao]);
+  s.q = quadros;
   SPR_CHEFE[nome] = s;
 }
 
-registrarChefe("gorila", [
-  "...........Y.Y.Y........",
-  "...........YYRYY........",
-  "..........KKKKKKK.......",
-  ".........KGGGGGGGK......",
-  "........KGGGGGGGGGK.....",
-  "........KGGPPPPPPPK.....",
-  "........KGPWEPPWEPK.....",
-  "....KKKKKGPPPPPPPPKKK...",
-  "...KGGGGGGPPMMMMPPKGGK..",
-  "..KGGGGGGGKPPPPPPKGGGGK.",
-  ".KGGLLGGGGGKKKKKKGGGGGGK",
-  ".KGLLGGGCCCCCCCCGGGLLGGK",
-  "KGGLGGGCCCCCCCCCCGGGLGGK",
-  "KGGLGGGCCCCCCCCCCGGGLGGK",
-  "KGGGGGGCCCCCCCCCCGGGGGGK",
-  "KGGGGGGGCCCCCCCCGGGGGGGK",
-  "KGGGKGGGGGGGGGGGGGGKGGGK",
-  "KGGGKKGGGGGGGGGGGGKKGGGK",
-  "KPPPK.KGGGGKKGGGGK.KPPPK",
-  ".KKK..KGGGK..KGGGK..KKK.",
-  "......KPPPK..KPPPK......",
-  "......KKKKK..KKKKK......"
-], { K: "#141414", G: "#3d3d3d", L: "#5c5c5c", C: "#7a7a7a", P: "#a07a5a", W: "#ffffff", E: "#c92a2a",
-     M: "#2b0f0f", Y: "#ffd43b", R: "#e03131" }, 6);
+registrarChefe("gorila", gorilaQuadros(), "parado0");
+registrarChefe("escorpiaoRei", escorpiaoQuadros(), "parado0");
+registrarChefe("yeti", yetiQuadros(), "parado0");
+registrarChefe("dragao", dragaoQuadros(), "voar0");
 
-const MAPA_ESCORPIAO_REI = [
-  "......KKKK........",
-  ".....KOOOOK.......",
-  "....KOK..KOK......",
-  "....KOK...KRK.....",
-  "....KOK....K......",
-  "....KOK...........",
-  "....KOOKKKKKKKK...",
-  "...KOOOOOOOOOOOK..",
-  "..KOLLOLLOLLOOWEK.",
-  "..KOOOOOOOOOOOOOKK",
-  "...KKOKKOKKOKKKOOK",
-  "....K..K..K..K..KK"
-];
-registrarChefe("escorpiaoRei", MAPA_ESCORPIAO_REI,
-  { K: "#3d2600", O: "#e0a526", L: "#ffe066", R: "#5f3dc4", W: "#ffffff", E: "#c92a2a" }, 9);
+// Asas do dragão: vários quadros de batida (do alto até embaixo) e uma versão dobrada
+const SPR_ASA = dragaoAsas();
 
 const SPR_COROA_PEQ = spriteDuplo([
   "Y.YY.Y",
@@ -1143,140 +2127,24 @@ const SPR_COROA_PEQ = spriteDuplo([
   "YYYYYY"
 ], { Y: "#ffd43b", R: "#e03131" }, 6);
 
-registrarChefe("yeti", [
-  "........BBBBBB........",
-  "......BBWWWWWWBB......",
-  ".....BWWWWWWWWWWB.....",
-  "....BWWWWWWWWWWWWB....",
-  "....BWWFFFFFFFFWWB....",
-  "....BWFFEFFFFEFFWB....",
-  "....BWFFFFFFFFFFWB....",
-  "....BWFMTMTMTMTFWB....",
-  "..BBBWFMMMMMMMMFWBBB..",
-  ".BWWWWWFFFFFFFFWWWWWB.",
-  "BWWSWWWWWWWWWWWWWWSWWB",
-  "BWWSWWWWWWWWWWWWWWSWWB",
-  "BWSSWWWWWWWWWWWWWWSSWB",
-  "BWSWWWWWWWWWWWWWWWWSWB",
-  "BWWWBWWWWWWWWWWWWBWWWB",
-  "BWWWBWWWWWWWWWWWWBWWWB",
-  "BFFFBWWWWWWWWWWWWBFFFB",
-  ".BBB.BWWWWWWWWWWB.BBB.",
-  ".....BWWWWWWWWWWB.....",
-  ".....BWWWWBBWWWWB.....",
-  ".....BWWWB..BWWWB.....",
-  "....BWWWWB..BWWWWB....",
-  "....BFFFFB..BFFFFB....",
-  "....BBBBBB..BBBBBB...."
-], { B: "#1c3d5a", W: "#f8f9fa", S: "#a5d8ff", F: "#9fb3c8", E: "#c92a2a", M: "#2b0f2f", T: "#ffffff" }, 6);
-
-registrarChefe("dragao", [
-  "................................",
-  "................................",
-  "................................",
-  "...........................HH...",
-  "..........................KKKK..",
-  ".........................KRRRRK.",
-  "........................KRRWERK.",
-  ".......................KRRRRRRRK",
-  ".....................KKRRRRRYYK.",
-  "......KRRRRRRRRRRKKKKRRRRRKKKK..",
-  ".....KRRRRRRRRRRRRRRRRRRRK......",
-  "KK..KRROOOOOOOOOOOORRRRK........",
-  "KRKKRRROOOOOOOOOOOORRRK.........",
-  ".KRRRRRROOOOOOOOOORRRK..........",
-  "..KKKKKRRRRRRRRRRRRK............",
-  ".......KRRK...KRRK..............",
-  ".......KYYK...KYYK..............",
-  ".......KKKK...KKKK.............."
-], { K: "#2b0a0a", R: "#c92a2a", O: "#ff922b", Y: "#ffd43b", W: "#ffffff", E: "#111111", H: "#f1f3f5" }, 6);
-
-const SPR_ASA = spriteDuplo([
-  "........KK......",
-  ".......KDDK.....",
-  "......KDDDDK....",
-  ".....KDDDDDDK...",
-  "....KDDDDDDDDK..",
-  "...KDDDKDDDDDK..",
-  "..KDDK.KDDDDDDK.",
-  ".KDK...KDDDDDDDK",
-  "KK.....KKDDDDDDK"
-], { K: "#2b0a0a", D: "#862e2e" }, 6);
-
 
 // ---------- OBJETOS ----------
 
-const SPR_BANANA = spriteDeMapa([
-  "..........N.",
-  ".........KN.",
-  "........KYK.",
-  ".......KYYK.",
-  "......KYYYK.",
-  "....KKYyYK..",
-  "KKKKYYYyK...",
-  "KYYYYYyK....",
-  ".KyyyKK.....",
-  "..KKK......."
-], { K: "#7a4f05", Y: "#ffe066", y: "#f2b705", N: "#5c3a1a" }, 4);
+const SPR_BANANA = construirBanana();
 
-const MAPA_CORACAO = [
-  ".RR.RR.",
-  "RWRRRRR",
-  "RRRRRRR",
-  "RRRRRRR",
-  ".RRRRR.",
-  "..RRR..",
-  "...R..."
-];
-const SPR_CORACAO = spriteDeMapa(MAPA_CORACAO, { R: "#e03131", W: "#ffc9c9" }, 4);
-const SPR_CORACAO_VAZIO = spriteDeMapa(MAPA_CORACAO, { R: "#495057", W: "#868e96" }, 4);
+const SPR_CORACAO = construirCoracao("#e03131", false);
+const SPR_CORACAO_VAZIO = construirCoracao("#e03131", true);
 
-const SPR_PLACA = spriteDeMapa([
-  "DDDDDDDD",
-  "DLLLLLLD",
-  "DLKKKLLD",
-  "DLLLLLLD",
-  "DLKKLKLD",
-  "DDDDDDDD",
-  "...DD...",
-  "...DD..."
-], { D: "#6b4220", L: "#c99a5b", K: "#6b4220" }, 4);
+const SPR_PLACA = construirPlaca();
 
-const SPR_GEISER = spriteDeMapa([
-  "..KKKKKKKKKKKK..",
-  ".KBBBOOOOOOBBBK.",
-  "KBBBOYYYYYYOBBBK",
-  "KBBBBOOOOOOBBBBK",
-  "KKKKKKKKKKKKKKKK"
-], { K: "#1a1d20", B: "#495057", O: "#ff6b00", Y: "#ffd43b" }, 4);
+const SPR_GEISER = construirGeiser();
 
-const SPR_ESTALACTITE = spriteDeMapa([
-  "WIIIID",
-  "WIIIID",
-  ".WIID.",
-  ".WIID.",
-  ".WIID.",
-  "..WD..",
-  "..WD..",
-  "..WD..",
-  "...D.."
-], { W: "#e7f5ff", I: "#a5d8ff", D: "#4dabf7" }, 4);
+const SPR_ESTALACTITE = construirEstalactite();
 
-const MAPA_BANDEIRA = [
-  ".PFFFFF.", ".PFFFFF.", ".PFFFF..", ".PFFF...", ".PFF....",
-  ".P......", ".P......", ".P......", ".P......", ".P......",
-  ".P......", ".P......", ".P......", ".P......", ".P......", ".P......"
-];
-const SPR_BANDEIRA_OFF = spriteDeMapa(MAPA_BANDEIRA, { P: "#d8d8d8", F: "#868e96" }, 5);
-const SPR_BANDEIRA_ON = MUNDOS.map(function(m) { return spriteDeMapa(MAPA_BANDEIRA, { P: "#d8d8d8", F: m.cor }, 5); });
+const SPR_BANDEIRA_OFF = construirBandeira(null);
+const SPR_BANDEIRA_ON = MUNDOS.map(function(m) { return construirBandeira(m.cor); });
 
-const SPR_GALHO = spriteDeMapa([
-  "..GG..GGG...",
-  ".GgGGGGgGG..",
-  "NNNNNNNNNNNN",
-  ".GGgGGNGgGG.",
-  "..GG..N.GG.."
-], { G: "#2f9e44", g: "#69db7c", N: "#6b4220" }, 4);
+const SPR_GALHO = construirGalho();
 
 // Decoração em cima do chão (um por mundo). A base fica rente ao topo do chão (y = CHAO).
 function decorSelva() {
@@ -1382,67 +2250,15 @@ function decorLava() {
 
 const SPR_DECOR = [decorSelva(), decorDeserto(), decorGelo(), decorLava()];
 
-// Ícones dos poderes e melhorias (8x8)
-const ICONES = {
-  velocidade: spriteDeMapa(["....YY..", "...YY...", "..YY....", ".YYYYYY.", "....YY..", "...YY...", "..YY....", ".Y......"],
-    { Y: "#ffd43b" }, 4),
-  puloDuplo: spriteDeMapa(["...WW...", "..WWWW..", ".WW..WW.", "...WW...", "..WWWW..", ".WW..WW.", "........", "........"],
-    { W: "#74c0fc" }, 4),
-  escudo: spriteDeMapa([".BBBBBB.", "BWWBBBBB", "BWBBBBBB", "BBBBBBBB", ".BBBBBB.", ".BBBBBB.", "..BBBB..", "...BB..."],
-    { B: "#4dabf7", W: "#d0ebff" }, 4),
-  ima: spriteDeMapa(["GG....GG", "RR....RR", "RR....RR", "RR....RR", "RRR..RRR", ".RRRRRR.", "..RRRR..", "........"],
-    { R: "#e03131", G: "#ced4da" }, 4),
-  nuke: spriteDeMapa(["......Y.", ".....Y..", "...KKK..", "..KKKKK.", ".KKWKKKK", ".KWKKKKK", ".KKKKKKK", "..KKKKK."],
-    { K: "#343a40", W: "#868e96", Y: "#ff922b" }, 4),
-  dash: spriteDeMapa(["........", "WW..WW..", ".WW..WW.", "..WW..WW", ".WW..WW.", "WW..WW..", "........", "........"],
-    { W: "#ffd43b" }, 4),
-  coracao1: spriteDeMapa(MAPA_CORACAO, { R: "#e03131", W: "#ffc9c9" }, 4),
-  coracao2: spriteDeMapa(MAPA_CORACAO, { R: "#c2255c", W: "#ffc9c9" }, 4),
-  revolver: SPR_REVOLVER.d,
-  cipoLongo: spriteDeMapa(["..GGGG..", ".G....G.", "G......G", "G......G", ".G....G.", "..GGGG..", "...G....", "..G....."],
-    { G: "#40c057" }, 4)
-};
+// Ícones dos poderes e melhorias (32x32)
+const ICONES = construirIcones();
 
 // Projéteis
-const SPR_PROJ = {
-  coco: bolaPixel(6, "#8a5a2b", "#4a2f12", "#c4915a", 2),
-  neve: bolaPixel(5, "#ffffff", "#adb5bd", "#ffffff", 2),
-  fogo: bolaPixel(6, "#ff922b", "#e8590c", "#ffe066", 2),
-  veneno: bolaPixel(6, "#9c36b5", "#5f1a73", "#e599f7", 2),
-  bolao: bolaPixel(18, "#f8f9fa", "#adb5bd", "#ffffff", 2),
-  meteoro: bolaPixel(10, "#6b4220", "#2b1a0a", "#ff922b", 2),
-  podoboo: bolaPixel(8, "#ff6b00", "#c92a2a", "#ffe066", 2),
-  pedra: bolaPixel(20, "#868e96", "#343a40", "#ced4da", 2),
-  pedrinha: bolaPixel(7, "#868e96", "#343a40", "#ced4da", 2),
-  bolaNeve: bolaPixel(14, "#f8f9fa", "#adb5bd", "#ffffff", 2),
-  bolaFogo: bolaPixel(5, "#ff922b", "#e8590c", "#ffe066", 2)
-};
+const SPR_PROJ = construirProjeteis();
 
-// Moeda pixelada (6 quadros girando)
+// Moeda pixelada girando (MOEDA.frames quadros lado a lado, cada um t x t)
 function criarMoedaPixelada(t) {
-  const larguras = [8, 6, 4, 2, 4, 6];
-  const linhas = [4, 6, 8, 8, 8, 8, 6, 4];
-  const e = t / 8;
-  const c = criarCanvas(t * larguras.length, t);
-  const g = c.getContext("2d");
-
-  larguras.forEach(function(w, f) {
-    linhas.forEach(function(lw, y) {
-      const l = Math.min(lw, w);
-      const x = f * 8 + (8 - l) / 2;
-      g.fillStyle = "#b8740a";
-      g.fillRect(x * e, y * e, l * e, e);
-      if (l >= 4 && y > 0 && y < 7) {
-        g.fillStyle = "#ffcf2e";
-        g.fillRect((x + 1) * e, y * e, (l - 2) * e, e);
-      }
-    });
-    if (w >= 6) {
-      g.fillStyle = "#fff3a0";
-      g.fillRect((f * 8 + 2) * e, 2 * e, e, 2 * e);
-    }
-  });
-  return c;
+  return construirMoeda(t, MOEDA.frames);
 }
 
 let moedaFonte = { img: criarMoedaPixelada(MOEDA.tamanho), fw: MOEDA.tamanho, fh: MOEDA.tamanho };

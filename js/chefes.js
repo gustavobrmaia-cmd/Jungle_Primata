@@ -505,10 +505,208 @@ const IA_CHEFES = {
   }
 };
 
+// ---------- Desenho dos chefes: escolha do quadro de animação ----------
+
+// Cada função devolve o nome do quadro (em SPR_CHEFE[tipo].q) conforme o estado da IA
+const QUADRO_CHEFE = {
+
+  gorila: function(c, raiva) {
+    const t = c.t;
+    const resp = Math.floor(tempo / 26) % 2 ? "parado1" : "parado0";
+    switch (c.estado) {
+      case "entrada":
+        if (!c.pousou) return "pulo";
+        if (c.visT0 === undefined) c.visT0 = t;
+        return t - c.visT0 < 8 ? "pancada" : t - c.visT0 < 70 ? "rugido" : resp;
+      case "parado":
+        if (Math.abs(c.vx) > 0.5) return Math.floor(tempo / 7) % 2 ? "andar1" : "andar0";
+        if (c.ultimo === "pulo" && t < 14) return "pancada";
+        if (raiva && t % 56 < 20) return Math.floor(tempo / 5) % 2 ? "peito" : "parado0";
+        return resp;
+      case "pulo":
+        return c.noChao ? "pancada" : c.vy < -3 ? "pulo" : "prep";
+      case "cocos": {
+        const lim = raiva ? 80 : 48;
+        if (t > lim + 10) return resp;
+        const ph = t % 16;
+        return ph < 4 && t > 0 && t <= lim ? "jogar1" : ph >= 8 || t < 16 ? "jogar0" : "parado0";
+      }
+      case "investida":
+        if (t < 35) return t % 14 < 7 ? "invest0" : "prep";
+        return Math.floor(t / 4) % 2 ? "invest1" : "invest0";
+      case "tonto":
+        return "tonto";
+    }
+    return "parado0";
+  },
+
+  escorpiaoRei: function(c, raiva) {
+    const t = c.t;
+    const resp = Math.floor(tempo / 26) % 2 ? "parado1" : "parado0";
+    switch (c.estado) {
+      case "entrada":
+        if (!c.pousou) return "emergir";
+        return c.t < 60 ? "rugido" : resp;
+      case "parado":
+        return resp;
+      case "andar":
+        return Math.floor(tempo / 7) % 2 ? "andar1" : "andar0";
+      case "enterrar":
+        return "emergir";
+      case "emergir":
+        return c.t < 40 ? "emergir" : "parado0";
+      case "ferrao":
+        if (t < 20) return "prep";
+        if (t < 40) return "ferrao";
+        if (raiva && t < 55) return "prep";
+        if (raiva && t < 75) return "ferrao";
+        return "parado0";
+      case "tempestade":
+        return t < 45 ? "rugido" : "parado0";
+      case "tonto":
+        return "tonto";
+    }
+    return "parado0";
+  },
+
+  yeti: function(c, raiva) {
+    const t = c.t;
+    const resp = Math.floor(tempo / 26) % 2 ? "parado1" : "parado0";
+    switch (c.estado) {
+      case "entrada":
+        if (!c.pousou) return "pulo";
+        if (c.visT0 === undefined) c.visT0 = t;
+        return t - c.visT0 < 8 ? "pouso" : t - c.visT0 < 70 ? "rugido" : resp;
+      case "parado":
+        if (Math.abs(c.vx) > 0.5) return Math.floor(tempo / 7) % 2 ? "andar1" : "andar0";
+        if (c.ultimo === "pulo" && t < 14) return "pouso";
+        return resp;
+      case "bolaNeve":
+        return t < 30 ? "prep" : t < 55 ? "empurra" : "parado0";
+      case "rugido":
+        return t < 62 ? "rugido" : "parado0";
+      case "deslize":
+        if (t < 25) return t % 12 < 6 ? "deslize0" : "deslize1";
+        return Math.floor(t / 4) % 2 ? "deslize1" : "deslize0";
+      case "pulo":
+        return c.noChao ? "pouso" : c.vy < -3 ? "pulo" : "prep";
+      case "tonto":
+        return "tonto";
+    }
+    return "parado0";
+  },
+
+  dragao: function(c, raiva) {
+    const t = c.t;
+    switch (c.estado) {
+      case "entrada":
+        return t > 55 && t < 100 ? "rugido" : "voar0";
+      case "voar":
+        return Math.floor(tempo / 30) % 2 ? "voar1" : "voar0";
+      case "sopro": {
+        const n = raiva ? 10 : 6;
+        if (t < 20) return t > 8 ? "sopro0" : "voar0";
+        return t < 20 + n * 8 + 6 ? "sopro1" : "sopro0";
+      }
+      case "meteoros":
+        return t > 3 && t < 60 ? "rugido" : "voar0";
+      case "mergulho":
+        return t < 25 ? "rugido" : "mergulho";
+      case "pousar":
+        return "pouso";
+      case "descansando":
+        return Math.floor(tempo / 24) % 2 ? "pouso2" : "pouso1";
+      case "decolar":
+        return "voar0";
+    }
+    return "voar0";
+  }
+};
+
+// Cores da aura de raiva (vida abaixo da metade) e dos olhos brilhantes de cada chefe
+const AURA_CHEFE = {
+  gorila: { aura: "255,60,40", olho: "255,70,40", contorno: "#ff3b2e" },
+  escorpiaoRei: { aura: "200,90,255", olho: "255,60,60", contorno: "#c25cff" },
+  yeti: { aura: "255,90,60", olho: "255,110,60", contorno: "#ff4a36" },
+  dragao: { aura: "255,100,20", olho: "255,220,90", contorno: "#ffb020" }
+};
+
+// Quadros em que o chefe está atacando (olhos brilham mais)
+const QUADROS_ATAQUE = {
+  gorila: ["pancada", "jogar1", "rugido", "invest0", "invest1", "prep"],
+  escorpiaoRei: ["ferrao", "prep", "rugido"],
+  yeti: ["rugido", "empurra", "deslize0", "deslize1", "prep", "pouso"],
+  dragao: ["sopro0", "sopro1", "rugido", "mergulho"]
+};
+
+// Pequeno símbolo de raiva (as quatro "veias" do quadrinho) ao lado da cabeça
+function desenharVeiaRaiva(x, y, k) {
+  const e = 3 * k;
+  const barras = [[-1.5, -3, 1, 5.5], [0.5, -3, 1, 5.5], [-3, -1.5, 5.5, 1], [-3, 0.5, 5.5, 1]];
+  ctx.fillStyle = "#3a0606";
+  barras.forEach(function(r) { ctx.fillRect(x + r[0] * e - e * 0.5, y + r[1] * e - e * 0.5, r[2] * e + e, r[3] * e + e); });
+  ctx.fillStyle = "#ff4d4d";
+  barras.forEach(function(r) { ctx.fillRect(x + r[0] * e, y + r[1] * e, r[2] * e, r[3] * e); });
+  ctx.fillStyle = "#ffa8a8";
+  ctx.fillRect(x - 1.5 * e, y - 3 * e, e, e);
+  ctx.fillRect(x - 3 * e, y - 1.5 * e, e, e);
+}
+
+// Brasas / névoa subindo em volta do chefe furioso
+function desenharBrasasRaiva(c, cor) {
+  const brasa = c.tipo === "yeti" ? ["#e7f5ff", "#a5d8ff"] : c.tipo === "escorpiaoRei" ? ["#e599f7", "#be4bdb"] : ["#ffd43b", "#ff6b00"];
+  for (let k = 0; k < 8; k++) {
+    const ciclo = (tempo * 0.9 + k * 29) % 56;
+    const px = c.x + c.w * (0.1 + 0.8 * ((k * 0.381) % 1)) + Math.sin(tempo * 0.07 + k) * 6;
+    const py = c.y + c.h * 0.9 - ciclo * 2.4;
+    const tam = k % 3 === 0 ? 6 : 4;
+    ctx.globalAlpha = Math.max(0, 1 - ciclo / 56);
+    ctx.fillStyle = brasa[k % 2];
+    ctx.fillRect(Math.round(px), Math.round(py), tam, tam);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Asas do dragão por trás do corpo (a de longe mais escura e um pouco atrasada). (0,0) = canto do corpo.
+function desenharAsasDragao(dir, idx, dobrada, w) {
+  const q = SPR_ASA.quadros;
+  const asa = dobrada ? SPR_ASA.dobrada : q[idx];
+  const asaL = dobrada ? SPR_ASA.dobrada : q[Math.min(q.length - 1, Math.max(0, idx + 1))];
+  const rx = 33 * 3;
+  const ry = 16 * 3;
+  const ox = dir > 0 ? rx - SPR_ASA.rx * 3 : (w - rx) - (64 - SPR_ASA.rx) * 3;
+  const oy = ry - SPR_ASA.ry * 3;
+  const lado = dir > 0 ? "d" : "e";
+  ctx.drawImage(asaL.longe[lado], ox + (dir > 0 ? 12 : -12), oy - 6);
+  ctx.drawImage(asa[lado], ox, oy);
+}
+
+// Banana nas garras da frente (a mão fica por cima da banana). comBanana false: só a mão.
+function desenharBananaDragao(dir, fr, w, comBanana) {
+  if (comBanana) {
+    ctx.save();
+    ctx.translate(dir > 0 ? 43 * 3 : w - 43 * 3, 33 * 3);
+    ctx.rotate(Math.sin(tempo * 0.1) * 0.12);
+    luzAditiva(0, 0, 44, "255,215,70", 0.3);
+    ctx.drawImage(SPR_BANANA, -24, -20);
+    ctx.restore();
+  }
+  ctx.drawImage(dir > 0 ? fr.mao.d : fr.mao.e, 0, 0);
+  // brasa na ponta da cauda
+  luzAditiva(dir > 0 ? 2.5 * 3 : w - 2.5 * 3, 21 * 3, 28 + Math.sin(tempo * 0.4) * 5, "255,150,40", 0.4);
+}
+
 function desenharChefe() {
   const c = chefe;
   const spr = SPR_CHEFE[c.tipo];
-  const img = c.flash > 3 ? (c.dir > 0 ? spr.flashD : spr.flashE) : (c.dir > 0 ? spr.d : spr.e);
+  const raiva = c.hp <= c.hpMax / 2 && c.vivo;
+
+  // Quadro atual (o "dano" aparece nos últimos tiques do piscar)
+  let nome = QUADRO_CHEFE[c.tipo](c, raiva);
+  if (c.estado === "derrotado") nome = "dano";
+  else if (c.flash > 0 && c.flash <= 3 && c.estado !== "enterrar") nome = "dano";
+  const fr = spr.q[nome] || spr;
+  const img = c.flash > 3 || (c.estado === "derrotado" && c.t % 8 < 4) ? (c.dir > 0 ? fr.flashD : fr.flashE) : (c.dir > 0 ? fr.d : fr.e);
 
   if (c.intangivel) {
     // Montinho de areia andando debaixo da terra, com contorno e luz
@@ -527,6 +725,14 @@ function desenharChefe() {
     ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.fillRect(mx + 10, CHAO - 22, 26, 10);
     ctx.fillRect(mx + 30, CHAO - 12, 30, 12);
+    // a ponta do ferrão aparece rondando na areia
+    const fx = mx + Math.round(Math.sin(tempo * 0.2) * 14);
+    ctx.fillStyle = "#2a1260";
+    ctx.fillRect(fx - 6, CHAO - 42, 12, 14);
+    ctx.fillStyle = "#8f5af5";
+    ctx.fillRect(fx - 4, CHAO - 40, 8, 10);
+    ctx.fillStyle = "#e599f7";
+    ctx.fillRect(fx - 4, CHAO - 40, 3, 4);
     return;
   }
 
@@ -540,9 +746,17 @@ function desenharChefe() {
     return;
   }
 
-  // Dragão de Magma: brasa quente em volta do corpo
-  if (c.tipo === "dragao") luzAditiva(c.x + c.w / 2, c.y + c.h / 2, 150, "255,100,30", 0.2 + Math.sin(tempo * 0.1) * 0.05 + (c.estado === "sopro" ? 0.12 : 0));
-  else if (c.estado === "tonto") luzAditiva(c.x + c.w / 2, c.y + 10, 70, "255,230,120", 0.15);
+  const cores = AURA_CHEFE[c.tipo];
+  const cx = c.x + c.w / 2;
+  const cy = c.y + c.h / 2;
+
+  // Aura: brasa do dragão sempre, e uma aura de raiva pulsando em todos quando a vida passa da metade
+  if (c.tipo === "dragao") luzAditiva(cx, cy, 150, "255,100,30", 0.2 + Math.sin(tempo * 0.1) * 0.05 + (c.estado === "sopro" ? 0.12 : 0));
+  if (raiva) {
+    luzAditiva(cx, cy, Math.max(c.w, c.h) * 0.75, cores.aura, 0.2 + Math.sin(tempo * 0.18) * 0.07);
+    desenharBrasasRaiva(c);
+  }
+  if (c.estado === "tonto") luzAditiva(cx, c.y + 10, 70, "255,230,120", 0.15);
 
   if (c.afundar > 0) {
     ctx.beginPath();
@@ -550,39 +764,143 @@ function desenharChefe() {
     ctx.clip();
   }
 
-  const x = Math.round(c.x);
-  const y = Math.round(c.y + c.afundar);
+  const w = c.w;
+  const espelho = c.dir > 0 ? 1 : -1;
+  // x de um ponto do sprite virado pra direita => x na tela relativo ao canto do chefe
+  const X = function(px) { return c.dir > 0 ? px : w - px; };
+
+  // Treme de leve ao carregar o ataque
+  let tremX = 0;
+  if (c.tipo === "gorila" && c.estado === "investida" && c.t < 35) tremX = c.t % 4 < 2 ? -2 : 2;
+  if (c.tipo === "yeti" && c.estado === "deslize" && c.t < 25) tremX = c.t % 4 < 2 ? -2 : 2;
+  if (c.tipo === "escorpiaoRei" && c.estado === "ferrao" && c.t < 20) tremX = c.t % 4 < 2 ? -1 : 1;
+
+  const x = Math.round(c.x) + tremX;
+  let y = Math.round(c.y + c.afundar);
   let sy = 1;
-  if (c.estado === "parado" || c.estado === "descansando") sy = 1 + Math.sin(tempo * 0.1) * 0.02;
-  if ((c.estado === "investida" || c.estado === "deslize") && c.t < 35) sy = 1 + (c.t % 10 < 5 ? 0.04 : -0.04);
+  if (c.estado === "parado" || c.estado === "descansando") sy = 1 + Math.sin(tempo * 0.1) * 0.012;
 
-  ctx.translate(x + c.w / 2, y + c.h);
-  ctx.scale(1, sy);
-  ctx.translate(-c.w / 2, -c.h);
-
+  // Dragão: batida de asas acompanhada do corpo (sobe na batida pra baixo)
+  let asaIdx = 0;
+  let rotDragao = 0;
+  const voando = c.tipo === "dragao" && ["entrada", "voar", "sopro", "meteoros", "decolar", "pousar"].indexOf(c.estado) >= 0;
+  let dobrada = c.tipo === "dragao" && !voando;
   if (c.tipo === "dragao") {
-    const asa = SPR_ASA;
-    const bat = c.estado === "descansando" || c.estado === "pousar" ? 0.4 : Math.cos(tempo * 0.25);
-    ctx.save();
-    if (c.dir > 0) { ctx.translate(48, 54); ctx.scale(1, bat); ctx.drawImage(asa.d, -48, -54); }
-    else { ctx.translate(c.w - 48, 54); ctx.scale(1, bat); ctx.drawImage(asa.e, -48, -54); }
-    ctx.restore();
+    const vel = c.estado === "decolar" ? 0.38 : c.estado === "pousar" ? 0.3 : c.estado === "sopro" ? 0.16 : 0.22;
+    const fase = tempo * vel;
+    if (c.estado === "mergulho") dobrada = c.t >= 25;
+    const ciclo = (Math.cos(fase) + 1) / 2;   // 1 = asa no alto, 0 = asa embaixo
+    asaIdx = Math.round((1 - ciclo) * (SPR_ASA.quadros.length - 1));
+    if (voando || (c.estado === "mergulho" && c.t < 25)) y += Math.round(Math.cos(fase) * 3);
+    if (c.estado === "mergulho" && c.t >= 25) rotDragao = limitar(Math.atan2(c.vy, Math.max(2, Math.abs(c.vx))) * 0.7, -0.5, 0.6) * espelho;
   }
 
+  ctx.translate(x + w / 2, y + c.h);
+  ctx.scale(1, sy);
+  ctx.translate(-w / 2, -c.h);
+  if (rotDragao) {
+    ctx.translate(w / 2, c.h / 2);
+    ctx.rotate(rotDragao);
+    ctx.translate(-w / 2, -c.h / 2);
+  }
+
+  if (c.tipo === "dragao") desenharAsasDragao(c.dir, asaIdx, dobrada, w);
+
+  // Furioso: contorno pulsando na cor da raiva em volta do corpo
+  if (raiva) {
+    const so = silhuetaDe(img, cores.contorno);
+    ctx.globalAlpha = 0.5 + Math.sin(tempo * 0.2) * 0.2;
+    ctx.drawImage(so, -4, 0);
+    ctx.drawImage(so, 4, 0);
+    ctx.drawImage(so, 0, -4);
+    ctx.drawImage(so, 0, 4);
+    ctx.globalAlpha = 1;
+  }
   ctx.drawImage(img, 0, 0);
 
-  if (c.tipo === "dragao") {
-    const bx = c.dir > 0 ? 7 * 6 + 20 : c.w - 7 * 6 - 68;
-    ctx.save();
-    ctx.translate(bx + 24, 17 * 6 - 8);
-    ctx.rotate(Math.sin(tempo * 0.1) * 0.2);
-    ctx.drawImage(SPR_BANANA, -24, -20);
-    ctx.restore();
+  if (c.tipo === "dragao") desenharBananaDragao(c.dir, fr, w, true);
+
+  // Olhos brilhantes (mais fortes atacando ou furioso)
+  const atacando = QUADROS_ATAQUE[c.tipo].indexOf(nome) >= 0;
+  if (fr.olhos && nome !== "dano" && nome !== "tonto") {
+    const forca = (atacando ? 0.4 : 0.08) + (raiva ? 0.2 : 0);
+    fr.olhos.forEach(function(o) {
+      luzAditiva(X(o[0] * 3), o[1] * 3, atacando ? 13 : 9, cores.olho, forca);
+    });
+  }
+  // Olhos girando quando está tonto
+  if (nome === "tonto" && fr.olhos) {
+    ctx.fillStyle = "#1a0a0a";
+    fr.olhos.forEach(function(o, i) {
+      const a = tempo * 0.3 + i * 2;
+      ctx.fillRect(Math.round(X(o[0] * 3) + Math.cos(a) * 5 - 2), Math.round(o[1] * 3 + Math.sin(a) * 5 - 2), 4, 4);
+    });
   }
 
-  if (c.tipo === "escorpiaoRei") {
-    const cx = c.dir > 0 ? 13 * 9 : c.w - 13 * 9 - 36;
-    ctx.drawImage(c.dir > 0 ? SPR_COROA_PEQ.d : SPR_COROA_PEQ.e, cx, 6 * 9 - 18);
+  // Ferrão do escorpião brilhando (veneno) ao preparar e atacar
+  if (c.tipo === "escorpiaoRei" && fr.ferr) {
+    const f = fr.ferr;
+    luzAditiva(X(f[0] * 3), f[1] * 3, nome === "ferrao" ? 36 : 24, "200,100,255", nome === "ferrao" ? 0.6 : 0.3 + Math.sin(tempo * 0.2) * 0.1);
+  }
+
+  // Boca em chamas (dragão soprando fogo)
+  if (c.tipo === "dragao" && fr.boca && (nome === "sopro0" || nome === "sopro1" || nome === "rugido")) {
+    const f = fr.boca;
+    luzAditiva(X(f[0] * 3), f[1] * 3, nome === "sopro1" ? 56 : 34, "255,150,40", nome === "sopro1" ? 0.7 : 0.4);
+    if (nome === "sopro1") {
+      for (let k = 0; k < 4; k++) {
+        const d = ((tempo * 3 + k * 9) % 30);
+        ctx.fillStyle = k % 2 ? "#ffd43b" : "#ff6b00";
+        ctx.globalAlpha = 1 - d / 30;
+        ctx.fillRect(Math.round(X(f[0] * 3) + espelho * (d + 4) - 5), Math.round(f[1] * 3 - 4 + (k - 1.5) * 4), 10, 8);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Ondas sonoras do rugido
+  if (nome === "rugido") {
+    const bx = fr.boca ? fr.boca[0] : (c.tipo === "escorpiaoRei" ? 34 : 24);
+    const by = fr.boca ? fr.boca[1] : (c.tipo === "escorpiaoRei" ? 26 : 19);
+    for (let k = 0; k < 3; k++) {
+      const r = ((tempo * 2 + k * 14) % 42) + 8;
+      ctx.globalAlpha = 0.5 * (1 - r / 50);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(X(bx * 3), by * 3, r, -0.9 * espelho + (c.dir > 0 ? 0 : Math.PI), 0.9 * espelho + (c.dir > 0 ? 0 : Math.PI), c.dir < 0);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Poeira nos pés: gorila e yeti avançando, impacto do pouso
+  if ((c.tipo === "gorila" && c.estado === "investida" && c.t >= 35) || (c.tipo === "yeti" && c.estado === "deslize" && c.t >= 25)) {
+    for (let k = 0; k < 4; k++) {
+      const d = ((tempo * 2 + k * 11) % 36);
+      ctx.fillStyle = c.tipo === "yeti" ? "#e7f5ff" : "#e9e3d5";
+      ctx.globalAlpha = 0.8 * (1 - d / 36);
+      const s = 10 + d * 0.3;
+      ctx.fillRect(Math.round(X(c.dir > 0 ? 6 : w - 6) - espelho * d * 1.6 - s / 2 + (c.dir > 0 ? 0 : -0)), Math.round(c.h - 4 - d * 0.5 - s / 2), Math.round(s), Math.round(s));
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (nome === "pancada" || nome === "pouso") {
+    const k = c.estado === "pulo" ? 0 : c.t;
+    if (k < 14) {
+      ctx.globalAlpha = 1 - k / 14;
+      ctx.fillStyle = "#e9e3d5";
+      ctx.fillRect(Math.round(w / 2 - 70 - k * 4), Math.round(c.h - 8), 20 + k * 2, 8);
+      ctx.fillRect(Math.round(w / 2 + 50 + k * 2), Math.round(c.h - 8), 20 + k * 2, 8);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Símbolo de raiva ao lado da cabeça
+  if (raiva && c.tipo !== "dragao") {
+    const o = fr.olhos ? fr.olhos[fr.olhos.length - 1] : [30, 10];
+    const pulso = 1 + (tempo % 24 < 12 ? 0.25 : 0);
+    desenharVeiaRaiva(X(o[0] * 3) - espelho * 20, o[1] * 3 - 44, pulso);
   }
 
   if (c.estado === "tonto") {
