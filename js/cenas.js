@@ -150,20 +150,20 @@ function desenharIntro() {
     ctx.globalAlpha = Math.min(1, (c.t - 240) / 20);
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     ctx.fillRect(0, 120, LARGURA, 190);
-    ctx.font = "bold 46px monospace";
+    ctx.font = "bold 46px " + FONTE;
     textoSombra("O vento levou a banana!", LARGURA / 2, 185, "#ffe066");
     if (c.t > 320) {
-      ctx.font = "bold 24px monospace";
+      ctx.font = "bold 24px " + FONTE;
       textoSombra("Atravesse a Selva, o Deserto, a Era do Gelo e o Vulcão para recuperá-la!", LARGURA / 2, 235);
     }
     if (c.t > 400) {
-      ctx.font = "bold 20px monospace";
+      ctx.font = "bold 20px " + FONTE;
       textoSombra("Dizem que ela foi parar nas garras do Dragão de Magma...", LARGURA / 2, 280, "#ff922b");
     }
     ctx.globalAlpha = 1;
   }
   if (c.t > 30) {
-    ctx.font = "bold 16px monospace";
+    ctx.font = "bold 16px " + FONTE;
     textoSombra("Aperte qualquer tecla para começar", LARGURA / 2, ALTURA - 20, "#dee2e6");
   }
 }
@@ -479,9 +479,9 @@ function desenharFinal() {
     ctx.globalAlpha = Math.min(1, (f.et - 40) / 30);
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fillRect(0, 50, LARGURA, 150);
-    ctx.font = "bold 72px monospace";
+    ctx.font = "bold 72px " + FONTE;
     textoSombra("FIM!", LARGURA / 2, 125, "#ffe066");
-    ctx.font = "bold 24px monospace";
+    ctx.font = "bold 24px " + FONTE;
     textoSombra("O primata derrotou o Dragão de Magma e finalmente comeu a sua banana!", LARGURA / 2, 175);
     ctx.globalAlpha = 1;
   }
@@ -497,12 +497,12 @@ function desenharFinal() {
     ctx.globalAlpha = Math.min(1, (f.et - 120) / 30);
     ctx.fillStyle = "rgba(20,12,6,0.8)";
     ctx.fillRect(LARGURA / 2 - 380, 220, 760, 40 + linhas.length * 28);
-    ctx.font = "bold 18px monospace";
+    ctx.font = "bold 18px " + FONTE;
     linhas.forEach(function(l, i) { textoSombra(l, LARGURA / 2, 250 + i * 28, i === linhas.length - 1 && f.cosmetico ? "#ffe066" : "#ffffff"); });
     ctx.globalAlpha = 1;
   }
   if (f.pronto) {
-    ctx.font = "bold 18px monospace";
+    ctx.font = "bold 18px " + FONTE;
     textoSombra("Aperte qualquer tecla para voltar ao menu", LARGURA / 2, ALTURA - 20, "#dee2e6");
   }
 }

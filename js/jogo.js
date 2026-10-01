@@ -1476,7 +1476,7 @@ function desenharParticulas() {
       ctx.fillRect(Math.round(p.x - t / 2), Math.round(p.y - t / 2), t, t);
     } else if (p.tipo === "texto") {
       ctx.globalAlpha = Math.min(1, k * 2);
-      ctx.font = "bold " + p.tam + "px monospace";
+      ctx.font = "bold " + p.tam + "px " + FONTE;
       ctx.textAlign = "center";
       ctx.fillStyle = "#000000";
       ctx.fillText(p.texto, p.x + 2, p.y + 2);
@@ -1825,7 +1825,7 @@ function desenharPlacas(cam) {
     ctx.drawImage(SPR_PLACA, p.x, CHAO - 32);
     if (Math.abs(j.x + j.w / 2 - (p.x + 16)) < 260) {
       const linhas = p.texto.replace(/\{(\w+)\}/g, function(m, a) { return teclaDe(a); }).split("\n");
-      ctx.font = "bold 16px monospace";
+      ctx.font = "bold 16px " + FONTE;
       let w = 0;
       linhas.forEach(function(l) { w = Math.max(w, ctx.measureText(l).width); });
       w += 24;
@@ -2101,7 +2101,7 @@ function desenharHud() {
   // Moedas (pulsam quando uma moeda chega voando)
   const pulso = hudPulso * 0.5;
   ctx.drawImage(moedaFonte.img, 0, 0, moedaFonte.fw, moedaFonte.fh, 20 - pulso, 52 - pulso, 28 + pulso * 2, 28 + pulso * 2);
-  ctx.font = "bold 22px monospace";
+  ctx.font = "bold 22px " + FONTE;
   ctx.textAlign = "left";
   textoSombra(String(save.moedas), 56, 74);
 
@@ -2114,7 +2114,7 @@ function desenharHud() {
     ctx.fillRect(22 + i * 12, 104, 8, 4);
   }
   if (j.recarregando > 0) {
-    ctx.font = "bold 14px monospace";
+    ctx.font = "bold 14px " + FONTE;
     textoSombra("recarregando", 26 + mb * 12, 106);
   }
 
@@ -2123,7 +2123,7 @@ function desenharHud() {
   // Nome da fase e progresso até a banana
   ctx.textAlign = "center";
   if (!chefe) {
-    ctx.font = "bold 20px monospace";
+    ctx.font = "bold 20px " + FONTE;
     textoSombra(nomeFase(fase.indice), LARGURA / 2, 30);
     const bx = LARGURA / 2 - 150;
     ctx.fillStyle = "rgba(0,0,0,0.5)";
@@ -2158,7 +2158,7 @@ function desenharHud() {
       ctx.fillStyle = "#69db7c";
       ctx.fillRect(x + 3, y + 50, 52 * (buffs[p.id] / p.duracao), 5);
     }
-    ctx.font = "bold 13px monospace";
+    ctx.font = "bold 13px " + FONTE;
     ctx.textAlign = "left";
     textoSombra(teclaDe("poder" + (i + 1)), x + 5, y + 15);
     ctx.textAlign = "right";
@@ -2175,7 +2175,7 @@ function desenharHud() {
       ctx.fillStyle = "rgba(0,0,0,0.6)";
       ctx.fillRect(x, y, 58, 58 * (j.recargaDash / 45));
     }
-    ctx.font = "bold 12px monospace";
+    ctx.font = "bold 12px " + FONTE;
     ctx.textAlign = "left";
     textoSombra(teclaDe("dash"), x + 4, y + 14);
   }
@@ -2188,9 +2188,9 @@ function desenharMensagem() {
   ctx.fillStyle = "rgba(0,0,0,0.6)";
   ctx.fillRect(0, ALTURA / 2 - 90, LARGURA, 170);
   ctx.textAlign = "center";
-  ctx.font = "bold 52px monospace";
+  ctx.font = "bold 52px " + FONTE;
   textoSombra(mensagem.titulo, LARGURA / 2, ALTURA / 2 - 10, "#ffe066");
-  ctx.font = "bold 22px monospace";
+  ctx.font = "bold 22px " + FONTE;
   textoSombra(mensagem.sub, LARGURA / 2, ALTURA / 2 + 40);
   ctx.globalAlpha = 1;
 }

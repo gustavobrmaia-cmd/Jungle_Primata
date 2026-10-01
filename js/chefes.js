@@ -585,7 +585,7 @@ function desenharVidaChefe() {
   const c = chefe;
   const w = 520;
   const x = LARGURA / 2 - w / 2;
-  ctx.font = "bold 20px monospace";
+  ctx.font = "bold 20px " + FONTE;
   ctx.textAlign = "center";
   textoSombra(c.nome, LARGURA / 2, 28, "#ffe066");
   ctx.fillStyle = "#000000";

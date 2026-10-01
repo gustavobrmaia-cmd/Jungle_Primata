@@ -133,3 +133,6 @@ function misturarCor(hex, alvo, k) {
 
 function escurecer(hex, k) { return misturarCor(hex, [0, 0, 0], k); }
 function clarear(hex, k) { return misturarCor(hex, [255, 255, 255], k); }
+
+// Fonte pixelada do jogo (se não tiver internet, usa monospace)
+const FONTE = '"Pixelify Sans", monospace';

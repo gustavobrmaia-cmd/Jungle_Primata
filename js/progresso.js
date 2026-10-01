@@ -182,9 +182,9 @@ function desenharCartao() {
     tx = x + w / 2 + 70;
   }
   ctx.textAlign = "center";
-  ctx.font = "bold 34px monospace";
+  ctx.font = "bold 34px " + FONTE;
   textoSombra(c.titulo, tx, y + 48, "#ffe066");
-  ctx.font = "bold 18px monospace";
+  ctx.font = "bold 18px " + FONTE;
   c.linhas.forEach(function(l, i) { textoSombra(l, tx, y + 80 + i * 26); });
 }
 
@@ -211,11 +211,11 @@ function desenharSubiuNivel() {
   ctx.translate(LARGURA / 2, 300);
   ctx.scale(esc, esc);
   ctx.textAlign = "center";
-  ctx.font = "bold 60px monospace";
+  ctx.font = "bold 60px " + FONTE;
   textoSombra("NÍVEL " + a.nivel + "!", 0, 10, "#ffe066");
   ctx.restore();
   ctx.textAlign = "center";
-  ctx.font = "bold 20px monospace";
+  ctx.font = "bold 20px " + FONTE;
   textoSombra(a.extra, LARGURA / 2, 350);
   ctx.globalAlpha = 1;
 
@@ -228,7 +228,7 @@ function desenharSubiuNivel() {
 // Barra de XP (no HUD e no menu)
 function desenharBarraXp(x, y, w) {
   const precisa = xpParaSubir(save.nivel);
-  ctx.font = "bold 16px monospace";
+  ctx.font = "bold 16px " + FONTE;
   ctx.textAlign = "left";
   textoSombra("Nv " + save.nivel, x, y + 12, "#91a7ff");
   const bx = x + 62;
