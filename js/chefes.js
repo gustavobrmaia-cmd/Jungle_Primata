@@ -511,13 +511,22 @@ function desenharChefe() {
   const img = c.flash > 3 ? (c.dir > 0 ? spr.flashD : spr.flashE) : (c.dir > 0 ? spr.d : spr.e);
 
   if (c.intangivel) {
-    // Montinho de areia andando debaixo da terra
-    ctx.fillStyle = "#c9953f";
+    // Montinho de areia andando debaixo da terra, com contorno e luz
     const mx = Math.round(c.x + c.w / 2);
+    ctx.fillStyle = "#4a2f0a";
+    ctx.fillRect(mx - 62, CHAO - 14, 124, 14);
+    ctx.fillRect(mx - 38, CHAO - 24, 76, 12);
+    ctx.fillRect(mx - 22, CHAO - 30, 44, 8);
+    ctx.fillStyle = "#c9953f";
     ctx.fillRect(mx - 60, CHAO - 12, 120, 12);
     ctx.fillRect(mx - 36, CHAO - 22, 72, 10);
     ctx.fillStyle = "#e0b062";
     ctx.fillRect(mx - 20, CHAO - 28, 40, 6);
+    ctx.fillStyle = "#f6d68c";
+    ctx.fillRect(mx - 20, CHAO - 28, 40, 2);
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(mx + 10, CHAO - 22, 26, 10);
+    ctx.fillRect(mx + 30, CHAO - 12, 30, 12);
     return;
   }
 
@@ -530,6 +539,10 @@ function desenharChefe() {
     ctx.restore();
     return;
   }
+
+  // Dragão de Magma: brasa quente em volta do corpo
+  if (c.tipo === "dragao") luzAditiva(c.x + c.w / 2, c.y + c.h / 2, 150, "255,100,30", 0.2 + Math.sin(tempo * 0.1) * 0.05 + (c.estado === "sopro" ? 0.12 : 0));
+  else if (c.estado === "tonto") luzAditiva(c.x + c.w / 2, c.y + 10, 70, "255,230,120", 0.15);
 
   if (c.afundar > 0) {
     ctx.beginPath();
@@ -583,19 +596,85 @@ function desenharChefe() {
 
 function desenharVidaChefe() {
   const c = chefe;
-  const w = 520;
+  const w = 620;
+  const h = 70;
   const x = LARGURA / 2 - w / 2;
+  const y = 6;
+  const r = limitar(c.hp / c.hpMax, 0, 1);
+
+  // cor da barra muda com a vida: verde, âmbar, vermelho (e pisca quando está acabando)
+  let claro = "#8ce99a";
+  let meio = "#40c057";
+  let escuro = "#2b8a3e";
+  if (r <= 0.33) { claro = "#ff8787"; meio = "#e03131"; escuro = "#a51111"; }
+  else if (r <= 0.66) { claro = "#ffe066"; meio = "#fab005"; escuro = "#c77700"; }
+
+  painelPixel(x, y, w, h, "#d9b45a", "rgba(26,12,10,0.86)");
+
+  // retrato do chefe numa moldura
+  const spr = SPR_CHEFE[c.tipo];
+  painelPixel(x + 10, y + 8, 76, 54, "#8a6a2b", "rgba(10,6,4,0.8)");
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x + 14, y + 12, 68, 46);
+  ctx.clip();
+  const esc = Math.min(66 / spr.w, 44 / spr.h);
+  const pw = Math.round(spr.w * esc);
+  const ph = Math.round(spr.h * esc);
+  const flash = c.flash > 3;
+  if (c.tipo === "dragao") luzAditiva(x + 48, y + 35, 40, "255,100,30", 0.3);
+  ctx.drawImage(c.estado === "derrotado" ? spr.d : (flash ? spr.flashD : spr.d), x + 48 - Math.round(pw / 2), y + 35 - Math.round(ph / 2), pw, ph);
+  ctx.restore();
+
+  // nome
+  const bx = x + 100;
+  const bw = w - 116;
   ctx.font = "bold 20px " + FONTE;
   ctx.textAlign = "center";
-  textoSombra(c.nome, LARGURA / 2, 28, "#ffe066");
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(x - 4, 38, w + 8, 22);
-  ctx.fillStyle = "#495057";
-  ctx.fillRect(x, 42, w, 14);
-  ctx.fillStyle = c.hp <= c.hpMax / 2 ? "#ff6b00" : "#e03131";
-  ctx.fillRect(x, 42, (w * c.hp) / c.hpMax, 14);
-  if (c.flash > 0) {
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.fillRect(x, 42, (w * c.hp) / c.hpMax, 14);
+  textoSombra(c.nome, bx + bw / 2, y + 28, "#ffe066");
+
+  // barra: moldura, fundo, "dano recente" em branco que escorre e a vida em degradê
+  if (c.hpAtraso === undefined || c.hpAtraso < c.hp) c.hpAtraso = c.hp;
+  c.hpAtraso += (c.hp - c.hpAtraso) * 0.06;
+  const by = y + 38;
+  ctx.fillStyle = "#0d0704";
+  ctx.fillRect(bx - 3, by - 3, bw + 6, 26);
+  ctx.fillStyle = "#3b2f2a";
+  ctx.fillRect(bx, by, bw, 20);
+  ctx.fillStyle = "#2a201c";
+  ctx.fillRect(bx, by, bw, 6);
+  const larg = Math.round((bw * c.hp) / c.hpMax);
+  const largAtraso = Math.round((bw * c.hpAtraso) / c.hpMax);
+  if (largAtraso > larg) {
+    ctx.fillStyle = "#fff3bf";
+    ctx.fillRect(bx + larg, by, largAtraso - larg, 20);
   }
+  if (larg > 0) {
+    const critico = r <= 0.2 && tempo % 24 < 12;
+    ctx.fillStyle = critico ? "#ff8787" : meio;
+    ctx.fillRect(bx, by, larg, 20);
+    ctx.fillStyle = critico ? "#ffc9c9" : claro;
+    ctx.fillRect(bx, by, larg, 6);
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.fillRect(bx, by + 2, larg, 2);
+    ctx.fillStyle = escuro;
+    ctx.fillRect(bx, by + 15, larg, 5);
+  }
+  if (c.flash > 0) {
+    ctx.fillStyle = "rgba(255,255,255,0.65)";
+    ctx.fillRect(bx, by, Math.max(larg, 2), 20);
+  }
+  // divisões de 10% na barra
+  ctx.fillStyle = "rgba(13,7,4,0.55)";
+  for (let i = 1; i < 10; i++) ctx.fillRect(bx + Math.round((bw * i) / 10) - 1, by, 2, 20);
+  // detalhes dourados nas pontas da barra
+  ctx.fillStyle = "#0d0704";
+  ctx.fillRect(bx - 8, by - 6, 10, 32);
+  ctx.fillRect(bx + bw - 2, by - 6, 10, 32);
+  ctx.fillStyle = "#d9b45a";
+  ctx.fillRect(bx - 6, by - 4, 6, 28);
+  ctx.fillRect(bx + bw, by - 4, 6, 28);
+  ctx.fillStyle = "#fff0b0";
+  ctx.fillRect(bx - 6, by - 4, 2, 28);
+  ctx.fillRect(bx + bw, by - 4, 2, 28);
 }

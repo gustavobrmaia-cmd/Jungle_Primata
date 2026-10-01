@@ -13,8 +13,118 @@ let capturando = null;       // { acao, slot } esperando a tecla nova
 let lojaDaPausa = false;
 let abaAtual = "skin";
 
+// ---------- Ícones em pixel art (só para as telas) ----------
+// Cada ícone é um mapa de letras; a paleta diz a cor de cada letra. "." é vazio.
+
+const ICONES_TELA = {
+  cadeado: { cor: { K: "#2a1608", G: "#adb5bd", g: "#6c757d", Y: "#ffd43b", y: "#c98f0a" }, mapa: [
+    "..KKKKKK..",
+    ".KGGGGGGK.",
+    ".KGKKKKGK.",
+    ".KGK..KGK.",
+    "KKKKKKKKKK",
+    "KYYYYYYYyK",
+    "KYYYKKYYyK",
+    "KYYYKKYYyK",
+    "KYYYYYYyyK",
+    "KKKKKKKKKK" ] },
+  estrela: { cor: { K: "#5c3a00", Y: "#ffe066", y: "#f2a900" }, mapa: [
+    "....KK....",
+    "....KK....",
+    "...KYYK...",
+    "KKKKYYKKKK",
+    "KYYYYYYYYK",
+    ".KYYYYYyK.",
+    "..KYYYyK..",
+    "..KYyKyyK.",
+    ".KYyK.KyK.",
+    ".KKK..KKK." ] },
+  caveira: { cor: { K: "#2a1608", W: "#f8f0e3", w: "#b9a98e" }, mapa: [
+    "..KKKKKK..",
+    ".KWWWWWWK.",
+    "KWWWWWWWWK",
+    "KWKKWWKKWK",
+    "KWKKWWKKWK",
+    "KWWWKKWWWK",
+    ".KWWWWWWK.",
+    "..KWKWKWK.",
+    "..KwKwKwK.",
+    "...KKKKK.." ] },
+  coroa: { cor: { K: "#5c3a00", Y: "#ffe066", y: "#f2a900", R: "#e03131", B: "#4dabf7" }, mapa: [
+    "K...K..K...K",
+    "KK..KK.KK..K",
+    "KYK.KYKYK.KK",
+    "KYYKKYYYKKYK",
+    "KYYYYYYYYYYK",
+    "KYYYYYYYYYyK",
+    "KYRYYBYYYRyK",
+    "KyYYYYYYYYyK",
+    "KKKKKKKKKKKK" ] }
+};
+
+const _iconesCache = {};
+
+// Devolve um <img> pixelado com o ícone, em escala "escala" (cada pixel do mapa vira escala x escala)
+function iconeTela(nome, escala) {
+  if (!_iconesCache[nome]) {
+    const def = ICONES_TELA[nome];
+    const h = def.mapa.length;
+    const w = def.mapa[0].length;
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const g = c.getContext("2d");
+    def.mapa.forEach(function(linha, y) {
+      for (let x = 0; x < w; x++) {
+        const ch = linha[x];
+        if (ch === "." || !def.cor[ch]) continue;
+        g.fillStyle = def.cor[ch];
+        g.fillRect(x, y, 1, 1);
+      }
+    });
+    _iconesCache[nome] = { url: c.toDataURL(), w: w, h: h };
+  }
+  const info = _iconesCache[nome];
+  const img = document.createElement("img");
+  img.src = info.url;
+  img.alt = "";
+  img.draggable = false;
+  img.className = "icPixel ic-" + nome;
+  img.style.width = info.w * escala + "px";
+  img.style.height = info.h * escala + "px";
+  return img;
+}
+
+// Copia a banana pixelada do jogo para os enfeites do título do menu
+function desenharBananasMenu() {
+  document.querySelectorAll(".bananaDeco").forEach(function(c) {
+    if (typeof SPR_BANANA === "undefined") return;
+    c.width = SPR_BANANA.width;
+    c.height = SPR_BANANA.height;
+    const g = c.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    g.drawImage(SPR_BANANA, 0, 0);
+  });
+}
+
+// Raridade pela forma de ganhar o item: prêmios de fase/nível ou pelo preço
+function raridadeDe(item) {
+  if (item.fase !== undefined || item.nivel !== undefined) return { cls: "premio", nome: "Prêmio" };
+  const p = item.preco || 0;
+  if (p >= 800) return { cls: "lendario", nome: "Lendário" };
+  if (p >= 400) return { cls: "epico", nome: "Épico" };
+  if (p >= 150) return { cls: "raro", nome: "Raro" };
+  return { cls: "comum", nome: "Comum" };
+}
+
 function mostrar(elemento, sim) {
   elemento.classList.toggle("aberta", !!sim);
+}
+
+// Uma dica de controle: teclas desenhadas como teclas de teclado + o que elas fazem
+function comando(teclasNomes, texto) {
+  return '<span class="cmd">' + teclasNomes.map(function(t) { return "<kbd>" + t + "</kbd>"; }).join("") +
+    "<span>" + texto + "</span></span>";
 }
 
 function atualizarTelas() {
@@ -29,12 +139,20 @@ function atualizarTelas() {
   el("menuProgresso").textContent = save.zerou ? "Jogo zerado!" : "Próxima: " + nomeFase(save.desbloqueado);
   el("menuNivel").textContent = save.nivel;
   el("menuXp").style.width = Math.round((100 * save.xp) / xpParaSubir(save.nivel)) + "%";
+  el("menuXpTexto").textContent = save.xp + "/" + xpParaSubir(save.nivel) + " XP";
   el("btnSom").textContent = save.mudo ? "Som: desligado (" + teclaDe("som") + ")" : "Som: ligado (" + teclaDe("som") + ")";
-  el("menuControles").innerHTML =
-    "<b>" + teclaDe("esquerda") + "/" + teclaDe("direita") + "</b> andar · <b>" + teclaDe("pulo") + "</b> pular (segure para ir mais alto) · <b>" +
-    teclaDe("baixo") + "</b> deslizar<br><b>" + teclaDe("tiro") + "</b> revólver · <b>" + teclaDe("recarregar") + "</b> recarregar · <b>" +
-    teclaDe("laco") + "</b> cipó-laço (puxa o inimigo e chuta pro espaço!)<br><b>" + teclaDe("dash") + "</b> dash (melhoria) · <b>" +
-    teclaDe("poder1") + "-" + teclaDe("poder5") + "</b> poderes · <b>" + teclaDe("loja") + "</b> loja · <b>" + teclaDe("pausa") + "</b> pausa";
+  el("menuControles").innerHTML = [
+    comando([teclaDe("esquerda"), teclaDe("direita")], "andar"),
+    comando([teclaDe("pulo")], "pular (segure: mais alto)"),
+    comando([teclaDe("baixo")], "deslizar"),
+    comando([teclaDe("tiro")], "revólver"),
+    comando([teclaDe("recarregar")], "recarregar"),
+    comando([teclaDe("laco")], "cipó-laço (puxa o inimigo e chuta pro espaço!)"),
+    comando([teclaDe("dash")], "dash (melhoria)"),
+    comando([teclaDe("poder1") + "-" + teclaDe("poder5")], "poderes"),
+    comando([teclaDe("loja")], "loja"),
+    comando([teclaDe("pausa")], "pausa")
+  ].join("");
   if (telaAtual === "mapa") renderizarMapa();
 }
 
@@ -120,23 +238,41 @@ function fecharControles() {
 function renderizarControles() {
   const box = el("listaControles");
   box.innerHTML = "";
-  ACOES.forEach(function(a) {
-    const nome = document.createElement("div");
-    nome.className = "acao";
-    nome.textContent = a.nome;
-    box.appendChild(nome);
-    for (let slot = 0; slot < 3; slot++) {
-      const b = document.createElement("button");
-      b.tabIndex = -1;
-      const esperando = capturando && capturando.acao === a.id && capturando.slot === slot;
-      const k = (save.teclas[a.id] || [])[slot];
-      b.textContent = esperando ? "aperte..." : nomeDaTecla(k);
-      if (esperando) b.className = "esperando";
-      else if (!k) b.className = "vazia";
-      b.dataset.acaoTecla = a.id;
-      b.dataset.slot = slot;
-      box.appendChild(b);
-    }
+  const metade = Math.ceil(ACOES.length / 2);
+  [ACOES.slice(0, metade), ACOES.slice(metade)].forEach(function(grupo) {
+    const tabela = document.createElement("div");
+    tabela.className = "tabelaCtl";
+    const cab = document.createElement("div");
+    cab.className = "linha cab";
+    ["Ação", "Tecla 1", "Tecla 2", "Tecla 3"].forEach(function(t) {
+      const c = document.createElement("span");
+      c.textContent = t;
+      cab.appendChild(c);
+    });
+    tabela.appendChild(cab);
+    grupo.forEach(function(a) {
+      const linha = document.createElement("div");
+      linha.className = "linha";
+      const nome = document.createElement("div");
+      nome.className = "acao";
+      nome.textContent = a.nome;
+      linha.appendChild(nome);
+      for (let slot = 0; slot < 3; slot++) {
+        const b = document.createElement("button");
+        b.tabIndex = -1;
+        const esperando = capturando && capturando.acao === a.id && capturando.slot === slot;
+        const k = (save.teclas[a.id] || [])[slot];
+        b.textContent = esperando ? "aperte..." : nomeDaTecla(k);
+        b.classList.add("tecla");
+        if (esperando) b.classList.add("esperando");
+        else if (!k) b.classList.add("vazia");
+        b.dataset.acaoTecla = a.id;
+        b.dataset.slot = slot;
+        linha.appendChild(b);
+      }
+      tabela.appendChild(linha);
+    });
+    box.appendChild(tabela);
   });
 }
 
@@ -156,11 +292,26 @@ function renderizarMapa() {
   MUNDOS.forEach(function(m, mi) {
     const card = document.createElement("div");
     card.className = "mundo";
-    card.style.borderColor = m.cor;
+    card.style.setProperty("--cor", m.cor);
+
+    // Faixa de cabeçalho na cor do mundo
+    let feitas = 0;
+    for (let e = 0; e < FASES_POR_MUNDO; e++) {
+      const i = mi * FASES_POR_MUNDO + e;
+      const chefeFase = e === FASES_POR_MUNDO - 1;
+      if (chefeFase ? save.chefes[mi] : i < save.desbloqueado) feitas++;
+    }
+    const faixa = document.createElement("div");
+    faixa.className = "faixa";
     const titulo = document.createElement("h3");
-    titulo.textContent = (mi + 1) + ". " + m.nome + (save.chefes[mi] ? "  ★" : "");
-    titulo.style.color = m.cor;
-    card.appendChild(titulo);
+    titulo.textContent = (mi + 1) + ". " + m.nome;
+    faixa.appendChild(titulo);
+    if (save.chefes[mi]) faixa.appendChild(iconeTela("estrela", 2));
+    const prog = document.createElement("span");
+    prog.className = "prog";
+    prog.textContent = feitas + "/" + FASES_POR_MUNDO;
+    faixa.appendChild(prog);
+    card.appendChild(faixa);
 
     const linha = document.createElement("div");
     linha.className = "fases";
@@ -169,17 +320,40 @@ function renderizarMapa() {
       const b = document.createElement("button");
       b.tabIndex = -1;
       const chefeFase = e === FASES_POR_MUNDO - 1;
-      b.textContent = i > save.desbloqueado ? "🔒" : chefeFase ? "Chefe" : (mi + 1) + "-" + (e + 1);
-      b.disabled = i > save.desbloqueado;
+      const bloqueada = i > save.desbloqueado;
+      const feita = !bloqueada && (i < save.desbloqueado || (chefeFase && save.chefes[mi]));
+      b.disabled = bloqueada;
+      b.classList.add("fase");
       if (chefeFase) b.classList.add("chefe");
-      if (!b.disabled && (i < save.desbloqueado || (chefeFase && save.chefes[mi]))) b.classList.add("feita");
+      if (bloqueada) b.classList.add("bloqueada");
+      else if (feita) b.classList.add("feita");
+      else b.classList.add("liberada");
+      if (i === save.desbloqueado && !save.zerou) b.classList.add("atual");
+      b.title = nomeFase(i);
+
+      if (bloqueada) {
+        b.appendChild(iconeTela("cadeado", 3));
+      } else if (chefeFase) {
+        b.appendChild(iconeTela(feita ? "coroa" : "caveira", 3));
+        const t = document.createElement("span");
+        t.className = "rotulo";
+        t.textContent = "Chefe";
+        b.appendChild(t);
+      } else {
+        const n = document.createElement("span");
+        n.className = "num";
+        n.textContent = (mi + 1) + "-" + (e + 1);
+        b.appendChild(n);
+        if (feita) b.appendChild(iconeTela("estrela", 2));
+      }
       b.dataset.fase = i;
       linha.appendChild(b);
     }
     card.appendChild(linha);
     const nomeChefe = document.createElement("div");
     nomeChefe.className = "nomeChefe";
-    nomeChefe.textContent = "Chefe: " + m.nomeChefe;
+    nomeChefe.innerHTML = "Chefe: <b></b>";
+    nomeChefe.querySelector("b").textContent = m.nomeChefe;
     card.appendChild(nomeChefe);
     box.appendChild(card);
   });
@@ -203,9 +377,15 @@ function iconeCanvas(id) {
   return c;
 }
 
-function novoCartao(classe) {
+function novoCartao(classe, raridade) {
   const card = document.createElement("div");
-  card.className = "item" + (classe ? " " + classe : "");
+  card.className = "item" + (classe ? " " + classe : "") + (raridade ? " r-" + raridade.cls : "");
+  if (raridade) {
+    const selo = document.createElement("span");
+    selo.className = "selo";
+    selo.textContent = raridade.nome;
+    card.appendChild(selo);
+  }
   return card;
 }
 
@@ -244,7 +424,7 @@ function renderizarLoja() {
     b.tabIndex = -1;
     b.textContent = aba.nome;
     b.dataset.aba = aba.tipo;
-    if (aba.tipo === abaAtual) b.className = "ativa";
+    b.className = aba.tipo === abaAtual ? "ativa" : "sec";
     abas.appendChild(b);
   });
 
@@ -252,7 +432,7 @@ function renderizarLoja() {
 
   if (abaAtual === "poder") {
     PODERES.forEach(function(p) {
-      const card = novoCartao("poder");
+      const card = novoCartao("poder", raridadeDe(p));
       const cv = iconeCanvas(p.id);
       cv.className = "icone";
       card.appendChild(cv);
@@ -266,7 +446,7 @@ function renderizarLoja() {
   } else if (abaAtual === "melhoria") {
     MELHORIAS.forEach(function(m) {
       const tem = temMelhoria(m.id);
-      const card = novoCartao("poder" + (tem ? " equipado" : ""));
+      const card = novoCartao("poder" + (tem ? " equipado" : ""), raridadeDe(m));
       const cv = iconeCanvas(m.id);
       cv.className = "icone";
       card.appendChild(cv);
@@ -289,7 +469,7 @@ function renderizarLoja() {
     lista.forEach(function(item) {
       const tem = save.comprados.indexOf(item.id) >= 0;
       const equipado = save.equip[abaAtual] === item.id;
-      const card = novoCartao(equipado ? "equipado" : "");
+      const card = novoCartao(equipado ? "equipado" : "", raridadeDe(item));
 
       const cv = criarCanvas(80, 80);
       const teste = Object.assign({}, save.equip);
@@ -377,6 +557,7 @@ el("abas").addEventListener("click", function(e) {
   if (!b) return;
   abaAtual = b.dataset.aba;
   renderizarLoja();
+  el("itens").scrollTop = 0;
 });
 
 el("itens").addEventListener("click", function(e) {
@@ -391,6 +572,8 @@ el("fecharLoja").addEventListener("click", fecharLoja);
 
 
 // ---------- Botões das telas ----------
+
+desenharBananasMenu();
 
 document.querySelectorAll("[data-acao]").forEach(function(b) {
   b.tabIndex = -1;

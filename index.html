@@ -18,22 +18,35 @@
     <canvas id="tela" width="1200" height="700"></canvas>
 
     <div id="botoesJogo">
-      <button data-acao="pausar">PAUSA (P)</button>
-      <button data-acao="loja">LOJA (L)</button>
+      <button class="sec" data-acao="pausar">PAUSA (P)</button>
+      <button class="sec" data-acao="loja">LOJA (L)</button>
     </div>
 
     <!-- Menu inicial -->
     <div id="telaMenu" class="tela">
-      <h1>Jogo do Primata</h1>
-      <p class="sub">A grande caçada à banana</p>
-      <p class="info"><span class="ic-moeda"></span><span id="menuMoedas">0</span> moedas · <span id="menuProgresso"></span></p>
-      <div class="nivel">Nível <span id="menuNivel">1</span> <div class="barraXp"><div id="menuXp"></div></div></div>
+      <div class="cabecalho">
+        <canvas class="bananaDeco"></canvas>
+        <div class="titulos">
+          <h1>Jogo do Primata</h1>
+          <p class="sub"><span>A grande caçada à banana</span></p>
+        </div>
+        <canvas class="bananaDeco espelho"></canvas>
+      </div>
+      <div class="pilulas">
+        <span class="pilula moedas"><span class="ic-moeda"></span><span id="menuMoedas">0</span><span class="rot">moedas</span></span>
+        <span class="pilula progresso"><span class="rot">Fase</span><span id="menuProgresso"></span></span>
+        <span class="pilula nivel">
+          <span class="rot">Nível</span><span id="menuNivel" class="valor">1</span>
+          <span class="barraXp"><span id="menuXp"></span></span>
+          <span id="menuXpTexto" class="xpTexto"></span>
+        </span>
+      </div>
       <div class="botoes">
-        <button data-acao="jogar">Jogar (Enter)</button>
-        <button data-acao="mapa">Escolher fase</button>
-        <button data-acao="loja">Loja</button>
-        <button data-acao="controles">Controles</button>
-        <button data-acao="historia">Ver história</button>
+        <button class="grande" data-acao="jogar">Jogar (Enter)</button>
+        <button class="sec" data-acao="mapa">Escolher fase</button>
+        <button class="sec" data-acao="loja">Loja</button>
+        <button class="sec" data-acao="controles">Controles</button>
+        <button class="sec" data-acao="historia">Ver história</button>
       </div>
       <div class="controles" id="menuControles"></div>
     </div>
@@ -42,30 +55,34 @@
     <div id="telaMapa" class="tela">
       <h2>Escolha a fase</h2>
       <div id="mundos"></div>
-      <button data-acao="voltar">Voltar</button>
+      <button class="sec" data-acao="voltar">Voltar</button>
     </div>
 
     <!-- Pausa -->
     <div id="telaPausa" class="tela">
-      <h2>Pausado</h2>
-      <div class="botoes">
-        <button data-acao="continuar">Continuar (P)</button>
-        <button data-acao="loja">Loja (L)</button>
-        <button data-acao="reiniciar">Recomeçar fase</button>
-        <button data-acao="controles">Controles</button>
-        <button id="btnSom" data-acao="som">Som</button>
-        <button data-acao="menu">Menu principal</button>
+      <div class="painelCentral">
+        <h2>Pausado</h2>
+        <div class="botoes">
+          <button class="grande" data-acao="continuar">Continuar (P)</button>
+          <button class="sec" data-acao="loja">Loja (L)</button>
+          <button class="sec" data-acao="reiniciar">Recomeçar fase</button>
+          <button class="sec" data-acao="controles">Controles</button>
+          <button class="sec" id="btnSom" data-acao="som">Som</button>
+          <button class="perigo" data-acao="menu">Menu principal</button>
+        </div>
       </div>
     </div>
 
     <!-- Controles: trocar as teclas -->
     <div id="telaControles" class="tela">
-      <h2>Controles</h2>
-      <p class="info">Clique numa tecla e aperte a nova. Delete apaga. Esc volta.</p>
-      <div id="listaControles"></div>
-      <div class="linhaBotoes">
-        <button data-acao="padraoControles">Restaurar padrão</button>
-        <button data-acao="fecharControles">Voltar</button>
+      <div class="painelCentral largo">
+        <h2>Controles</h2>
+        <p class="info">Clique numa tecla e aperte a nova. <b>Delete</b> apaga. <b>Esc</b> volta.</p>
+        <div id="listaControles"></div>
+        <div class="linhaBotoes">
+          <button class="sec" data-acao="padraoControles">Restaurar padrão</button>
+          <button data-acao="fecharControles">Voltar</button>
+        </div>
       </div>
     </div>
 
@@ -76,11 +93,11 @@
           <h2>Loja do Primata</h2>
           <span class="saldo"><span class="ic-moeda"></span><span id="lojaMoedas">0</span></span>
           <span class="dica">L ou Esc para voltar</span>
-          <button id="fecharLoja" tabindex="-1">X</button>
+          <button class="perigo" id="fecharLoja" tabindex="-1">X</button>
         </div>
 
         <div class="lado">
-          <canvas id="previa" width="160" height="160"></canvas>
+          <div class="vitrine"><canvas id="previa" width="160" height="160"></canvas></div>
           <div class="abas" id="abas"></div>
         </div>
 

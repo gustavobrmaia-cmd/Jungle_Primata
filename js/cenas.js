@@ -20,10 +20,16 @@ function desenharChaoCena(mundo, deslocamento) {
   ctx.fillStyle = padraoMundo(mundo, "terra");
   ctx.fillRect(0, 32, LARGURA + 64, ALTURA - CHAO - 32);
   ctx.restore();
+  // contorno, sombra sob a grama e franja do tema (anda junto com o chão)
+  ctx.save();
+  ctx.translate(-off, 0);
+  acabamentoChao(mundo, 0, LARGURA + 64);
+  ctx.restore();
 }
 
 function desenharMacacoCena(x, base, pose, dir, giro) {
   const spr = SPRITES_PRIMATA[pose][dir > 0 ? "d" : "e"];
+  sombraCena(x, base, 58, 0.38);
   ctx.save();
   ctx.translate(Math.round(x), Math.round(base));
   if (giro) { ctx.translate(0, -40); ctx.rotate(giro); ctx.translate(0, 40); }
@@ -32,11 +38,15 @@ function desenharMacacoCena(x, base, pose, dir, giro) {
 }
 
 function balao(x, y, desenho) {
-  ctx.fillStyle = "#3b2412";
-  ctx.fillRect(x - 23, y - 23, 46, 46);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(x - 20, y - 20, 40, 40);
-  ctx.fillRect(x - 4, y + 20, 8, 8);
+  painelPixel(x - 24, y - 24, 48, 48, "#8a5a2b", "rgba(255,255,255,0.97)");
+  // pontinha do balão
+  ctx.fillStyle = "#0d0704";
+  ctx.fillRect(x - 6, y + 24, 12, 2);
+  ctx.fillRect(x - 4, y + 26, 8, 2);
+  ctx.fillRect(x - 2, y + 28, 4, 2);
+  ctx.fillStyle = "rgba(255,255,255,0.97)";
+  ctx.fillRect(x - 4, y + 24, 8, 2);
+  ctx.fillRect(x - 2, y + 26, 4, 2);
   desenho(x, y);
 }
 
@@ -120,12 +130,18 @@ function desenharIntro() {
   ctx.save();
   ctx.translate(tx, 0);
   desenharChaoCena(0, 0);
-  ctx.drawImage(SPR_DECOR[0], 820, CHAO - SPR_DECOR[0].height);
-  ctx.drawImage(SPR_DECOR[0], 120, CHAO - SPR_DECOR[0].height);
+  [820, 120].forEach(function(dx) {
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    ctx.fillRect(dx + 6, CHAO - 1, SPR_DECOR[0].width - 8, 5);
+    ctx.drawImage(SPR_DECOR[0], dx, CHAO - SPR_DECOR[0].height);
+  });
 
-  // Banana
+  // Banana (com um brilhinho enquanto espera)
+  const bY = c.by + 20 + (c.voando ? 0 : Math.sin(c.t * 0.1) * 3);
+  if (!c.voando) sombraCena(c.bx + 24, c.by + 44, 44, 0.3);
+  luzAditiva(c.bx + 24, bY, c.voando ? 56 : 74, "255,215,70", c.voando ? 0.35 : 0.45 + Math.sin(c.t * 0.1) * 0.12);
   ctx.save();
-  ctx.translate(c.bx + 24, c.by + 20 + (c.voando ? 0 : Math.sin(c.t * 0.1) * 3));
+  ctx.translate(c.bx + 24, bY);
   ctx.rotate(c.brot);
   ctx.drawImage(SPR_BANANA, -24, -20);
   ctx.restore();
@@ -140,31 +156,46 @@ function desenharIntro() {
       ctx.fillStyle = "#e03131";
       ctx.fillRect(x - 4, y - 14, 8, 18);
       ctx.fillRect(x - 4, y + 8, 8, 6);
+      ctx.fillStyle = "#ff8787";
+      ctx.fillRect(x - 4, y - 14, 3, 18);
     });
   }
   desenharParticulas();
   ctx.restore();
 
+  desenharClima();
+  ambienteMundo(0, 0, c.t);
+
   ctx.textAlign = "center";
   if (c.t > 240) {
-    ctx.globalAlpha = Math.min(1, (c.t - 240) / 20);
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    ctx.fillRect(0, 120, LARGURA, 190);
-    ctx.font = "bold 46px " + FONTE;
-    textoSombra("O vento levou a banana!", LARGURA / 2, 185, "#ffe066");
+    // a faixa decorada abre do meio e o texto vai aparecendo
+    const abre = suavizar((c.t - 240) / 14);
+    const hh = Math.max(2, Math.round(176 * abre));
+    ctx.drawImage(faixaMensagem("bom"), 0, 0, LARGURA, 176, 0, Math.round(194 - hh / 2), LARGURA, hh);
+    if (c.t > 250) {
+      ctx.globalAlpha = Math.min(1, (c.t - 250) / 16);
+      ctx.font = "bold 46px " + FONTE;
+      textoSombra("O vento levou a banana!", LARGURA / 2, 168, ["#fff9c4", "#ffc21a"], 3);
+      ctx.globalAlpha = 1;
+    }
     if (c.t > 320) {
+      ctx.globalAlpha = Math.min(1, (c.t - 320) / 16);
       ctx.font = "bold 24px " + FONTE;
-      textoSombra("Atravesse a Selva, o Deserto, a Era do Gelo e o Vulcão para recuperá-la!", LARGURA / 2, 235);
+      textoSombra("Atravesse a Selva, o Deserto, a Era do Gelo e o Vulcão para recuperá-la!", LARGURA / 2, 214);
+      ctx.globalAlpha = 1;
     }
     if (c.t > 400) {
+      ctx.globalAlpha = Math.min(1, (c.t - 400) / 16);
       ctx.font = "bold 20px " + FONTE;
-      textoSombra("Dizem que ela foi parar nas garras do Dragão de Magma...", LARGURA / 2, 280, "#ff922b");
+      textoSombra("Dizem que ela foi parar nas garras do Dragão de Magma...", LARGURA / 2, 250, "#ff922b");
+      ctx.globalAlpha = 1;
     }
-    ctx.globalAlpha = 1;
   }
   if (c.t > 30) {
     ctx.font = "bold 16px " + FONTE;
+    ctx.globalAlpha = 0.65 + Math.sin(c.t * 0.08) * 0.35;
     textoSombra("Aperte qualquer tecla para começar", LARGURA / 2, ALTURA - 20, "#dee2e6");
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -385,6 +416,8 @@ function desenharDragaoFinal(f) {
   const spr = SPR_CHEFE.dragao;
   if (f.desc <= 0) return;
   const img = f.etapa === "queda" && f.t % 8 < 4 ? (f.ddir > 0 ? spr.flashD : spr.flashE) : (f.ddir > 0 ? spr.d : spr.e);
+  sombraCena(f.dx + spr.w / 2, f.dy + spr.h, spr.w * 0.85 * f.desc, 0.36);
+  if (f.etapa !== "festa" && f.etapa !== "comendo") luzAditiva(f.dx + spr.w / 2, f.dy + spr.h / 2, 130 * f.desc, "255,110,30", 0.18);
   ctx.save();
   ctx.translate(Math.round(f.dx + spr.w / 2), Math.round(f.dy + spr.h / 2));
   ctx.rotate(f.drot);
@@ -448,12 +481,14 @@ function desenharFinal() {
   // A banana: caindo, na mão ou sendo comida
   const naMao = f.etapa === "pegou" || f.etapa === "comendo" || f.etapa === "festa";
   if (!f.comBanana && !naMao) {
+    luzAditiva(f.bx + 24, f.by + 20, 56, "255,215,70", 0.4);
     ctx.save();
     ctx.translate(f.bx + 24, f.by + 20);
     ctx.rotate(f.brot);
     ctx.drawImage(SPR_BANANA, -24, -20);
     ctx.restore();
   } else if (naMao && f.mordidas < 3) {
+    luzAditiva(f.mx, f.mbase - 100, 54, "255,215,70", 0.35);
     const h = SPR_BANANA.height;
     const corte = Math.round((h * f.mordidas) / 3);
     ctx.drawImage(SPR_BANANA, 0, corte, SPR_BANANA.width, h - corte, Math.round(f.mx - 24), Math.round(f.mbase - 122 + corte), SPR_BANANA.width, h - corte);
@@ -474,16 +509,27 @@ function desenharFinal() {
     ctx.fillRect(0, 0, LARGURA, ALTURA);
   }
 
+  desenharClima();
+  ambienteMundo(3, 0, tempo);
+
   ctx.textAlign = "center";
   if (f.etapa === "festa" && f.et > 40) {
-    ctx.globalAlpha = Math.min(1, (f.et - 40) / 30);
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(0, 50, LARGURA, 150);
-    ctx.font = "bold 72px " + FONTE;
-    textoSombra("FIM!", LARGURA / 2, 125, "#ffe066");
-    ctx.font = "bold 24px " + FONTE;
-    textoSombra("O primata derrotou o Dragão de Magma e finalmente comeu a sua banana!", LARGURA / 2, 175);
-    ctx.globalAlpha = 1;
+    const abre = suavizar((f.et - 40) / 16);
+    const hh = Math.max(2, Math.round(176 * abre));
+    ctx.drawImage(faixaMensagem("bom"), 0, 0, LARGURA, 176, 0, Math.round(146 - hh / 2), LARGURA, hh);
+    if (f.et > 50) {
+      ctx.globalAlpha = Math.min(1, (f.et - 50) / 20);
+      const esc = 0.6 + 0.4 * saltitar((f.et - 50) / 24);
+      ctx.save();
+      ctx.translate(LARGURA / 2, 136);
+      ctx.scale(esc, esc);
+      ctx.font = "bold 72px " + FONTE;
+      textoSombra("FIM!", 0, 0, ["#fff9c4", "#ffb700"], 4);
+      ctx.restore();
+      ctx.font = "bold 22px " + FONTE;
+      textoSombra("O primata derrotou o Dragão de Magma e finalmente comeu a sua banana!", LARGURA / 2, 188);
+      ctx.globalAlpha = 1;
+    }
   }
   if (f.etapa === "festa" && f.et > 120) {
     const st = save.stats;
@@ -495,15 +541,16 @@ function desenharFinal() {
     ];
     if (f.cosmetico) linhas.push("Nova skin: " + f.cosmetico.nome + "!");
     ctx.globalAlpha = Math.min(1, (f.et - 120) / 30);
-    ctx.fillStyle = "rgba(20,12,6,0.8)";
-    ctx.fillRect(LARGURA / 2 - 380, 220, 760, 40 + linhas.length * 28);
+    painelPixel(LARGURA / 2 - 380, 250, 760, 40 + linhas.length * 28, "#ffd43b", "rgba(20,12,6,0.82)");
     ctx.font = "bold 18px " + FONTE;
-    linhas.forEach(function(l, i) { textoSombra(l, LARGURA / 2, 250 + i * 28, i === linhas.length - 1 && f.cosmetico ? "#ffe066" : "#ffffff"); });
+    linhas.forEach(function(l, i) { textoSombra(l, LARGURA / 2, 282 + i * 28, i === linhas.length - 1 && f.cosmetico ? "#ffe066" : "#ffffff"); });
     ctx.globalAlpha = 1;
   }
   if (f.pronto) {
     ctx.font = "bold 18px " + FONTE;
+    ctx.globalAlpha = 0.65 + Math.sin(f.et * 0.08) * 0.35;
     textoSombra("Aperte qualquer tecla para voltar ao menu", LARGURA / 2, ALTURA - 20, "#dee2e6");
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -514,13 +561,17 @@ let menuT = 0;
 
 function desenharMenuFundo() {
   const mundo = Math.floor(save.desbloqueado / FASES_POR_MUNDO);
-  desenharFundo(mundo, menuT * 1.5);
+  desenharFundo(mundo, menuT * 1.5, menuT);
   desenharChaoCena(mundo, menuT * 1.5);
   desenharMacacoCena(130, CHAO, Math.floor(menuT / 7) % 2 ? "andar1" : "andar2", 1, 0);
+  const by = CHAO - 180 + Math.sin(menuT * 0.05) * 20;
+  sombraCena(980, by + 44, 40, 0.3);
+  luzAditiva(980, by, 80, "255,215,70", 0.4 + Math.sin(menuT * 0.1) * 0.1);
   ctx.save();
-  ctx.translate(980, CHAO - 180 + Math.sin(menuT * 0.05) * 20);
+  ctx.translate(980, by);
   ctx.rotate(Math.sin(menuT * 0.03) * 0.4);
   ctx.drawImage(SPR_BANANA, -24, -20);
   ctx.restore();
   desenharClima();
+  ambienteMundo(mundo, menuT * 1.5, menuT);
 }
