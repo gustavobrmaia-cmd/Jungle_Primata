@@ -4,64 +4,106 @@
 // TECLADO, LOOP PRINCIPAL E INÍCIO
 // =========================
 
-const TECLAS_MOVIMENTO = {
-  a: "esquerda", arrowleft: "esquerda",
-  d: "direita", arrowright: "direita",
-  w: "pulo", arrowup: "pulo", " ": "pulo",
-  s: "baixo", arrowdown: "baixo"
-};
+// tecla -> ação (montado a partir de save.teclas, que dá para trocar na tela "Controles")
+let mapaTeclas = {};
 
-const TECLAS_ACAO = { k: "tiro", j: "laco", shift: "dash", r: "recarregar" };
+function reconstruirMapaTeclas() {
+  mapaTeclas = {};
+  ACOES.forEach(function(a) {
+    (save.teclas[a.id] || []).forEach(function(k) { if (k) mapaTeclas[k] = a.id; });
+  });
+}
+
+// Troca a tecla de uma ação (a mesma tecla sai de qualquer outra ação)
+function definirTecla(acao, slot, k) {
+  Object.keys(save.teclas).forEach(function(a) {
+    save.teclas[a] = save.teclas[a].map(function(x) { return x === k ? "" : x; });
+  });
+  const lista = save.teclas[acao] || [];
+  while (lista.length < 3) lista.push("");
+  lista[slot] = k;
+  save.teclas[acao] = lista;
+  reconstruirMapaTeclas();
+  salvar();
+}
+
+reconstruirMapaTeclas();
+
+const MOVIMENTO = { esquerda: true, direita: true, baixo: true, pulo: true };
+const ACOES_RAPIDAS = { tiro: true, laco: true, dash: true, recarregar: true };
 
 document.addEventListener("keydown", function(e) {
   iniciarAudio();
   const k = e.key.toLowerCase();
-  if (k === " " || k.startsWith("arrow")) e.preventDefault();
+
+  // Esperando a tecla nova na tela de controles
+  if (capturando) {
+    e.preventDefault();
+    if (k === "escape") capturando = null;
+    else if (k === "delete" || k === "backspace") {
+      save.teclas[capturando.acao][capturando.slot] = "";
+      reconstruirMapaTeclas();
+      salvar();
+      capturando = null;
+    } else {
+      definirTecla(capturando.acao, capturando.slot, k);
+      capturando = null;
+    }
+    renderizarControles();
+    return;
+  }
+
+  if (k === " " || k.startsWith("arrow") || k === "tab") e.preventDefault();
+  const acao = mapaTeclas[k];
 
   if (estado === "intro") {
     if (intro.t > 30 && !e.repeat) terminarIntro();
     return;
   }
   if (estado === "final") {
-    if (final.t > 260 && !e.repeat) voltarAoMenu();
+    if (final.pronto && !e.repeat) trocarCena(voltarAoMenu);
     return;
   }
-  if (k === "m" && !e.repeat) {
+  if (acao === "som" && !e.repeat) {
     save.mudo = !save.mudo;
     salvar();
     atualizarTelas();
     return;
   }
+  if (controlesAbertos) {
+    if (k === "escape" && !e.repeat) fecharControles();
+    return;
+  }
   if (lojaAberta) {
-    if ((k === "escape" || k === "l") && !e.repeat) fecharLoja();
+    if ((k === "escape" || acao === "loja") && !e.repeat) fecharLoja();
     return;
   }
   if (estado === "menu") {
     if (e.repeat) return;
-    if (k === "enter") jogar();
-    else if (k === "l") abrirLoja();
+    if (k === "enter" && telaAtual === "menu") jogar();
+    else if (acao === "loja") abrirLoja();
     else if (k === "escape" && telaAtual === "mapa") { telaAtual = "menu"; atualizarTelas(); }
     return;
   }
 
   // Dentro da fase
-  if ((k === "escape" || k === "p") && !e.repeat) { pausar(!pausado); return; }
-  if (k === "l" && !e.repeat) { abrirLoja(); return; }
-  if (pausado) return;
+  if ((k === "escape" || acao === "pausa") && !e.repeat) { pausar(!pausado); return; }
+  if (acao === "loja" && !e.repeat) { abrirLoja(); return; }
+  if (pausado || !acao) return;
 
-  const mov = TECLAS_MOVIMENTO[k];
-  if (mov) {
-    teclas[mov] = true;
-    if (mov === "pulo" && !e.repeat) apertos.add("pulo");
+  if (MOVIMENTO[acao]) {
+    teclas[acao] = true;
+    if (acao === "pulo" && !e.repeat) apertos.add("pulo");
+  } else if (ACOES_RAPIDAS[acao]) {
+    if (!e.repeat) apertos.add(acao);
+  } else if (acao.indexOf("poder") === 0 && !e.repeat) {
+    usarPoder(PODERES[+acao.slice(5) - 1].id);
   }
-  const acao = TECLAS_ACAO[k];
-  if (acao && !e.repeat) apertos.add(acao);
-  if (k >= "1" && k <= "5" && k.length === 1 && !e.repeat) usarPoder(PODERES[+k - 1].id);
 });
 
 document.addEventListener("keyup", function(e) {
-  const mov = TECLAS_MOVIMENTO[e.key.toLowerCase()];
-  if (mov) teclas[mov] = false;
+  const acao = mapaTeclas[e.key.toLowerCase()];
+  if (acao && MOVIMENTO[acao]) teclas[acao] = false;
 });
 
 // Trocar de janela solta as teclas (evita o macaco andar sozinho)
@@ -81,14 +123,21 @@ let contSalvar = 0;
 
 function passo() {
   let mundoClima = 0;
-  if (estado === "jogo") mundoClima = fase.mundo;
+  if (estado === "jogo" || estado === "final") mundoClima = fase.mundo;
   else if (estado === "menu") mundoClima = Math.floor(save.desbloqueado / FASES_POR_MUNDO);
   atualizarClima(mundoClima);
 
-  if (estado === "jogo") { if (!pausado) atualizarJogo(); }
-  else if (estado === "intro") atualizarIntro();
-  else if (estado === "final") atualizarFinal();
-  else menuT++;
+  const fechando = atualizarTransicao();
+  if (!fechando) {
+    if (estado === "jogo") {
+      if (!pausado) {
+        atualizarJogo();
+        save.stats.tempo++;
+      }
+    } else if (estado === "intro") atualizarIntro();
+    else if (estado === "final") atualizarFinal();
+    else menuT++;
+  }
 
   if (sujo && ++contSalvar > 120) {
     salvar();
@@ -102,6 +151,7 @@ function desenharTudo() {
   else if (estado === "intro") desenharIntro();
   else if (estado === "final") desenharFinal();
   else desenharMenuFundo();
+  desenharTransicao();
 }
 
 function quadro(agora) {

@@ -6,8 +6,10 @@
 
 const el = function(id) { return document.getElementById(id); };
 
-let telaAtual = "menu";      // no menu: "menu" ou "mapa"
+let telaAtual = "menu";      // no menu: "menu", "mapa" ou "nenhuma" (saindo do menu)
 let lojaAberta = false;
+let controlesAbertos = false;
+let capturando = null;       // { acao, slot } esperando a tecla nova
 let lojaDaPausa = false;
 let abaAtual = "skin";
 
@@ -16,14 +18,23 @@ function mostrar(elemento, sim) {
 }
 
 function atualizarTelas() {
-  mostrar(el("telaMenu"), estado === "menu" && telaAtual === "menu" && !lojaAberta);
-  mostrar(el("telaMapa"), estado === "menu" && telaAtual === "mapa" && !lojaAberta);
-  mostrar(el("telaPausa"), estado === "jogo" && pausado && !lojaAberta);
+  const sobreposta = lojaAberta || controlesAbertos;
+  mostrar(el("telaMenu"), estado === "menu" && telaAtual === "menu" && !sobreposta);
+  mostrar(el("telaMapa"), estado === "menu" && telaAtual === "mapa" && !sobreposta);
+  mostrar(el("telaPausa"), estado === "jogo" && pausado && !sobreposta);
+  mostrar(el("telaControles"), controlesAbertos);
   mostrar(el("botoesJogo"), estado === "jogo" && !pausado);
   mostrar(el("loja"), lojaAberta);
   el("menuMoedas").textContent = save.moedas;
   el("menuProgresso").textContent = save.zerou ? "Jogo zerado!" : "Próxima: " + nomeFase(save.desbloqueado);
-  el("btnSom").textContent = save.mudo ? "Som: desligado (M)" : "Som: ligado (M)";
+  el("menuNivel").textContent = save.nivel;
+  el("menuXp").style.width = Math.round((100 * save.xp) / xpParaSubir(save.nivel)) + "%";
+  el("btnSom").textContent = save.mudo ? "Som: desligado (" + teclaDe("som") + ")" : "Som: ligado (" + teclaDe("som") + ")";
+  el("menuControles").innerHTML =
+    "<b>" + teclaDe("esquerda") + "/" + teclaDe("direita") + "</b> andar · <b>" + teclaDe("pulo") + "</b> pular (segure para ir mais alto) · <b>" +
+    teclaDe("baixo") + "</b> deslizar<br><b>" + teclaDe("tiro") + "</b> revólver · <b>" + teclaDe("recarregar") + "</b> recarregar · <b>" +
+    teclaDe("laco") + "</b> cipó-laço (puxa o inimigo e chuta pro espaço!)<br><b>" + teclaDe("dash") + "</b> dash (melhoria) · <b>" +
+    teclaDe("poder1") + "-" + teclaDe("poder5") + "</b> poderes · <b>" + teclaDe("loja") + "</b> loja · <b>" + teclaDe("pausa") + "</b> pausa";
   if (telaAtual === "mapa") renderizarMapa();
 }
 
@@ -32,9 +43,15 @@ function soltarTeclas() {
   apertos.clear();
 }
 
+function sairDoMenu(fn) {
+  telaAtual = "nenhuma";
+  atualizarTelas();
+  trocarCena(fn);
+}
+
 function jogar() {
-  if (!save.viuIntro) iniciarIntro();
-  else iniciarFase(save.desbloqueado);
+  if (!save.viuIntro) sairDoMenu(iniciarIntro);
+  else sairDoMenu(function() { iniciarFase(save.desbloqueado); });
 }
 
 function voltarAoMenu() {
@@ -42,6 +59,7 @@ function voltarAoMenu() {
   telaAtual = "menu";
   pausado = false;
   lojaAberta = false;
+  controlesAbertos = false;
   salvar();
   soltarTeclas();
   atualizarTelas();
@@ -82,6 +100,54 @@ function aoMudarVisual() {
 }
 
 
+// ---------- Controles (trocar as teclas) ----------
+
+function abrirControles() {
+  controlesAbertos = true;
+  capturando = null;
+  if (estado === "jogo") pausado = true;
+  soltarTeclas();
+  renderizarControles();
+  atualizarTelas();
+}
+
+function fecharControles() {
+  controlesAbertos = false;
+  capturando = null;
+  atualizarTelas();
+}
+
+function renderizarControles() {
+  const box = el("listaControles");
+  box.innerHTML = "";
+  ACOES.forEach(function(a) {
+    const nome = document.createElement("div");
+    nome.className = "acao";
+    nome.textContent = a.nome;
+    box.appendChild(nome);
+    for (let slot = 0; slot < 3; slot++) {
+      const b = document.createElement("button");
+      b.tabIndex = -1;
+      const esperando = capturando && capturando.acao === a.id && capturando.slot === slot;
+      const k = (save.teclas[a.id] || [])[slot];
+      b.textContent = esperando ? "aperte..." : nomeDaTecla(k);
+      if (esperando) b.className = "esperando";
+      else if (!k) b.className = "vazia";
+      b.dataset.acaoTecla = a.id;
+      b.dataset.slot = slot;
+      box.appendChild(b);
+    }
+  });
+}
+
+el("listaControles").addEventListener("click", function(e) {
+  const b = e.target.closest("button");
+  if (!b) return;
+  capturando = { acao: b.dataset.acaoTecla, slot: +b.dataset.slot };
+  renderizarControles();
+});
+
+
 // ---------- Mapa de fases ----------
 
 function renderizarMapa() {
@@ -106,6 +172,7 @@ function renderizarMapa() {
       b.textContent = i > save.desbloqueado ? "🔒" : chefeFase ? "Chefe" : (mi + 1) + "-" + (e + 1);
       b.disabled = i > save.desbloqueado;
       if (chefeFase) b.classList.add("chefe");
+      if (!b.disabled && (i < save.desbloqueado || (chefeFase && save.chefes[mi]))) b.classList.add("feita");
       b.dataset.fase = i;
       linha.appendChild(b);
     }
@@ -121,7 +188,8 @@ function renderizarMapa() {
 el("mundos").addEventListener("click", function(e) {
   const b = e.target.closest("button");
   if (!b || b.disabled) return;
-  iniciarFase(+b.dataset.fase);
+  const i = +b.dataset.fase;
+  sairDoMenu(function() { iniciarFase(i); });
 });
 
 
@@ -135,7 +203,7 @@ function iconeCanvas(id) {
   return c;
 }
 
-function cartao(classe) {
+function novoCartao(classe) {
   const card = document.createElement("div");
   card.className = "item" + (classe ? " " + classe : "");
   return card;
@@ -184,12 +252,12 @@ function renderizarLoja() {
 
   if (abaAtual === "poder") {
     PODERES.forEach(function(p) {
-      const card = cartao("poder");
+      const card = novoCartao("poder");
       const cv = iconeCanvas(p.id);
       cv.className = "icone";
       card.appendChild(cv);
       linhaTexto(card, "nome", p.nome);
-      linhaTexto(card, "desc", p.desc + ". Tecla " + p.tecla + ".");
+      linhaTexto(card, "desc", p.desc + ". Tecla " + teclaDe("poder" + (PODERES.indexOf(p) + 1)) + ".");
       linhaTexto(card, "qtd", "Você tem: " + save.poderes[p.id]);
       precoHtml(card, p.preco);
       botao(card, save.moedas >= p.preco ? "Comprar" : "Faltam " + (p.preco - save.moedas), save.moedas < p.preco, { poder: p.id });
@@ -198,7 +266,7 @@ function renderizarLoja() {
   } else if (abaAtual === "melhoria") {
     MELHORIAS.forEach(function(m) {
       const tem = temMelhoria(m.id);
-      const card = cartao("poder" + (tem ? " equipado" : ""));
+      const card = novoCartao("poder" + (tem ? " equipado" : ""));
       const cv = iconeCanvas(m.id);
       cv.className = "icone";
       card.appendChild(cv);
@@ -221,7 +289,7 @@ function renderizarLoja() {
     lista.forEach(function(item) {
       const tem = save.comprados.indexOf(item.id) >= 0;
       const equipado = save.equip[abaAtual] === item.id;
-      const card = cartao(equipado ? "equipado" : "");
+      const card = novoCartao(equipado ? "equipado" : "");
 
       const cv = criarCanvas(80, 80);
       const teste = Object.assign({}, save.equip);
@@ -230,12 +298,18 @@ function renderizarLoja() {
       card.appendChild(cv);
 
       linhaTexto(card, "nome", item.nome);
+      const premio = item.fase !== undefined || item.nivel !== undefined;
       if (tem) linhaTexto(card, "preco", equipado ? "Equipado" : "Seu");
+      else if (item.fase !== undefined) linhaTexto(card, "preco", "Passe a fase " + nomeFase(item.fase));
+      else if (item.nivel !== undefined) linhaTexto(card, "preco", "Chegue ao nível " + item.nivel);
       else precoHtml(card, item.preco);
 
       let texto;
       let desativado = false;
-      if (!tem) {
+      if (!tem && premio) {
+        texto = "Bloqueado";
+        desativado = true;
+      } else if (!tem) {
         texto = save.moedas >= item.preco ? "Comprar" : "Faltam " + (item.preco - save.moedas);
         desativado = save.moedas < item.preco;
       } else if (equipado) {
@@ -258,7 +332,7 @@ function usarCosmetico(tipo, id) {
   const item = buscarItem(tipo, id);
   if (!item) return;
   if (save.comprados.indexOf(id) < 0) {
-    if (save.moedas < item.preco) return;
+    if (item.preco === undefined || save.moedas < item.preco) return;
     save.moedas -= item.preco;
     save.comprados.push(id);
     save.equip[tipo] = id;
@@ -327,10 +401,13 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
     else if (acao === "mapa") { telaAtual = "mapa"; atualizarTelas(); }
     else if (acao === "voltar") { telaAtual = "menu"; atualizarTelas(); }
     else if (acao === "loja") abrirLoja();
-    else if (acao === "historia") iniciarIntro();
+    else if (acao === "historia") sairDoMenu(iniciarIntro);
+    else if (acao === "controles") abrirControles();
+    else if (acao === "fecharControles") fecharControles();
+    else if (acao === "padraoControles") { save.teclas = copiaTeclasPadrao(); reconstruirMapaTeclas(); salvar(); renderizarControles(); atualizarTelas(); }
     else if (acao === "continuar") pausar(false);
     else if (acao === "pausar") pausar(true);
-    else if (acao === "reiniciar") { iniciarFase(fase.indice); }
+    else if (acao === "reiniciar") { pausado = false; atualizarTelas(); trocarCena(function() { iniciarFase(fase.indice); }); }
     else if (acao === "menu") voltarAoMenu();
     else if (acao === "som") { save.mudo = !save.mudo; salvar(); atualizarTelas(); }
   });

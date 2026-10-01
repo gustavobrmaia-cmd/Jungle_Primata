@@ -5,78 +5,82 @@
 // =========================
 
 // ---------- MACACO (grade 20x20, cada pixel vira 4x4 = 80x80) ----------
-// D contorno, F pelo, P pele, B barriga, W/E olho, M boca
+// D contorno, F pelo, S pelo na sombra, L pelo com luz, P pele, R bochecha, B barriga, W/E olho, M boca
 
 const CORPO = [
   "....................",
   "....................",
   "....................",
   ".......DDDDDD.......",
-  ".....DDFFFFFFDD.....",
-  "....DFFFFFFFFFFD....",
-  ".DD.DFFFFFFFFFFD.DD.",
-  "DPPDFFPPPPPPPPFFDPPD",
+  ".....DDLLFFFFDD.....",
+  "....DFLLFFFFFFSD....",
+  ".DD.DFLFFFFFFFSD.DD.",
+  "DPPDFFPPPPPPPPFSDPPD",
   "DPPDFPWEPPPPWEPFDPPD",
-  ".DDDFPWEPPPPWEPFDDD.",
-  "...DFPPPPPPPPPPFD...",
-  "....DFPPMMMMPPFD....",
-  ".....DFPPPPPPFD.....",
+  ".DDDFPWEPPPPWEPSDDD.",
+  "...DFPRPPPPPPRPSD...",
+  "....DFPPMMMMPPSD....",
+  ".....DFPPPPPPSD.....",
   "......DDDDDDDD......",
-  ".....DFFBBBBFFD.....",
-  "....DFFBBBBBBFFD..D.",
-  "...DPDFBBBBBBFDPD..D",
-  "...DPDFFBBBBFFDPD..D",
-  ".....DFFFFFFFFDDDDD.",
+  ".....DFFBBBBFSD.....",
+  "....DFFBBBBBBFSD..D.",
+  "...DPDFBBBBBBSDPD..D",
+  "...DPDFFBBBBFSDPD..D",
+  ".....DFFFFFFSSDDDDD.",
   ".....DPPD..DPPD....."
 ];
 
 // Cada pose troca algumas linhas do corpo
+const BRACOS_CIMA = {
+  11: "..P.DFPPMMMMPPSD.P..",
+  12: "..D..DFPPPPPPSD..D..",
+  13: "..DD..DDDDDDDD..DD..",
+  14: "...DDDFFBBBBFSDDD...",
+  15: "....DFFBBBBBBFSD..D.",
+  16: "....DFBBBBBBBBSD...D",
+  17: ".....DFFBBBBFSD....D"
+};
+
 const POSES = {
   parado: {},
+  piscar: { 8: "DPPDFPPPPPPPPPPFDPPD", 9: ".DDDFPDDPPPPDDPSDDD." },
   andar1: { 19: "....DPPD....DPPD...." },
   andar2: { 19: "......DPPDDPPD......" },
   pulo: {
     13: "..PD..DDDDDDDD..DP..",
-    14: "...DDDFFBBBBFFDDD...",
-    15: "....DFFBBBBBBFFD..D.",
-    16: "....DFBBBBBBBBFD...D",
-    17: ".....DFFBBBBFFD....D",
-    18: "....DPPFFFFFFPPDDDD.",
+    14: "...DDDFFBBBBFSDDD...",
+    15: "....DFFBBBBBBFSD..D.",
+    16: "....DFBBBBBBBBSD...D",
+    17: ".....DFFBBBBFSD....D",
+    18: "....DPPFFFFFSPPDDDD.",
     19: "...................."
   },
-  queda: {
-    11: "..P.DFPPMMMMPPFD.P..",
-    12: "..D..DFPPPPPPFD..D..",
-    13: "..DD..DDDDDDDD..DD..",
-    14: "...DDDFFBBBBFFDDD...",
-    15: "....DFFBBBBBBFFD..D.",
-    16: "....DFBBBBBBBBFD...D",
-    17: ".....DFFBBBBFFD....D"
-  },
+  queda: BRACOS_CIMA,
+  vitoria: Object.assign({}, BRACOS_CIMA, { 11: "..P.DFPMMMMMMPSD.P.." }),
   pendurado: {
     1: "...PP..........PP...",
     2: "...DF..........FD...",
     3: "...DF..DDDDDD..FD...",
-    4: "...DFDDFFFFFFDDFD...",
-    5: "...DFFFFFFFFFFFFD...",
-    6: "..DDFFFFFFFFFFFFDD..",
-    7: "..DDFFPPPPPPPPFFDD..",
+    4: "...DFDDLLFFFFDDFD...",
+    5: "...DFFFFFFFFFFFSD...",
+    6: "..DDFFFFFFFFFFFSDD..",
+    7: "..DDFFPPPPPPPPFSDD..",
     8: "...DFPWEPPPPWEPFD...",
-    9: "...DFPWEPPPPWEPFD...",
-    15: ".....DFBBBBBBFD...D.",
-    16: ".....DFBBBBBBFD....D",
-    17: ".....DFFBBBBFFD....D"
+    9: "...DFPWEPPPPWEPSD...",
+    15: ".....DFBBBBBBSD...D.",
+    16: ".....DFBBBBBBSD....D",
+    17: ".....DFFBBBBFSD....D"
   },
   chute: {
-    16: "...DPDFBBBBBBFDPD...",
-    17: "...DPDFFBBBBFFDDDDD.",
-    18: ".....DFFFFFFFFFFFPPD",
+    16: "...DPDFBBBBBBSDPD...",
+    17: "...DPDFFBBBBFSDDDDD.",
+    18: ".....DFFFFFFSSFFFPPD",
     19: ".....DPPD..........."
   },
   tiro: {
-    15: "....DFFBBBBBBFFDDDD.",
-    16: "...DPDFBBBBBBFFFFPPD",
-    17: "...DPDFFBBBBFFDDDD.."
+    15: "....DFFBBBBBBFSDDDD.",
+    16: "...DPDFBBBBBBSFFFPPD",
+    17: "...DPDFFBBBBFSDDDD.."
   }
 };
 
@@ -90,6 +94,16 @@ Object.keys(POSES).forEach(function(nome) {
 
 const imgPersonagem = new Image();
 let personagemOk = false;
+
+// Cores da skin, com sombra/luz do pelo calculadas sozinhas
+function paletaSkin(skin, corPelo) {
+  const p = Object.assign({}, CORES_BASE, skin.cores);
+  if (corPelo) p.F = corPelo;
+  p.S = !corPelo && skin.cores.S ? skin.cores.S : escurecer(p.F, 0.25);
+  p.L = !corPelo && skin.cores.L ? skin.cores.L : clarear(p.F, 0.22);
+  if (!p.R) p.R = "rgba(255,105,120,0.4)";
+  return p;
+}
 
 function desenharPrimata(g, equip, escala, pose) {
   const tam = 20 * escala;
@@ -106,8 +120,15 @@ function desenharPrimata(g, equip, escala, pose) {
     g.drawImage(imgPersonagem, (tam - w) / 2, tam - h, w, h);
   } else {
     const base = skin.imagem ? buscarItem("skin", "classico") : skin;
-    const cores = Object.assign({}, CORES_BASE, base.cores);
-    pintarMapa(g, MAPAS_POSE[pose || "parado"], cores, escala);
+    const mapa = MAPAS_POSE[pose || "parado"];
+    if (base.faixas) {
+      for (let y = 0; y < mapa.length; y++) {
+        pintarMapa(g, [mapa[y]], paletaSkin(base, base.faixas[y % base.faixas.length]), escala, 0, y);
+      }
+    } else {
+      pintarMapa(g, mapa, paletaSkin(base), escala);
+    }
+    if (base.detalhe) pintarMapa(g, base.detalhe.mapa, base.detalhe.cores, escala, 0, base.detalhe.y);
   }
 
   CAMADAS.forEach(function(tipo) {
@@ -391,6 +412,191 @@ registrarInimigo("diabinho", [
 ], { K: "#2b0a0a", R: "#e03131", D: "#a51111", Y: "#ffe066", E: "#111111", W: "#ffffff", H: "#f1f3f5", N: "#495057" }, 4);
 
 
+registrarInimigo("macacoLadrao", [
+  "....KKKKKK....",
+  "...KGGGGGGK...",
+  ".KKGGGGGGGGKK.",
+  "KPKKKKKKKKKKPK",
+  "KPKKWEKKWEKKPK",
+  ".KKPPPPPPPPKK.",
+  "...KPPMMPPK...",
+  "....KKKKKK....",
+  "...KGGGGGGK.NN",
+  "..KGGPPPPGGKNN",
+  "..KGGPPPPGGK..",
+  "...KGGGGGGK...",
+  "...KGK..KGK...",
+  "...KKK..KKK..."
+], { K: "#2b1d14", G: "#6b5a4e", P: "#d9b99b", W: "#ffffff", E: "#111111", M: "#5c1010", N: "#5c3a1a" }, 3);
+
+registrarInimigo("aranha", [
+  "..K..KKKK..K..",
+  ".K..KKKKKK..K.",
+  "K..KKRKKRKK..K",
+  "K.KKKKKKKKKK.K",
+  ".KKKKKKKKKKKK.",
+  "K.KKKKKKKKKK.K",
+  "K..KKVKKVKK..K",
+  ".K..KKKKKK..K.",
+  "..K..KKKK..K..",
+  ".K....KK....K."
+], { K: "#1a1a1a", R: "#e03131", V: "#7048e8" }, 3);
+
+registrarInimigo("mumia", [
+  "...SWWWWS...",
+  "..SWWSWWWS..",
+  "..WKEWWKEW..",
+  "..SWWWWWWS..",
+  "..WWSSWWWW..",
+  "...SWWWWS...",
+  "..SWWWWWS...",
+  ".SWWSWWWWWWW",
+  ".SWWWWWSWWWS",
+  ".SWWWSWWW...",
+  ".SWWWWWWS...",
+  "..WWSWWWS...",
+  "..SWWWWWW...",
+  "..WW.SWW....",
+  "..SW..WS....",
+  "..WW..WW....",
+  ".SWW..WWS..."
+], { W: "#e9e4d4", S: "#b8ae94", K: "#2b2620", E: "#ffd43b" }, 3);
+
+registrarInimigo("tatu", [
+  "....KKKKKK......",
+  "...KAAABAAK.....",
+  "..KAAABAAABK....",
+  ".KAAABAAABAAK...",
+  ".KAABAAABAAABKK.",
+  "KAAABAAABAAABPEK",
+  "KAAABAAABAAABPPN",
+  ".KKKKKKKKKKKKKK.",
+  "..KP..KP..KP.KP.",
+  "................"
+], { K: "#3b2a1a", A: "#a68a64", B: "#7a6040", P: "#d9b99b", E: "#111111", N: "#5c3a1a" }, 3);
+
+registrarInimigo("foca", [
+  "..........KKK...",
+  ".........KGGGK..",
+  ".........KGWEGK.",
+  "........KGGGGGNK",
+  "...KKKKKGGGGGK..",
+  "..KGGGGGGGLLGK..",
+  ".KGGGGGGGLLLGK..",
+  "KGGKGGGGLLLLGK..",
+  "KKK.KKGGGGGGKK..",
+  ".....KKK..KKK..."
+], { K: "#1c2a3a", G: "#8ba3b8", L: "#d0dde8", W: "#ffffff", E: "#111111", N: "#111111" }, 3);
+
+registrarInimigo("lobo", [
+  ".............K.K..",
+  "............KGKGK.",
+  "...........KGGGGGK",
+  "...........KGWEGGK",
+  "K........KGGGGLLLN",
+  "GK.....KKKGGGGGKK.",
+  ".GKKKKKGGGGGGGGK..",
+  "..KGGGGGGGGGLLGK..",
+  "..KGGGGGGGGGLLGK..",
+  "..KGGKKKKKKGGGK...",
+  "..KGK......KGK....",
+  "..KKK......KKK...."
+], { K: "#2b3440", G: "#adb5bd", L: "#f1f3f5", W: "#ffd43b", E: "#111111", N: "#111111" }, 3);
+
+registrarInimigo("golem", [
+  "....KKKKKKKK....",
+  "...KRRRRRRRRK...",
+  "..KRRrRRRRrRRK..",
+  "..KRROORROORRK..",
+  "..KRRRRRRRRRRK..",
+  "...KRRKKKKRRK...",
+  ".KKKRRRRRRRRKKK.",
+  "KRRRKRRrRRRKRRRK",
+  "KRrRKRRRRRrKRrRK",
+  "KRRRKRRRRRRKRRRK",
+  "KRRRKRRORRRKRRRK",
+  "KKKKKRRRRRRKKKKK",
+  "KRRK.KRRRRK.KRRK",
+  "KKKK.KRRRRK.KKKK",
+  ".....KRRKRRK....",
+  "....KRRK.KRRK...",
+  "....KKKK.KKKK..."
+], { K: "#1a1d20", R: "#6c6f73", r: "#8a8d91", O: "#ff922b" }, 3);
+
+registrarInimigo("fenix", [
+  "...........Y.Y....",
+  "...........YRRK...",
+  "..........KRRWEK..",
+  "Y........KRRRRRYY.",
+  "YR.....KKRRRRRK...",
+  ".YRR.KROOORRRK....",
+  "..YRRROOOOOORK....",
+  "...YRRYYOOOORK....",
+  "..YYRRRRYYOOK.....",
+  ".Y..YRRRRRKK......",
+  "......YY.Y........",
+  ".......K..K......."
+], { K: "#5c1a03", R: "#e8590c", O: "#ff922b", Y: "#ffd43b", W: "#ffffff", E: "#111111" }, 3);
+
+
+// ---------- OBSTÁCULOS ----------
+
+const SPR_COGUMELO = spriteDeMapa([
+  "....RRRRRRRR....",
+  "..RRWWRRRRWWRR..",
+  ".RRWWWRRRRRWWRR.",
+  "RRRRRRRWWRRRRRRR",
+  "KKKKKKKKKKKKKKKK",
+  ".....SSSSSS.....",
+  ".....SSSSSS....."
+], { R: "#e03131", W: "#ffffff", K: "#a51111", S: "#f1e3c8" }, 4);
+
+const SPR_TRONCO = spriteDeMapa([
+  "..KKKKKK..",
+  ".KNNNNNNK.",
+  "KNNLLLLNNK",
+  "KNLNNNNLNK",
+  "KNLNKKNLNK",
+  "KNLNKKNLNK",
+  "KNLNNKNLNK",
+  "KNNLLLLNNK",
+  ".KNNNNNNK.",
+  "..KKKKKK.."
+], { K: "#3b2412", N: "#8a5a2b", L: "#c4915a" }, 4);
+
+const SPR_PLANTA = spriteDeMapa([
+  "...RRRRRR...",
+  ".RRWRRRRWRR.",
+  "RRRRRRRRRRRR",
+  "RWRWRWRWRWRW",
+  "KKKKKKKKKKKK",
+  "WRWRWRWRWRWR",
+  "RRRRRRRRRRRR",
+  ".RRRRRRRRRR.",
+  "...RRRRRR...",
+  ".....GG.....",
+  "..GG.GG.GG..",
+  ".GGGGGGGGGG.",
+  "..GG.GG.GG..",
+  ".....GG.....",
+  ".....GG.....",
+  ".....GG....."
+], { R: "#e03131", W: "#ffffff", K: "#5c1010", G: "#2f9e44" }, 4);
+
+const SPR_ARMADILHA = spriteDeMapa([
+  "MMMMMMMM",
+  "MLLLLLLM",
+  "MLKKKKLM",
+  "MLKDDKLM",
+  "MLKDDKLM",
+  "MLKKKKLM",
+  "MLLLLLLM",
+  "MMMMMMMM"
+], { M: "#8a6420", L: "#d9a648", K: "#3b2a1a", D: "#000000" }, 4);
+
+const SPR_BOLHA = bolaPixel(11, "rgba(255,255,255,0.18)", "rgba(255,255,255,0.9)", "rgba(255,255,255,0.85)", 2);
+
+
 // ---------- CHEFES ----------
 
 const SPR_CHEFE = {};
@@ -671,7 +877,11 @@ const SPR_PROJ = {
   veneno: bolaPixel(6, "#9c36b5", "#5f1a73", "#e599f7", 2),
   bolao: bolaPixel(18, "#f8f9fa", "#adb5bd", "#ffffff", 2),
   meteoro: bolaPixel(10, "#6b4220", "#2b1a0a", "#ff922b", 2),
-  podoboo: bolaPixel(8, "#ff6b00", "#c92a2a", "#ffe066", 2)
+  podoboo: bolaPixel(8, "#ff6b00", "#c92a2a", "#ffe066", 2),
+  pedra: bolaPixel(20, "#868e96", "#343a40", "#ced4da", 2),
+  pedrinha: bolaPixel(7, "#868e96", "#343a40", "#ced4da", 2),
+  bolaNeve: bolaPixel(14, "#f8f9fa", "#adb5bd", "#ffffff", 2),
+  bolaFogo: bolaPixel(5, "#ff922b", "#e8590c", "#ffe066", 2)
 };
 
 // Moeda pixelada (6 quadros girando)

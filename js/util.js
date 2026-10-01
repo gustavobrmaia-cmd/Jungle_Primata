@@ -120,3 +120,16 @@ function aproximar(v, alvo, passo) {
 function sorteio(lista, r) {
   return lista[Math.floor((r ? r() : Math.random()) * lista.length)];
 }
+
+// Cores: clarear/escurecer "#rrggbb" (usado para sombrear as skins)
+function misturarCor(hex, alvo, k) {
+  if (typeof hex !== "string" || hex[0] !== "#" || hex.length !== 7) return hex;
+  const c = [1, 3, 5].map(function(i) { return parseInt(hex.slice(i, i + 2), 16); });
+  return "#" + c.map(function(v, i) {
+    const n = Math.round(v + (alvo[i] - v) * k);
+    return (n < 16 ? "0" : "") + n.toString(16);
+  }).join("");
+}
+
+function escurecer(hex, k) { return misturarCor(hex, [0, 0, 0], k); }
+function clarear(hex, k) { return misturarCor(hex, [255, 255, 255], k); }

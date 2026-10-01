@@ -55,6 +55,7 @@ function iniciarIntro() {
   intro.by = CHAO - 40;
   intro.brot = 0;
   intro.voando = false;
+  intro.acabou = false;
   particulas = [];
   cameraX = 0;
   tremor = 0;
@@ -62,9 +63,11 @@ function iniciarIntro() {
 }
 
 function terminarIntro() {
+  if (intro.acabou) return;
+  intro.acabou = true;
   save.viuIntro = true;
   salvar();
-  iniciarFase(0);
+  trocarCena(function() { iniciarFase(0); });
 }
 
 function atualizarIntro() {
@@ -107,7 +110,7 @@ function atualizarIntro() {
 
   if (tremor > 0) tremor--;
   atualizarParticulas();
-  if (c.t > 470) terminarIntro();
+  if (c.t > 560) terminarIntro();
 }
 
 function desenharIntro() {
@@ -146,12 +149,16 @@ function desenharIntro() {
   if (c.t > 240) {
     ctx.globalAlpha = Math.min(1, (c.t - 240) / 20);
     ctx.fillStyle = "rgba(0,0,0,0.55)";
-    ctx.fillRect(0, 120, LARGURA, 150);
+    ctx.fillRect(0, 120, LARGURA, 190);
     ctx.font = "bold 46px monospace";
     textoSombra("O vento levou a banana!", LARGURA / 2, 185, "#ffe066");
     if (c.t > 320) {
       ctx.font = "bold 24px monospace";
       textoSombra("Atravesse a Selva, o Deserto, a Era do Gelo e o Vulcão para recuperá-la!", LARGURA / 2, 235);
+    }
+    if (c.t > 400) {
+      ctx.font = "bold 20px monospace";
+      textoSombra("Dizem que ela foi parar nas garras do Dragão de Magma...", LARGURA / 2, 280, "#ff922b");
     }
     ctx.globalAlpha = 1;
   }
@@ -162,80 +169,339 @@ function desenharIntro() {
 }
 
 
-// ---------- FINAL ----------
+// ---------- FINAL: o macaco derrota o Dragão, pega a banana e finalmente come ----------
 
-const final = { t: 0 };
+const final = { t: 0, etapa: "", pronto: false };
 
-function iniciarFinal() {
+function iniciarCenaFinal() {
+  const j = jogador;
+  const c = chefe;
   estado = "final";
-  final.t = 0;
-  particulas = [];
-  cameraX = 0;
+  pausado = false;
+  mensagem = null;
+  Object.assign(final, {
+    t: 0, et: 0, etapa: "queda", pronto: false,
+    mx: j.x + j.w / 2, mbase: j.y + j.h, mvy: 0, mdir: c.x + c.w / 2 > j.x + j.w / 2 ? 1 : -1, pose: "parado",
+    dx: c.x, dy: c.y, dvx: 0, dvy: 0, drot: 0, desc: 1, ddir: c.dir, pousou: false,
+    comBanana: true, bx: 0, by: 0, bvx: 0, bvy: 0, brot: 0, mordidas: 0, laco: 0
+  });
+  cancelarLaco();
+  tremor = 25;
+  flashNuke = 20;
+  som("rugido");
+
+  // Recompensas do último chefe
+  const premio = save.chefes[3] ? 60 : RECOMPENSA_CHEFE[3];
+  save.moedas += premio;
+  final.premio = premio;
+  save.chefes[3] = true;
   save.zerou = true;
-  save.chefes[MUNDOS.length - 1] = true;
   save.desbloqueado = TOTAL_FASES - 1;
+  final.cosmetico = darPremioDaFase(fase.indice);
   salvar();
-  som("vitoria");
   if (typeof atualizarTelas === "function") atualizarTelas();
+}
+
+function proximaEtapa(nome) {
+  final.etapa = nome;
+  final.et = 0;
 }
 
 function atualizarFinal() {
   const f = final;
+  const spr = SPR_CHEFE.dragao;
   f.t++;
+  f.et++;
   tempo++;
-  if (f.t === 70 || f.t === 110 || f.t === 150) {
-    som("nham");
-    for (let i = 0; i < 8; i++) {
-      particula({ tipo: "q", x: LARGURA / 2, y: CHAO - 120, vx: (Math.random() - 0.5) * 5, vy: -Math.random() * 4, g: 0.3, vida: 30, max: 30, cor: "#ffe066", tam: 6 });
+  if (tremor > 0) tremor--;
+  if (flashNuke > 0) flashNuke--;
+
+  // O macaco cai até o chão se estava pulando
+  if (f.mbase < CHAO) {
+    f.mvy += GRAV;
+    f.mbase = Math.min(CHAO, f.mbase + f.mvy);
+  }
+
+  const meioDragao = f.dx + spr.w / 2;
+
+  switch (f.etapa) {
+    case "queda":
+      f.pose = "parado";
+      f.dvy += 0.5;
+      f.dy = Math.min(CHAO - spr.h, f.dy + f.dvy);
+      if (f.et % 6 === 0) {
+        const px = f.dx + Math.random() * spr.w;
+        const py = f.dy + Math.random() * spr.h;
+        for (let i = 0; i < 8; i++) particula({ tipo: "q", x: px, y: py, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, g: 0, vida: 20, max: 20, cor: i % 2 ? "#ffd43b" : "#ff6b00", tam: 8 });
+        som("pisao");
+      }
+      if (f.dy >= CHAO - spr.h && !f.pousou) {
+        f.pousou = true;
+        tremor = 20;
+        som("pancada");
+        poeira(f.dx + 30, CHAO, 8, -1);
+        poeira(f.dx + spr.w - 30, CHAO, 8, 1);
+      }
+      if (f.et > 70 && f.pousou) proximaEtapa("tonto");
+      break;
+
+    case "tonto":
+      if (f.et > 40) proximaEtapa("andando");
+      break;
+
+    case "andando": {
+      f.mdir = meioDragao > f.mx ? 1 : -1;
+      const alvo = meioDragao - f.mdir * (spr.w / 2 + 170);
+      if (Math.abs(alvo - f.mx) > 4 && f.et < 90) {
+        f.mx += Math.sign(alvo - f.mx) * 4;
+        f.pose = Math.floor(f.t / 7) % 2 ? "andar1" : "andar2";
+      } else {
+        f.pose = "parado";
+        som("laco");
+        proximaEtapa("laco");
+      }
+      break;
+    }
+
+    case "laco": {
+      f.pose = "tiro";
+      const borda = f.mdir > 0 ? f.dx + 20 : f.dx + spr.w - 20;
+      const dist = Math.abs(borda - (f.mx + f.mdir * 32));
+      f.laco = Math.min(dist, f.laco + 26);
+      if (f.laco >= dist) { som("agarrou"); proximaEtapa("puxando"); }
+      break;
+    }
+
+    case "puxando": {
+      f.pose = "tiro";
+      const alvoX = f.mdir > 0 ? f.mx + 60 : f.mx - 60 - spr.w;
+      f.dx += limitar(alvoX - f.dx, -9, 9);
+      const borda = f.mdir > 0 ? f.dx + 20 : f.dx + spr.w - 20;
+      f.laco = Math.abs(borda - (f.mx + f.mdir * 32));
+      if (Math.abs(alvoX - f.dx) < 2) {
+        proximaEtapa("chute");
+        f.laco = 0;
+        f.dvx = f.mdir * 5;
+        f.dvy = -17;
+        tremor = 35;
+        flashNuke = 25;
+        som("chute");
+        particula({ tipo: "texto", x: f.mx + f.mdir * 120, y: CHAO - 160, vx: 0, vy: -1.2, g: 0, vida: 70, max: 70, texto: "POW!!!", cor: "#ffd43b", tam: 64 });
+        for (let i = 0; i < 24; i++) {
+          const a = (i / 24) * Math.PI * 2;
+          particula({ tipo: "q", x: f.mx + f.mdir * 70, y: CHAO - 50, vx: Math.cos(a) * 8, vy: Math.sin(a) * 8, g: 0, vida: 25, max: 25, cor: i % 2 ? "#ffffff" : "#ffd43b", tam: 9 });
+        }
+      }
+      break;
+    }
+
+    case "chute":
+      f.pose = f.et < 25 ? "chute" : "parado";
+      voarDragao(f, spr);
+      if (f.et > 25) proximaEtapa("pegarBanana");
+      break;
+
+    case "pegarBanana": {
+      voarDragao(f, spr);
+      if (!f.comBanana) {
+        f.bvy = Math.min(f.bvy + 0.22, 7);
+        f.bx += f.bvx;
+        f.by += f.bvy;
+        f.brot += 0.15;
+        const alvo = f.bx + 24;
+        if (Math.abs(alvo - f.mx) > 3) {
+          f.mdir = alvo > f.mx ? 1 : -1;
+          f.mx += Math.sign(alvo - f.mx) * Math.min(5, Math.abs(alvo - f.mx));
+          f.pose = Math.floor(f.t / 6) % 2 ? "andar1" : "andar2";
+        } else {
+          f.pose = "vitoria";
+        }
+        if (f.by + 40 >= f.mbase - 110 && Math.abs(alvo - f.mx) < 40) {
+          som("vitoria");
+          for (let i = 0; i < 16; i++) particula({ tipo: "q", x: f.mx, y: f.mbase - 110, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, g: 0, vida: 25, max: 25, cor: "#ffe066", tam: 6 });
+          proximaEtapa("pegou");
+        }
+        if (f.by > CHAO) { f.by = CHAO - 40; f.bx = f.mx - 24; }
+      }
+      break;
+    }
+
+    case "pegou":
+      f.pose = "vitoria";
+      voarDragao(f, spr);
+      if (f.et > 50) proximaEtapa("comendo");
+      break;
+
+    case "comendo":
+      f.pose = f.et % 30 < 15 ? "vitoria" : "parado";
+      if (f.et === 20 || f.et === 50 || f.et === 80) {
+        f.mordidas++;
+        som("nham");
+        particula({ tipo: "texto", x: f.mx + 40, y: f.mbase - 130, vx: 0, vy: -1, g: 0, vida: 40, max: 40, texto: "Nham!", cor: "#ffffff", tam: 24 });
+        for (let i = 0; i < 8; i++) particula({ tipo: "q", x: f.mx, y: f.mbase - 100, vx: (Math.random() - 0.5) * 5, vy: -Math.random() * 4, g: 0.3, vida: 30, max: 30, cor: "#ffe066", tam: 6 });
+      }
+      if (f.et > 110) { som("vitoria"); proximaEtapa("festa"); }
+      break;
+
+    case "festa":
+      f.pose = Math.sin(f.et * 0.12) > 0 ? "vitoria" : "parado";
+      if (f.mbase >= CHAO && f.et % 30 === 0) f.mvy = -8;
+      if (f.et % 4 === 0) {
+        const cores = ["#ff6b6b", "#ffd43b", "#69db7c", "#4dabf7", "#da77f2"];
+        particula({ tipo: "q", x: Math.random() * LARGURA, y: -10, vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 2, g: 0.02, vida: 300, max: 300, cor: sorteio(cores), tam: 8 });
+      }
+      if (f.et === 220) f.pronto = true;
+      break;
+  }
+
+  atualizarParticulas();
+}
+
+// O Dragão sobe girando pro espaço e solta a banana no caminho
+function voarDragao(f, spr) {
+  if (f.desc <= 0) return;
+  f.dx += f.dvx;
+  f.dy += f.dvy;
+  f.dvy -= 0.2;
+  f.drot += 0.3;
+  f.desc = Math.max(0.15, f.desc - 0.01);
+  if (tempo % 2 === 0) particula({ tipo: "fumaca", x: f.dx + spr.w / 2, y: f.dy + spr.h / 2, vx: 0, vy: 0, g: 0, vida: 30, max: 30, cor: "#dee2e6", tam: 30 * f.desc + 8 });
+  if (f.comBanana && f.dy < 260) {
+    f.comBanana = false;
+    f.bx = f.dx + spr.w / 2 - 24;
+    f.by = f.dy + spr.h / 2;
+    f.bvy = -4;
+    f.bvx = limitar((f.mx - f.bx - 24) / 90, -3, 3);
+    som("vento");
+  }
+  if (f.dy + spr.h * f.desc < -40) {
+    f.desc = 0;
+    particula({ tipo: "estrela", x: limitar(f.dx + spr.w / 2, 40, LARGURA - 40), y: 30, vx: 0, vy: 0, g: 0, vida: 90, max: 90 });
+    som("estrela");
+  }
+}
+
+function desenharDragaoFinal(f) {
+  const spr = SPR_CHEFE.dragao;
+  if (f.desc <= 0) return;
+  const img = f.etapa === "queda" && f.t % 8 < 4 ? (f.ddir > 0 ? spr.flashD : spr.flashE) : (f.ddir > 0 ? spr.d : spr.e);
+  ctx.save();
+  ctx.translate(Math.round(f.dx + spr.w / 2), Math.round(f.dy + spr.h / 2));
+  ctx.rotate(f.drot);
+  ctx.scale(f.desc, f.desc);
+  ctx.translate(-spr.w / 2, -spr.h / 2);
+  const asa = SPR_ASA;
+  const bat = f.etapa === "tonto" || f.etapa === "andando" || f.etapa === "laco" ? 0.4 : Math.cos(tempo * 0.4);
+  ctx.save();
+  if (f.ddir > 0) { ctx.translate(48, 54); ctx.scale(1, bat); ctx.drawImage(asa.d, -48, -54); }
+  else { ctx.translate(spr.w - 48, 54); ctx.scale(1, bat); ctx.drawImage(asa.e, -48, -54); }
+  ctx.restore();
+  ctx.drawImage(img, 0, 0);
+  if (f.comBanana) {
+    const bx = f.ddir > 0 ? 7 * 6 + 20 : spr.w - 7 * 6 - 68;
+    ctx.drawImage(SPR_BANANA, bx, 17 * 6 - 28);
+  }
+  ctx.restore();
+  if (f.etapa === "tonto" || f.etapa === "andando" || f.etapa === "laco" || f.etapa === "puxando") {
+    for (let i = 0; i < 3; i++) {
+      const a = tempo * 0.12 + (i * Math.PI * 2) / 3;
+      desenharEstrela4(f.dx + spr.w * 0.8 + Math.cos(a) * 40, f.dy + 10 + Math.sin(a) * 10, 8, "#ffe066");
     }
   }
-  if (f.t > 170 && f.t % 4 === 0) {
-    const cores = ["#ff6b6b", "#ffd43b", "#69db7c", "#4dabf7", "#da77f2"];
-    particula({ tipo: "q", x: Math.random() * LARGURA, y: -10, vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 2, g: 0.02, vida: 300, max: 300, cor: sorteio(cores), tam: 8 });
-  }
-  if (f.t === 175) som("vitoria");
-  atualizarParticulas();
+}
+
+function formatarTempo(frames) {
+  const seg = Math.floor(frames / 60);
+  const h = Math.floor(seg / 3600);
+  const m = Math.floor((seg % 3600) / 60);
+  const s = seg % 60;
+  return (h ? h + "h " : "") + m + "min " + (s < 10 ? "0" : "") + s + "s";
 }
 
 function desenharFinal() {
   const f = final;
-  desenharFundo(0, 0);
-  desenharChaoCena(0, 0);
-  ctx.drawImage(SPR_DECOR[0], 200, CHAO - SPR_DECOR[0].height);
-  ctx.drawImage(SPR_DECOR[0], 880, CHAO - SPR_DECOR[0].height);
+  const tx = tremor > 0 ? Math.round((Math.random() - 0.5) * Math.min(tremor, 16)) : 0;
+  desenharFundo(3, 0);
 
-  const pulando = f.t > 170 ? Math.abs(Math.sin(f.t * 0.12)) * 30 : 0;
-  desenharMacacoCena(LARGURA / 2, CHAO - pulando, f.t < 170 ? "pulo" : (Math.sin(f.t * 0.12) > 0 ? "pulo" : "parado"), 1, 0);
-
-  // Banana sendo comida em 3 mordidas
-  const mordidas = f.t < 70 ? 0 : f.t < 110 ? 1 : f.t < 150 ? 2 : 3;
-  if (mordidas < 3) {
-    const h = SPR_BANANA.height;
-    const corte = Math.round((h * mordidas) / 3);
-    ctx.drawImage(SPR_BANANA, 0, corte, SPR_BANANA.width, h - corte, LARGURA / 2 - 24, CHAO - 130 + corte - pulando, SPR_BANANA.width, h - corte);
+  // O céu vai clareando quando o macaco come a banana
+  if (f.etapa === "comendo" || f.etapa === "festa") {
+    const k = f.etapa === "festa" ? Math.min(1, f.et / 120) : 0;
+    ctx.fillStyle = "rgba(255,200,120," + (0.15 + k * 0.35) + ")";
+    ctx.fillRect(0, 0, LARGURA, ALTURA);
   }
-  if (f.t > 170) {
+
+  ctx.save();
+  ctx.translate(tx, 0);
+  desenharSolidos(0);
+  desenharPlataformas(0);
+  desenharDragaoFinal(f);
+
+  // Cipó-laço puxando o Dragão
+  if (f.laco > 0) {
+    const mx = f.mx + f.mdir * 32;
+    const my = f.mbase - 22;
+    desenharCorda(mx, my, mx + f.mdir * f.laco, my - 10, "#2b8a3e", "#69db7c");
+  }
+
+  desenharMacacoCena(f.mx, f.mbase, f.pose, f.mdir, 0);
+
+  // A banana: caindo, na mão ou sendo comida
+  const naMao = f.etapa === "pegou" || f.etapa === "comendo" || f.etapa === "festa";
+  if (!f.comBanana && !naMao) {
+    ctx.save();
+    ctx.translate(f.bx + 24, f.by + 20);
+    ctx.rotate(f.brot);
+    ctx.drawImage(SPR_BANANA, -24, -20);
+    ctx.restore();
+  } else if (naMao && f.mordidas < 3) {
+    const h = SPR_BANANA.height;
+    const corte = Math.round((h * f.mordidas) / 3);
+    ctx.drawImage(SPR_BANANA, 0, corte, SPR_BANANA.width, h - corte, Math.round(f.mx - 24), Math.round(f.mbase - 122 + corte), SPR_BANANA.width, h - corte);
+  }
+  if (f.etapa === "festa") {
     for (let i = 0; i < 3; i++) {
-      const y = CHAO - 160 - ((f.t * 1.5 + i * 60) % 180);
+      const y = f.mbase - 160 - ((f.et * 1.5 + i * 60) % 180);
       ctx.globalAlpha = 0.8;
-      ctx.drawImage(SPR_CORACAO, LARGURA / 2 - 80 + i * 70, y);
+      ctx.drawImage(SPR_CORACAO, f.mx - 90 + i * 70, y);
       ctx.globalAlpha = 1;
     }
   }
   desenharParticulas();
+  ctx.restore();
+
+  if (flashNuke > 0) {
+    ctx.fillStyle = "rgba(255,255,255," + flashNuke / 30 + ")";
+    ctx.fillRect(0, 0, LARGURA, ALTURA);
+  }
 
   ctx.textAlign = "center";
-  if (f.t > 180) {
-    ctx.globalAlpha = Math.min(1, (f.t - 180) / 30);
+  if (f.etapa === "festa" && f.et > 40) {
+    ctx.globalAlpha = Math.min(1, (f.et - 40) / 30);
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 50, LARGURA, 150);
     ctx.font = "bold 72px monospace";
-    textoSombra("FIM!", LARGURA / 2, 150, "#ffe066");
-    ctx.font = "bold 26px monospace";
-    textoSombra("O primata finalmente comeu a sua banana!", LARGURA / 2, 205);
-    ctx.font = "bold 20px monospace";
-    textoSombra("Moedas guardadas: " + save.moedas + "  -  gaste tudo na loja!", LARGURA / 2, 245, "#ffe066");
+    textoSombra("FIM!", LARGURA / 2, 125, "#ffe066");
+    ctx.font = "bold 24px monospace";
+    textoSombra("O primata derrotou o Dragão de Magma e finalmente comeu a sua banana!", LARGURA / 2, 175);
     ctx.globalAlpha = 1;
   }
-  if (f.t > 260) {
+  if (f.etapa === "festa" && f.et > 120) {
+    const st = save.stats;
+    const linhas = [
+      "Nível " + save.nivel + "   ·   Moedas: " + save.moedas + (f.premio ? " (+" + f.premio + ")" : ""),
+      "Inimigos derrotados: " + st.inimigos + "   ·   Chutados pro espaço: " + st.chutes,
+      "Chefes derrotados: " + st.chefes + "   ·   Quedas: " + st.mortes,
+      "Tempo de jogo: " + formatarTempo(st.tempo)
+    ];
+    if (f.cosmetico) linhas.push("Nova skin: " + f.cosmetico.nome + "!");
+    ctx.globalAlpha = Math.min(1, (f.et - 120) / 30);
+    ctx.fillStyle = "rgba(20,12,6,0.8)";
+    ctx.fillRect(LARGURA / 2 - 380, 220, 760, 40 + linhas.length * 28);
+    ctx.font = "bold 18px monospace";
+    linhas.forEach(function(l, i) { textoSombra(l, LARGURA / 2, 250 + i * 28, i === linhas.length - 1 && f.cosmetico ? "#ffe066" : "#ffffff"); });
+    ctx.globalAlpha = 1;
+  }
+  if (f.pronto) {
     ctx.font = "bold 18px monospace";
     textoSombra("Aperte qualquer tecla para voltar ao menu", LARGURA / 2, ALTURA - 20, "#dee2e6");
   }

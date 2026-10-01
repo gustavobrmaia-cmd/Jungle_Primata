@@ -30,6 +30,7 @@ let tempo = 0;
 let checkpointX = null;
 let moedasNaFase = 0;
 let flashNuke = 0;
+let flashDano = 0;
 let sujo = false;          // tem coisa para salvar
 
 const buffs = { velocidade: 0, puloDuplo: 0, escudo: 0, ima: 0 };
@@ -78,7 +79,9 @@ function iniciarFase(indice, doCheckpoint) {
   tempo = 0;
   moedasNaFase = 0;
   flashNuke = 0;
+  flashDano = 0;
   tremor = 0;
+  particulasHud = [];
 
   if (doCheckpoint && checkpointX !== null) {
     fase.checkpoints.forEach(function(c) { if (c.x <= checkpointX) c.ativo = true; });
@@ -93,6 +96,7 @@ function iniciarFase(indice, doCheckpoint) {
   estado = "jogo";
   pausado = false;
   apertos.clear();
+  if (!doCheckpoint) mostrarCartaoFase();
   if (typeof atualizarTelas === "function") atualizarTelas();
 }
 
@@ -235,13 +239,23 @@ function atualizarJogador() {
   if (apertouPulo) j.bufferPulo = 7;
 
   // Ações
-  if (apertouTiro) atirar();
-  if (apertouRecarga) recarregar();
-  if (apertouLaco) lancarLaco();
-  if (apertouDash) iniciarDash();
+  if (!j.comemorar) {
+    if (apertouTiro) atirar();
+    if (apertouRecarga) recarregar();
+    if (apertouLaco) lancarLaco();
+    if (apertouDash) iniciarDash();
+  }
   if (j.laco) atualizarLaco();
 
   let dir = (teclas.direita ? 1 : 0) - (teclas.esquerda ? 1 : 0);
+
+  // Comemorando no fim da fase: pulinhos de alegria
+  if (j.comemorar > 0) {
+    j.comemorar--;
+    dir = 0;
+    j.bufferPulo = 0;
+    if (j.noChao && j.comemorar % 28 === 0) { j.vy = -8; j.esticar = 1; }
+  }
 
   // Pendurado no cipó
   if (j.cipo) {
@@ -293,13 +307,18 @@ function atualizarJogador() {
       if (naAreia) max = 1.8;
       const acel = emGelo ? 0.2 : 0.5;
       const atrito = emGelo ? 0.08 : (j.noChao ? 0.7 : 0.4);
+      const vento = ventoNoJogador();
+      if (vento && dir === -vento) max *= 0.45;   // andar contra o vento é difícil
       if (dir) {
         if (j.vx * dir > max) j.vx = aproximar(j.vx, dir * max, j.noChao ? 0.3 : 0.04);
         else j.vx = aproximar(j.vx, dir * max, j.vx * dir < 0 ? acel + atrito : acel);
         if (!j.laco) j.dir = dir;
+      } else if (vento) {
+        j.vx = aproximar(j.vx, vento * 2.2, j.noChao ? 0.15 : 0.06);
       } else {
         j.vx = aproximar(j.vx, 0, Math.abs(j.vx) > VEL && !j.noChao ? 0.05 : atrito);
       }
+      if (vento && !j.noChao) j.vx = Math.max(-5, Math.min(5, j.vx + vento * 0.08));
       if (buffs.velocidade > 0 && Math.abs(j.vx) > 4 && tempo % 4 === 0) fantasma(0.35);
     }
 
@@ -354,9 +373,24 @@ function atualizarJogador() {
   if (j.noChao) {
     j.dashNoAr = true;
     j.pulosExtras = 1;
-    if (!estavaNoChao && vyAntes > 3) aterrissar(vyAntes);
-    if (j.chao.cai && !j.chao.tremendo && !j.chao.caiu) j.chao.tremendo = 35;
+    if (!j.chao.cogumelo) {
+      if (!estavaNoChao && vyAntes > 3) aterrissar(vyAntes);
+      if (j.chao.cai && !j.chao.tremendo && !j.chao.caiu) j.chao.tremendo = j.chao.fragil ? 28 : 35;
+    }
   }
+
+  // Cogumelo: quica também ao andar até ele (não precisa acertar o pulo)
+  if (!j.morto && j.vy >= 0) {
+    for (let i = 0; i < fase.plataformas.length; i++) {
+      const p = fase.plataformas[i];
+      const cx = j.x + j.w / 2;
+      if (p.cogumelo && cx > p.x + 6 && cx < p.x + p.w - 6 && j.y + j.h >= p.y - 2 && j.y + j.h <= CHAO + 1) {
+        j.chao = p;
+        j.noChao = true;
+      }
+    }
+  }
+  if (j.noChao && j.chao && j.chao.cogumelo) quicarCogumelo(j.chao);
 
   // Agarra o cipó se passar perto dele no ar
   if (!j.noChao && !j.cipo && j.soltouCipo === 0 && j.dash === 0) {
@@ -372,6 +406,25 @@ function atualizarJogador() {
   }
 
   posMovimento();
+}
+
+// Cogumelo pula-pula
+function quicarCogumelo(p) {
+  const j = jogador;
+  if (j.deslizando && podeLevantar()) levantar();
+  j.y = Math.min(j.y, p.y - j.h);
+  j.vy = -21;
+  j.noChao = false;
+  j.chao = null;
+  j.coyote = 0;
+  j.bufferPulo = 0;
+  j.pulouNormal = false;
+  j.esticar = 1;
+  p.amassar = 12;
+  som("impulso");
+  for (let k = 0; k < 8; k++) {
+    particula({ tipo: "q", x: j.x + j.w / 2, y: j.y + j.h, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 3, g: 0.15, vida: 20, max: 20, cor: k % 2 ? "#ffffff" : "#e03131", tam: 6 });
+  }
 }
 
 function posMovimento() {
@@ -650,6 +703,7 @@ function machucar(origemX, ignorarInvencivel) {
   j.vidas--;
   j.invencivel = 90;
   tremor = 10;
+  flashDano = 20;
   som("dano");
   cancelarLaco();
   j.cipo = null;
@@ -699,8 +753,9 @@ function morrer() {
 
 function perdeuTudo() {
   sujo = true;
-  mostrarMensagem("Você perdeu!", checkpointX !== null ? "Voltando do checkpoint..." : "Tentando de novo...", 100, function() {
-    iniciarFase(fase.indice, true);
+  save.stats.mortes++;
+  mostrarMensagem("Você perdeu!", checkpointX !== null ? "Voltando do checkpoint..." : "Tentando de novo...", 90, function() {
+    trocarCena(function() { iniciarFase(fase.indice, true); });
   });
 }
 
@@ -730,6 +785,26 @@ const COMPORTAMENTO = {
     else if (e.noChao && !temChao(e.dir > 0 ? e.x + e.w + 2 : e.x - 2, e.y + e.h + 4)) e.dir *= -1;
   },
 
+  aranha: function(e) {
+    // Fica pendurada no fio; desce quando o macaco passa embaixo e sobe de novo
+    const j = jogador;
+    const dx = Math.abs(j.x + j.w / 2 - (e.x + e.w / 2));
+    const fundo = CHAO - e.h - 8;
+    if (e.estado === "normal") {
+      e.y = e.y0 + Math.sin(tempo * 0.05 + e.ang) * 6;
+      if (dx < 170 && !j.morto && e.timer <= 0) e.estado = "descendo";
+      if (e.timer > 0) e.timer--;
+    } else if (e.estado === "descendo") {
+      e.y = Math.min(e.y + e.vel * 1.5, fundo);
+      if (e.y >= fundo) { e.estado = "esperando"; e.timer = 40; }
+    } else if (e.estado === "esperando") {
+      if (--e.timer <= 0) e.estado = "subindo";
+    } else {
+      e.y -= 2.5;
+      if (e.y <= e.y0) { e.y = e.y0; e.estado = "normal"; e.timer = 70; }
+    }
+  },
+
   voador: function(e) {
     e.timer++;
     e.ang += 0.01 * e.vel;
@@ -757,6 +832,9 @@ const COMPORTAMENTO = {
       e.timer++;
       e.x += e.vx;
       e.y += e.vy;
+      if (e.t.rastro && tempo % 2 === 0) {
+        particula({ tipo: "q", x: e.x + e.w / 2, y: e.y + e.h / 2, vx: 0, vy: -0.5, g: 0, vida: 16, max: 16, cor: e.t.rastro, tam: 8 });
+      }
       if (e.y + e.h > CHAO - 6 || e.timer > 70) e.estado = "subindo";
     } else {
       e.y -= 3;
@@ -844,6 +922,10 @@ function atirarInimigo(e) {
     projeteis.push({ tipo: "espinho", x: cx - 9, y: cy, w: 18, h: 6, vx: Math.sign(dx) * 5.5, vy: 0, vida: 160 });
   } else if (e.t.tiro === "neve") {
     projeteis.push({ tipo: "neve", x: cx - 10, y: cy - 10, w: 20, h: 20, vx: limitar(dx / 55, -7, 7), vy: -9, g: 0.33, vida: 200 });
+  } else if (e.t.tiro === "coco") {
+    projeteis.push({ tipo: "coco", x: cx - 12, y: cy - 12, w: 24, h: 24, vx: limitar(dx / 50, -8, 8), vy: -10, g: 0.4, vida: 200 });
+  } else if (e.t.tiro === "pedra") {
+    projeteis.push({ tipo: "pedrinha", x: cx - 14, y: cy - 14, w: 28, h: 28, vx: limitar(dx / 60, -7, 7), vy: -11, g: 0.38, vida: 220 });
   } else {
     const d = Math.hypot(dx, dy) || 1;
     projeteis.push({ tipo: "fogo", x: cx - 12, y: cy - 12, w: 24, h: 24, vx: (dx / d) * 4.5, vy: (dy / d) * 4.5, vida: 200 });
@@ -891,7 +973,8 @@ function colisaoInimigoJogador(e) {
 
   if (j.dash > 0 || buffs.escudo > 0) { matarInimigo(e, "pancada"); return; }
   if (j.deslizando && !e.t.voa) { matarInimigo(e, "pancada"); return; }
-  if (j.vy > 0 && j.pesAntes <= e.y + 16 && !e.t.espinhoso) {
+  const espinhoso = e.t.espinhoso || (e.t.rolaEspinhoso && e.estado === "deslizar");
+  if (j.vy > 0 && j.pesAntes <= e.y + 16 && !espinhoso) {
     danificarInimigo(e, 99, "pisao");
     j.vy = teclas.pulo ? -13 : -9;
     j.pulouNormal = false;
@@ -925,7 +1008,14 @@ function matarInimigo(e, como) {
   for (let i = 0; i < 8; i++) {
     particula({ tipo: "q", x: e.x + e.w / 2, y: e.y + e.h / 2, vx: (Math.random() - 0.5) * 7, vy: (Math.random() - 0.7) * 6, g: 0.2, vida: 25, max: 25, cor: "#ffffff", tam: 5 });
   }
+  particula({ tipo: "fumaca", x: e.x + e.w / 2, y: e.y + e.h / 2, vx: 0, vy: -0.5, g: 0, vida: 25, max: 25, cor: "#ffffff", tam: e.w });
   ganharMoedas(1, e.x + e.w / 2, e.y);
+  ganharXp(XP.inimigo, e.x + e.w / 2, e.y - 24);
+  save.stats.inimigos++;
+  // De vez em quando o inimigo solta um power-up
+  if (Math.random() < 0.07 && como !== "nuke") {
+    fase.powerups.push({ x: e.x + e.w / 2 - 22, y: e.y - 20, base: Math.min(e.y - 20, CHAO - 120), tipo: sorteio(TIPOS_POWERUP), vida: 600 });
+  }
 }
 
 function chutarProEspaco(e) {
@@ -944,6 +1034,9 @@ function chutarProEspaco(e) {
     particula({ tipo: "q", x: e.x + e.w / 2, y: e.y + e.h / 2, vx: Math.cos(a) * 6, vy: Math.sin(a) * 6, g: 0, vida: 18, max: 18, cor: i % 2 ? "#ffffff" : "#ffd43b", tam: 7 });
   }
   ganharMoedas(2, e.x + e.w / 2, e.y);
+  ganharXp(XP.chute, e.x + e.w / 2, e.y - 24);
+  save.stats.inimigos++;
+  save.stats.chutes++;
 }
 
 // O inimigo chutado sobe girando, encolhe e vira uma estrelinha lá no céu
@@ -976,12 +1069,20 @@ function atualizarProjeteis() {
     p.vida--;
     if (p.aviso > 0) { p.aviso--; continue; }   // ainda mostrando a sombra de aviso
 
-    p.vy += p.g || 0;
-    p.x += p.vx;
-    p.y += p.vy;
     if (p.rola) {
-      if (p.y + p.h > CHAO) { p.y = CHAO - p.h; p.vy = 0; }
+      // Rola pelo chão, cai nos buracos e quebra ao bater numa parede
+      p.x += p.vx;
+      p.vy = Math.min(p.vy + (p.g || 0.6), MAX_QUEDA);
+      p.y += p.vy;
+      const sol = fase.solidos;
+      for (let k = 0; k < sol.length; k++) {
+        if (p.vy > 0 && encosta(p, sol[k]) && p.y + p.h - p.vy <= sol[k].y + 1) { p.y = sol[k].y - p.h; p.vy = 0; }
+      }
       p.rot = (p.rot || 0) + p.vx / (p.w / 2);
+    } else {
+      p.vy += p.g || 0;
+      p.x += p.vx;
+      p.y += p.vy;
     }
     if (p.rastro && tempo % 2 === 0) {
       particula({ tipo: "q", x: p.x + p.w / 2, y: p.y + p.h / 2, vx: 0, vy: -0.5, g: 0, vida: 16, max: 16, cor: p.rastro, tam: 8 });
@@ -989,7 +1090,7 @@ function atualizarProjeteis() {
 
     let acabou = p.vida <= 0 || p.y > ALTURA + 60 || p.x < cameraX - 400 || p.x > cameraX + LARGURA + 400;
     if (!acabou && !p.atravessa) {
-      const teste = p.rola ? { x: p.x, y: p.y, w: p.w, h: p.h - 6 } : p;
+      const teste = p.rola ? { x: p.x, y: p.y, w: p.w, h: p.h - 10 } : p;
       if (solidoNaCaixa(teste) || (p.quebraNoChao && p.y + p.h >= CHAO)) {
         acabou = true;
         estilhacar(p);
@@ -1182,6 +1283,8 @@ function atualizarMoedas() {
     if (!j.morto && m.x < j.x + j.w && m.x + 32 > j.x && m.y < j.y + j.h && m.y + 32 > j.y) {
       m.pega = true;
       ganharMoedas(1, m.x + 16, m.y);
+      ganharXp(XP.moeda);
+      moedaParaHud(m.x + 16, m.y + 16);
       for (let k = 0; k < 5; k++) {
         particula({ tipo: "q", x: m.x + 16, y: m.y + 16, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, g: 0, vida: 15, max: 15, cor: "#fff3a0", tam: 4 });
       }
@@ -1190,10 +1293,13 @@ function atualizarMoedas() {
 
   for (let i = 0; i < fase.checkpoints.length; i++) {
     const c = fase.checkpoints[i];
+    if (c.ativo && c.sobe < 1) c.sobe = Math.min(1, (c.sobe || 0) + 0.04);
     if (!c.ativo && !j.morto && j.x + j.w > c.x) {
       c.ativo = true;
+      c.sobe = 0;
       checkpointX = c.x;
       j.vidas = Math.max(j.vidas, Math.min(vidasMax(), j.vidas + 1));
+      ganharXp(XP.checkpoint, c.x + 20, CHAO - 140);
       som("checkpoint");
       texto(c.x + 20, CHAO - 110, "Checkpoint!", "#ffffff", 22);
       for (let k = 0; k < 12; k++) {
@@ -1220,12 +1326,11 @@ function atualizarBanana() {
   } else if (b.estado === "parada") {
     b.y = b.base + Math.sin(b.t * 0.08) * 4;
     if (!j.morto && Math.abs(j.x + j.w / 2 - (b.x + 24)) < 110 && j.y + j.h > CHAO - 160) {
-      if (fase.ehChefe && fase.mundo === MUNDOS.length - 1) {
-        iniciarFinal();
-        return;
-      }
       b.estado = "voando";
       b.t = 0;
+      j.comemorar = 70;
+      j.vx = 0;
+      cancelarLaco();
       som("vento");
     }
   } else if (b.estado === "voando") {
@@ -1242,16 +1347,18 @@ function fimDaFase() {
   let titulo = "Fase completa!";
   if (fase.ehChefe) {
     titulo = MUNDOS[fase.mundo].nome + " completo!";
-    if (!save.chefes[fase.mundo]) {
-      save.chefes[fase.mundo] = true;
-    }
+    save.chefes[fase.mundo] = true;
   }
   save.desbloqueado = Math.max(save.desbloqueado, Math.min(i + 1, TOTAL_FASES - 1));
+  ganharXp(XP.fase + 15 * fase.mundo);
+  const premio = darPremioDaFase(i);
+  let sub = "A banana escapou de novo! Próximo: " + nomeFase(i + 1);
+  if (premio) sub = "Você ganhou: " + premio.nome + "!  Próximo: " + nomeFase(i + 1);
   salvar();
   sujo = false;
   som("vitoria");
-  mostrarMensagem(titulo, "A banana escapou de novo! Próximo: " + nomeFase(i + 1), 170, function() {
-    iniciarFase(i + 1);
+  mostrarMensagem(titulo, sub, 170, function() {
+    trocarCena(function() { iniciarFase(i + 1); });
   });
 }
 
@@ -1262,7 +1369,7 @@ function fimDaFase() {
 
 function usarPoder(id) {
   const p = PODERES.find(function(x) { return x.id === id; });
-  if (!p || estado !== "jogo" || pausado || !jogador || jogador.morto || mensagem) return;
+  if (!p || estado !== "jogo" || pausado || !jogador || jogador.morto || (mensagem && mensagem.congela)) return;
   if (save.poderes[id] <= 0 || recargas[id] > 0 || (buffs[id] || 0) > 0) { som("negado"); return; }
   save.poderes[id]--;
   sujo = true;
@@ -1273,22 +1380,23 @@ function usarPoder(id) {
   else buffs[id] = p.duracao;
 }
 
-function nuke() {
+function nuke(mini) {
   const j = jogador;
   const cx = j.x + j.w / 2;
-  flashNuke = 40;
-  tremor = 30;
+  const alcance = mini ? 480 : 800;
+  flashNuke = mini ? 25 : 40;
+  tremor = mini ? 18 : 30;
   som("nuke");
-  particula({ tipo: "anel", x: cx, y: j.y + j.h / 2, vx: 0, vy: 0, g: 0, vida: 40, max: 40 });
+  particula({ tipo: "anel", x: cx, y: j.y + j.h / 2, vx: 0, vy: 0, g: 0, vida: 40, max: 40, raio: alcance + 100 });
   for (let i = 0; i < inimigos.length; i++) {
     const e = inimigos[i];
-    if (e.vivo && Math.abs(e.x + e.w / 2 - cx) < 800) {
+    if (e.vivo && Math.abs(e.x + e.w / 2 - cx) < alcance) {
       if (e.lacado) cancelarLaco();
       matarInimigo(e, "nuke");
     }
   }
   projeteis = projeteis.filter(function(p) { return p.doJogador; });
-  if (chefe && chefe.vivo) danoChefe(8, cx, true);
+  if (chefe && chefe.vivo) danoChefe(mini ? 4 : 8, cx, true);
 }
 
 function atualizarBuffs() {
@@ -1386,7 +1494,7 @@ function desenharParticulas() {
       ctx.restore();
       if (p.vida % 6 < 3) desenharEstrela4(p.x + 26, p.y + 14, 5, "#ffe066");
     } else if (p.tipo === "anel") {
-      const r = (1 - k) * 900;
+      const r = (1 - k) * (p.raio || 900);
       ctx.globalAlpha = k;
       ctx.strokeStyle = "#fff3bf";
       ctx.lineWidth = 24 * k + 4;
@@ -1444,6 +1552,7 @@ function desenharClima() {
 function atualizarJogo() {
   tempo++;
   if (tremor > 0) tremor--;
+  atualizarExtrasHud();
 
   if (atualizarMensagem()) {
     atualizarParticulas();
@@ -1456,6 +1565,7 @@ function atualizarJogo() {
   if (chefe) atualizarChefe();
   atualizarProjeteis();
   atualizarPerigos();
+  atualizarObstaculos();
   atualizarMoedas();
   atualizarBanana();
   atualizarBuffs();
@@ -1514,15 +1624,41 @@ function desenharPlataformas(cam) {
     const p = pl[i];
     if (!visivel(p.x, p.w, cam) || p.y > ALTURA) continue;
     const tx = p.tremendo > 0 && !p.caiu ? Math.round((Math.random() - 0.5) * 4) : 0;
+    if (p.cogumelo) {
+      // Cogumelo amassa quando o macaco quica nele
+      const sq = p.amassar > 0 ? 1 - Math.sin((p.amassar / 12) * Math.PI) * 0.35 : 1;
+      ctx.save();
+      ctx.translate(Math.round(p.x + p.w / 2), CHAO);
+      ctx.scale(1 + (1 - sq) * 0.5, sq);
+      ctx.drawImage(SPR_COGUMELO, -SPR_COGUMELO.width / 2, -SPR_COGUMELO.height);
+      ctx.restore();
+      continue;
+    }
     ctx.save();
     ctx.translate(Math.round(p.x) + tx, Math.round(p.y));
-    ctx.fillStyle = padrao("plat");
     if (p.caiu) ctx.globalAlpha = 0.7;
-    ctx.fillRect(0, 0, p.w, 16);
-    if (p.cai) {
-      ctx.fillStyle = "rgba(255,107,0,0.6)";
-      ctx.fillRect(16, 6, 6, 4);
-      ctx.fillRect(p.w - 30, 4, 8, 4);
+    if (p.fragil) {
+      ctx.fillStyle = "#d0ebff";
+      ctx.fillRect(0, 0, p.w, 16);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, p.w, 4);
+      ctx.fillStyle = "#74c0fc";
+      ctx.fillRect(0, 12, p.w, 4);
+      if (p.tremendo > 0 || p.caiu) {
+        ctx.fillStyle = "#1c7ed6";
+        ctx.fillRect(20, 4, 4, 8);
+        ctx.fillRect(24, 8, 12, 4);
+        ctx.fillRect(60, 2, 4, 10);
+        ctx.fillRect(52, 6, 8, 4);
+      }
+    } else {
+      ctx.fillStyle = padrao("plat");
+      ctx.fillRect(0, 0, p.w, 16);
+      if (p.cai) {
+        ctx.fillStyle = "rgba(255,107,0,0.6)";
+        ctx.fillRect(16, 6, 6, 4);
+        ctx.fillRect(p.w - 30, 4, 8, 4);
+      }
     }
     ctx.restore();
   }
@@ -1688,7 +1824,7 @@ function desenharPlacas(cam) {
     if (!visivel(p.x - 200, 432, cam)) continue;
     ctx.drawImage(SPR_PLACA, p.x, CHAO - 32);
     if (Math.abs(j.x + j.w / 2 - (p.x + 16)) < 260) {
-      const linhas = p.texto.split("\n");
+      const linhas = p.texto.replace(/\{(\w+)\}/g, function(m, a) { return teclaDe(a); }).split("\n");
       ctx.font = "bold 16px monospace";
       let w = 0;
       linhas.forEach(function(l) { w = Math.max(w, ctx.measureText(l).width); });
@@ -1712,7 +1848,16 @@ function desenharCheckpoints(cam) {
   for (let i = 0; i < fase.checkpoints.length; i++) {
     const c = fase.checkpoints[i];
     if (!visivel(c.x, 40, cam)) continue;
-    ctx.drawImage(c.ativo ? SPR_BANDEIRA_ON[fase.mundo] : SPR_BANDEIRA_OFF, c.x, CHAO - 80);
+    ctx.fillStyle = "#d8d8d8";
+    ctx.fillRect(c.x + 5, CHAO - 80, 5, 80);
+    ctx.fillStyle = "#ffe066";
+    ctx.fillRect(c.x + 3, CHAO - 84, 9, 6);
+    const sobe = c.ativo ? (c.sobe === undefined ? 1 : c.sobe) : 0;
+    const fy = Math.round(CHAO - 24 - sobe * 52);
+    const onda = c.ativo ? Math.round(Math.sin(tempo * 0.15) * 3) : 0;
+    ctx.fillStyle = c.ativo ? MUNDOS[fase.mundo].cor : "#868e96";
+    ctx.fillRect(c.x + 10, fy, 26 + onda, 18);
+    ctx.fillRect(c.x + 10, fy + 18, 16 + onda, 4);
   }
 }
 
@@ -1749,6 +1894,10 @@ function desenharInimigos(cam) {
     if (!visivel(e.x, e.w, cam) && !e.espaco) continue;
     const spr = SPR_INIMIGO[e.tipo];
     const img = e.dir > 0 ? spr.d : spr.e;
+    if (e.t.comp === "aranha" && e.vivo) {
+      ctx.fillStyle = "#dee2e6";
+      ctx.fillRect(Math.round(e.x + e.w / 2) - 1, 0, 2, Math.round(e.y) + 4);
+    }
     ctx.save();
     if (e.espaco || (e.morto && !e.esmagado)) {
       ctx.translate(Math.round(e.x + e.w / 2), Math.round(e.y + e.h / 2));
@@ -1761,6 +1910,7 @@ function desenharInimigos(cam) {
       else if (e.lacado) ctx.rotate(Math.sin(tempo * 0.8) * 0.3);
       else if (e.t.voa) ctx.scale(1, 1 + Math.sin(tempo * 0.5) * 0.08);
       else if (e.t.comp === "atirador" && e.timer < 15) ctx.translate(tempo % 4 < 2 ? -2 : 2, 0);
+      else if (e.t.rolaEspinhoso && e.estado === "deslizar") { ctx.translate(0, -e.h / 2); ctx.rotate(tempo * 0.4 * e.dir); ctx.translate(0, e.h / 2); }
       else if (e.t.comp === "investida" && e.estado === "deslizar") ctx.rotate(e.dir * 1.2);
       else if (Math.abs(e.vx) > 0.1 && e.noChao) ctx.translate(0, Math.floor(tempo / 8) % 2 ? -2 : 0);
       if (e.flash > 0 && e.flash % 4 < 2) ctx.globalAlpha = 0.4;
@@ -1773,12 +1923,13 @@ function desenharInimigos(cam) {
 function poseJogador() {
   const j = jogador;
   if (j.morto) return "queda";
+  if (j.comemorar > 0) return "vitoria";
   if (j.cipo) return "pendurado";
   if (j.chute > 0) return "chute";
   if (j.poseTiro > 0 || j.laco) return "tiro";
   if (!j.noChao) return j.vy < 0 ? "pulo" : "queda";
   if (Math.abs(j.vx) > 0.5) return Math.floor(j.passos / 7) % 2 ? "andar1" : "andar2";
-  return "parado";
+  return tempo % 190 < 7 ? "piscar" : "parado";
 }
 
 function desenharJogador() {
@@ -1906,11 +2057,22 @@ function desenharProjeteis() {
         ctx.drawImage(SPR_ESTALACTITE, x, y);
         break;
       case "bolao":
+      case "bolaNeve":
+      case "pedra":
+      case "tronco":
         ctx.save();
         ctx.translate(x + p.w / 2, y + p.h / 2);
         ctx.rotate(p.rot || 0);
-        ctx.drawImage(SPR_PROJ.bolao, -p.w / 2, -p.h / 2);
+        ctx.drawImage(p.tipo === "tronco" ? SPR_TRONCO : SPR_PROJ[p.tipo], -p.w / 2, -p.h / 2, p.w, p.h);
         ctx.restore();
+        break;
+      case "dardo":
+        ctx.fillStyle = "#6b4220";
+        ctx.fillRect(x + 4, y + 2, p.w - 4, 2);
+        ctx.fillStyle = "#ced4da";
+        ctx.fillRect(x, y + 1, 6, 4);
+        ctx.fillStyle = "#e03131";
+        ctx.fillRect(x + p.w - 6, y, 6, 6);
         break;
       case "chama":
         ctx.fillStyle = tempo % 4 < 2 ? "#ffd43b" : "#ff6b00";
@@ -1936,8 +2098,9 @@ function desenharHud() {
   const max = vidasMax();
   for (let i = 0; i < max; i++) ctx.drawImage(i < j.vidas ? SPR_CORACAO : SPR_CORACAO_VAZIO, 20 + i * 34, 14);
 
-  // Moedas
-  ctx.drawImage(moedaFonte.img, 0, 0, moedaFonte.fw, moedaFonte.fh, 20, 52, 28, 28);
+  // Moedas (pulsam quando uma moeda chega voando)
+  const pulso = hudPulso * 0.5;
+  ctx.drawImage(moedaFonte.img, 0, 0, moedaFonte.fw, moedaFonte.fh, 20 - pulso, 52 - pulso, 28 + pulso * 2, 28 + pulso * 2);
   ctx.font = "bold 22px monospace";
   ctx.textAlign = "left";
   textoSombra(String(save.moedas), 56, 74);
@@ -1954,6 +2117,8 @@ function desenharHud() {
     ctx.font = "bold 14px monospace";
     textoSombra("recarregando", 26 + mb * 12, 106);
   }
+
+  desenharBarraXp(20, 116, 110);
 
   // Nome da fase e progresso até a banana
   ctx.textAlign = "center";
@@ -1995,7 +2160,7 @@ function desenharHud() {
     }
     ctx.font = "bold 13px monospace";
     ctx.textAlign = "left";
-    textoSombra(p.tecla, x + 5, y + 15);
+    textoSombra(teclaDe("poder" + (i + 1)), x + 5, y + 15);
     ctx.textAlign = "right";
     textoSombra("x" + n, x + 54, y + 54, n > 0 ? "#ffffff" : "#868e96");
   });
@@ -2012,7 +2177,7 @@ function desenharHud() {
     }
     ctx.font = "bold 12px monospace";
     ctx.textAlign = "left";
-    textoSombra("Shift", x + 4, y + 14);
+    textoSombra(teclaDe("dash"), x + 4, y + 14);
   }
 }
 
@@ -2040,6 +2205,7 @@ function desenharJogo() {
   ctx.save();
   ctx.translate(-cam + tx, ty);
   desenharDecoracoes(cam);
+  desenharLancadores(cam);
   desenharTornados(cam);
   desenharCipos(cam);
   desenharSolidos(cam);
@@ -2050,14 +2216,19 @@ function desenharJogo() {
   desenharPlacas(cam);
   desenharCheckpoints(cam);
   desenharMoedas(cam);
+  desenharPowerups(cam);
   desenharBanana();
   desenharAvisos();
+  desenharPlantas(cam);
   desenharInimigos(cam);
   if (chefe) desenharChefe();
+  desenharAura();
   desenharJogador();
   desenharProjeteis();
+  desenharBarras(cam);
   desenharAreias(cam);
   desenharLavas(cam);
+  desenharAguas(cam);
   desenharFogos(cam);
   desenharErupcoes(cam);
   desenharParticulas();
@@ -2071,5 +2242,6 @@ function desenharJogo() {
   }
 
   desenharHud();
+  desenharExtrasHud();
   desenharMensagem();
 }

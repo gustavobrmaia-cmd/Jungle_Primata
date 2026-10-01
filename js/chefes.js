@@ -72,6 +72,15 @@ function danoChefe(dano, origemX, ignoraInvencivel) {
     c.hp = 0;
     c.vivo = false;
     c.afundar = 0;
+    c.intangivel = false;
+    save.stats.chefes++;
+    ganharXp(XP.chefe + 100 * fase.mundo);
+    if (c.tipo === "dragao") {
+      // O último chefe guardava a banana: começa a cena final
+      projeteis = [];
+      iniciarCenaFinal();
+      return;
+    }
     irPara(c, "derrotado");
     projeteis = projeteis.filter(function(p) { return p.doJogador; });
     som("rugido");
@@ -92,12 +101,10 @@ function atualizarChefe() {
       c.x += (860 - c.x) * 0.04;
       c.y += (200 - c.y) * 0.04;
       c.dir = -1;
-      if (c.t === 1) mostrarMensagem(c.nome, MUNDOS[fase.mundo].nome + " - Chefe final do mundo", 120, null, false);
       if (c.t === 60) { som("rugido"); tremor = 25; }
       if (c.t > 100) irPara(c, "voar");
     } else {
       fisicaChefe(c);
-      if (c.t === 1) mostrarMensagem(c.nome, MUNDOS[fase.mundo].nome + " - Chefe final do mundo", 120, null, false);
       if (c.noChao && !c.pousou) {
         c.pousou = true;
         tremor = 25;
@@ -143,6 +150,7 @@ function atualizarChefe() {
         som("estrela");
         const premio = save.chefes[fase.mundo] ? 60 : RECOMPENSA_CHEFE[fase.mundo];
         ganharMoedas(premio, LARGURA / 2, 200);
+        save.chefes[fase.mundo] = true;
         mostrarMensagem("Chefe derrotado!", "+" + premio + " moedas. Pegue a banana!", 150, null, false);
         soltarBananaDoCeu();
       }
@@ -549,6 +557,15 @@ function desenharChefe() {
   }
 
   ctx.drawImage(img, 0, 0);
+
+  if (c.tipo === "dragao") {
+    const bx = c.dir > 0 ? 7 * 6 + 20 : c.w - 7 * 6 - 68;
+    ctx.save();
+    ctx.translate(bx + 24, 17 * 6 - 8);
+    ctx.rotate(Math.sin(tempo * 0.1) * 0.2);
+    ctx.drawImage(SPR_BANANA, -24, -20);
+    ctx.restore();
+  }
 
   if (c.tipo === "escorpiaoRei") {
     const cx = c.dir > 0 ? 13 * 9 : c.w - 13 * 9 - 36;

@@ -24,17 +24,15 @@
       <h1>Jogo do Primata</h1>
       <p class="sub">A grande caçada à banana</p>
       <p class="info"><span class="ic-moeda"></span><span id="menuMoedas">0</span> moedas · <span id="menuProgresso"></span></p>
+      <div class="nivel">Nível <span id="menuNivel">1</span> <div class="barraXp"><div id="menuXp"></div></div></div>
       <div class="botoes">
         <button data-acao="jogar">Jogar (Enter)</button>
         <button data-acao="mapa">Escolher fase</button>
-        <button data-acao="loja">Loja (L)</button>
+        <button data-acao="loja">Loja</button>
+        <button data-acao="controles">Controles</button>
         <button data-acao="historia">Ver história</button>
       </div>
-      <div class="controles">
-        <b>A/D</b> andar · <b>W</b> ou <b>Espaço</b> pular (segure para ir mais alto) · <b>S</b> deslizar<br>
-        <b>K</b> revólver · <b>R</b> recarregar · <b>J</b> cipó-laço (puxa o inimigo e chuta pro espaço!)<br>
-        <b>Shift</b> dash (melhoria) · <b>1-5</b> poderes · <b>L</b> loja · <b>P</b> pausa · <b>M</b> som
-      </div>
+      <div class="controles" id="menuControles"></div>
     </div>
 
     <!-- Mapa de fases -->
@@ -51,8 +49,20 @@
         <button data-acao="continuar">Continuar (P)</button>
         <button data-acao="loja">Loja (L)</button>
         <button data-acao="reiniciar">Recomeçar fase</button>
+        <button data-acao="controles">Controles</button>
         <button id="btnSom" data-acao="som">Som</button>
         <button data-acao="menu">Menu principal</button>
+      </div>
+    </div>
+
+    <!-- Controles: trocar as teclas -->
+    <div id="telaControles" class="tela">
+      <h2>Controles</h2>
+      <p class="info">Clique numa tecla e aperte a nova. Delete apaga. Esc volta.</p>
+      <div id="listaControles"></div>
+      <div class="linhaBotoes">
+        <button data-acao="padraoControles">Restaurar padrão</button>
+        <button data-acao="fecharControles">Voltar</button>
       </div>
     </div>
 
@@ -85,6 +95,8 @@
   <script src="js/som.js"></script>
   <script src="js/fases.js"></script>
   <script src="js/jogo.js"></script>
+  <script src="js/obstaculos.js"></script>
+  <script src="js/progresso.js"></script>
   <script src="js/chefes.js"></script>
   <script src="js/cenas.js"></script>
   <script src="js/telas.js"></script>
