@@ -246,6 +246,16 @@ const EN = {
   "Tecla 3": "Key 3",
   "aperte...": "press...",
   "trocar poder": "switch power",
+  "PULO": "JUMP",
+  "TIRO": "SHOOT",
+  "LAÇO": "LASSO",
+  "LOJA": "SHOP",
+  "PAUSA": "PAUSE",
+  "arraste do lado esquerdo: andar e deslizar": "drag on the left side: walk and slide",
+  "toque nos poderes para usar": "tap a power to use it",
+  "Toque na tela para começar": "Tap the screen to start",
+  "Toque na tela para voltar ao menu": "Tap the screen to return to the menu",
+  "Gire o celular na horizontal para jogar": "Turn your phone sideways to play",
   "usar poder": "use power",
 
   // ---------- Menus ----------
@@ -385,7 +395,7 @@ function traduzirDados() {
 function traduzirDom() {
   if (IDIOMA === "pt") return;
   document.documentElement.lang = "en";
-  const andar = document.createTreeWalker(document.getElementById("jogo"), NodeFilter.SHOW_TEXT);
+  const andar = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const nos = [];
   while (andar.nextNode()) nos.push(andar.currentNode);
   nos.forEach(function(n) {

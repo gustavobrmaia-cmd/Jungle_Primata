@@ -43,6 +43,11 @@
 html, body {
   height: 100%;
   overflow: hidden;
+  touch-action: none;               /* celular: sem zoom nem rolagem da página */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   background: black;
   font-family: var(--fonte);
   color: white;
@@ -644,6 +649,7 @@ kbd {
   padding: 6px 6px 10px;
   overflow-y: auto;
   overflow-x: hidden;
+  touch-action: pan-y;
 }
 
 /* Vitrine do macaco: palco com degradê e chão */
@@ -703,6 +709,7 @@ kbd {
   gap: 22px 18px;
   align-content: start;
   overflow-y: auto;
+  touch-action: pan-y;
   padding: 18px 18px 22px;
   background:
     radial-gradient(rgba(0, 0, 0, 0.2) 1px, transparent 1.6px) 0 0 / 8px 8px,
@@ -889,4 +896,35 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .tela h1, .bananaDeco, #menuXp, .item.r-lendario, .fase.atual::after, .tecla.esperando { animation: none; }
   .tela.aberta, .tela.aberta > *, #loja, #loja.aberta .painel { animation: none; }
+}
+
+
+/* ===== Celular em pé: aviso para girar ===== */
+#girar {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px;
+  background: #1c0f05;
+  color: #fff3bf;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+}
+#girar.aberta { display: flex; }
+#girar .celular {
+  width: 60px;
+  height: 100px;
+  border: 6px solid #ffd43b;
+  border-radius: 10px;
+  animation: girarCelular 1.6s ease-in-out infinite;
+}
+@keyframes girarCelular {
+  0%, 25% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
 }

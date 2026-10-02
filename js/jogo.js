@@ -3480,7 +3480,7 @@ function desenharHud() {
     }
     ctx.font = "bold 13px " + FONTE;
     ctx.textAlign = "left";
-    textoSombra(controleAtivo ? (escolhido ? "RT" : "") : teclaDe("poder" + (i + 1)), x + 8, y + 19, "#ffe066");
+    textoSombra(controleAtivo ? (escolhido ? "RT" : "") : toqueAtivo ? "" : teclaDe("poder" + (i + 1)), x + 8, y + 19, "#ffe066");
     ctx.textAlign = "right";
     textoSombra("x" + n, x + 53, y + 51, n > 0 ? "#ffffff" : "#868e96");
   });
@@ -3668,4 +3668,5 @@ function desenharJogo() {
   desenharExtrasHud();
   desenharMensagem();
   desenharCron();
+  desenharToque();
 }

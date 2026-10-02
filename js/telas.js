@@ -147,7 +147,14 @@ function atualizarTelas() {
   el("btnCron").textContent = txtCron;
   el("btnCronControles").textContent = txtCron;
   el("btnSom").textContent = save.mudo ? tr("Som: desligado ({0})", teclaDe("som")) : tr("Som: ligado ({0})", teclaDe("som"));
-  el("menuControles").innerHTML = controleAtivo ? [
+  el("menuControles").innerHTML = toqueAtivo ? [
+    comando(["←", "→"], tr("arraste do lado esquerdo: andar e deslizar")),
+    comando([tr("PULO")], tr("pular (segure: mais alto)")),
+    comando([tr("TIRO")], tr("revólver")),
+    comando([tr("LAÇO")], tr("cipó-laço (puxa o inimigo e chuta pro espaço!)")),
+    comando(["DASH"], tr("dash (melhoria)")),
+    comando(["1-5"], tr("toque nos poderes para usar"))
+  ].join("") : controleAtivo ? [
     comando(["←", "→"], tr("andar")),
     comando(["A"], tr("pular (segure: mais alto)")),
     comando(["↓"], tr("deslizar")),

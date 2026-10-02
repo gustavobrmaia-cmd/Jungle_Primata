@@ -29,6 +29,11 @@ Todas as teclas podem ser trocadas no menu **Controles**.
 **RT** usa, **Start** pausa, **Back/Select** abre a loja. Nos menus o direcional escolhe,
 **A** confirma e **B** volta. Quando você usa o controle, as placas mostram os botões dele.
 
+**Celular / tablet (toque):** arraste o dedo do lado esquerdo da tela para andar (para baixo
+desliza). Do lado direito ficam os botões **PULO** (segure para pular mais alto), **TIRO**,
+**LAÇO** e **DASH**. Toque num poder no canto de baixo para usar. Com o celular em pé, o jogo
+pede para girar.
+
 ## Idioma
 
 Português ou inglês. Sem escolher, segue o idioma do navegador (português para `pt`,
@@ -105,4 +110,5 @@ Para uma run nova depois de zerar, entre em **Escolher fase → Selva 1-1**.
 - `js/idioma.js`: textos em inglês e troca de idioma.
 - `js/anuncios.js`: SDK do Poki (intervalo e anúncio premiado para reviver).
 - `js/controle.js`: suporte a controle (gamepad).
+- `js/toque.js`: controles de toque para celular e tablet.
 - `fontes/`: fonte Pixelify Sans (licença SIL OFL em `fontes/OFL.txt`).

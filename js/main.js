@@ -133,6 +133,7 @@ function passo() {
   atualizarAnuncios();
   if (anuncios.aberto) return;   // anúncio na tela: tudo parado
   atualizarControle();
+  atualizarToque();
   let mundoClima = 0;
   if (estado === "jogo" || estado === "final") mundoClima = fase.mundo;
   else if (estado === "menu") mundoClima = Math.floor(save.desbloqueado / FASES_POR_MUNDO);

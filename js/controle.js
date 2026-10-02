@@ -46,6 +46,7 @@ document.addEventListener("keydown", function() {
 
 function nomeComando(acao) {
   if (controleAtivo && BOTAO_DO_PAD[acao]) return BOTAO_DO_PAD[acao];
+  if (toqueAtivo && nomeDoToque(acao)) return nomeDoToque(acao);
   return teclaDe(acao);
 }
 
@@ -68,6 +69,7 @@ function atualizarControle() {
   const algum = b.some(function(x) { return x; }) || Math.abs(ax) > 0.5 || Math.abs(ay) > 0.5;
   if (algum && !controleAtivo) {
     controleAtivo = true;
+    toqueAtivo = false;
     atualizarTelas();
   }
 
