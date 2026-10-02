@@ -14,8 +14,9 @@ const FUNDO_SELVA_URL = "";
 const IMAGEM_PERSONAGEM = "";
 
 // Poki: true carrega o SDK de anúncios do Poki (intervalo entre fases e "assista para reviver").
-// Deixe false para itch.io, GitHub Pages ou jogar no seu PC.
-const USAR_POKI = false;
+// Se o SDK não carregar (sem internet, bloqueador de anúncio), o jogo segue normal, sem anúncios.
+// false = nada do Poki carrega (bom para itch.io).
+const USAR_POKI = true;
 
 // Moeda: por padrão é pixelada feita no código. Para usar seu PNG: imagem: "moeda.png", frames: quadros
 const MOEDA = { imagem: "", frames: 8, tamanho: 32 };

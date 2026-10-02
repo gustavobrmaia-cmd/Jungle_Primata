@@ -1,7 +1,8 @@
 # Jogo do Primata
 
 Abra o `index.html` no navegador. Mantenha as pastas `js/` e `fontes/` e o `estilo.css` junto com ele.
-O jogo não usa nada da internet: tudo (desenhos, sons e a fonte) vem desta pasta.
+Desenhos, sons e a fonte vêm desta pasta. A única coisa da internet é o SDK de anúncios do Poki
+(`USAR_POKI` em `js/dados.js`); sem ele o jogo funciona igual, só sem anúncios.
 
 O vento levou a banana do macaco! Atravesse 4 mundos (24 fases: 5 + o chefe em cada) para recuperá-la.
 Cada fase libera um inimigo novo, um obstáculo novo e um cosmético de prêmio.
@@ -81,11 +82,11 @@ Para uma run nova depois de zerar, entre em **Escolher fase → Selva 1-1**.
   `https://<usuario>.github.io/jogo-do-primata/`.
 - **Netlify Drop** (funciona com repositório privado): abra `app.netlify.com/drop` e arraste a
   pasta do jogo.
-- **Poki:** em `js/dados.js` mude `USAR_POKI` para `true`. O jogo carrega o SDK do Poki, avisa
+- **Poki:** `USAR_POKI` em `js/dados.js` já está `true`. O jogo carrega o SDK do Poki, avisa
   quando a gameplay começa e para, mostra um intervalo comercial entre as fases e ao recomeçar,
   e quando o macaco perde todas as vidas oferece "assista um anúncio para reviver" (volta no
   último chão seguro com as vidas cheias, uma vez por tentativa). Durante o anúncio o jogo fica
-  parado e mudo. Com `false` nada disso carrega.
+  parado e mudo. Com `false` nada disso carrega (use `false` no itch.io).
 
 ## Arquivos
 
