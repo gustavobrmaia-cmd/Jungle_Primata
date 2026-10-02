@@ -136,3 +136,4 @@ function clarear(hex, k) { return misturarCor(hex, [255, 255, 255], k); }
 
 // Fonte pixelada do jogo (se não tiver internet, usa monospace)
 const FONTE = '"Pixelify Sans", monospace';
+const SAVE_KEY = "primata-save-v3";

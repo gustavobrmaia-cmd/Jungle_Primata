@@ -4,7 +4,6 @@
 // SAVE (fica guardado no navegador)
 // =========================
 
-const SAVE_KEY = "primata-save-v3";
 
 function buscarItem(tipo, id) {
   if (tipo === "skin") return SKINS.find(function(s) { return s.id === id; }) || null;
@@ -35,6 +34,7 @@ function saveNovo() {
     viuIntro: false,
     zerou: false,
     mudo: false,
+    idioma: "",                   // "pt", "en" ou vazio (segue o navegador)
     cronometro: false,            // cronômetro de speedrun na tela
     recordes: { fases: [], run: 0 }   // melhores tempos (em quadros de 1/60s)
   };
@@ -103,6 +103,7 @@ let save = saveNovo();
   save.zerou = !!s.zerou;
   save.mudo = !!s.mudo;
   save.cronometro = !!s.cronometro;
+  if (s.idioma === "pt" || s.idioma === "en") save.idioma = s.idioma;
   if (s.recordes && typeof s.recordes === "object") {
     if (Array.isArray(s.recordes.fases)) {
       save.recordes.fases = s.recordes.fases.slice(0, TOTAL_FASES).map(function(v) {

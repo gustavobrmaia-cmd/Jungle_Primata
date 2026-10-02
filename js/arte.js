@@ -3123,7 +3123,7 @@ imgFundoSelva.onload = function() {
   f.clearRect(0, 0, LARGURA, ALTURA);
   desenharFundoMundo(f, 0, 0, 0);
 };
-imgFundoSelva.src = FUNDO_SELVA_URL;
+if (FUNDO_SELVA_URL) imgFundoSelva.src = FUNDO_SELVA_URL;
 
 
 // Imagem do jogador (skin "Original")

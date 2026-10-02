@@ -81,8 +81,8 @@ function cronPasso() {
 }
 
 function textoDoSplit(s) {
-  if (s.delta === null) return "Primeiro tempo!";
-  return formatarDelta(s.delta) + (s.recorde ? "  Recorde!" : "");
+  if (s.delta === null) return tr("Primeiro tempo!");
+  return s.recorde ? tr("{0}  Recorde!", formatarDelta(s.delta)) : formatarDelta(s.delta);
 }
 
 // Painel no canto de cima à direita (embaixo dos botões de pausa e loja)
@@ -109,7 +109,7 @@ function desenharCron() {
 
   const parada = !cron.faseRodando;
   ctx.font = "bold 14px " + FONTE;
-  textoSombra("FASE", x + 12, y + 28, "#bac8ff");
+  textoSombra(tr("FASE"), x + 12, y + 28, "#bac8ff");
   ctx.font = "bold 22px " + FONTE;
   ctx.textAlign = "right";
   const corFase = parada && cron.split ? (cron.split.recorde ? "#ffd43b" : "#ff8787") : "#ffffff";
@@ -117,7 +117,7 @@ function desenharCron() {
 
   ctx.font = "bold 13px " + FONTE;
   ctx.textAlign = "left";
-  textoSombra("Recorde da fase", x + 12, y + 54, "#868e96");
+  textoSombra(tr("Recorde da fase"), x + 12, y + 54, "#868e96");
   ctx.textAlign = "right";
   textoSombra(rec ? formatarCron(rec) : "--", x + w - 12, y + 54, "#ced4da");
 
@@ -140,8 +140,8 @@ function linhaCronFinal() {
   if (!save.cronometro || !cron.fim) return null;
   const f = cron.fim;
   let txt = "Speedrun: " + formatarCron(f.t);
-  if (f.delta === null) txt += "  (primeira run!)";
-  else if (f.recorde) txt += "  NOVO RECORDE! (" + formatarDelta(f.delta) + ")";
-  else txt += "  (recorde: " + formatarCron(save.recordes.run) + ")";
+  if (f.delta === null) txt += tr("  (primeira run!)");
+  else if (f.recorde) txt += tr("  NOVO RECORDE! ({0})", formatarDelta(f.delta));
+  else txt += tr("  (recorde: {0})", formatarCron(save.recordes.run));
   return txt;
 }

@@ -487,10 +487,10 @@ function gerarFase(indice) {
   let lista;
 
   if (indice === 0) {
-    fPlaca(f, 200, "{esquerda}/{direita} andar   {pulo} pular\nSegure {pulo} para pular mais alto");
+    fPlaca(f, 200, tr("{esquerda}/{direita} andar   {pulo} pular\nSegure {pulo} para pular mais alto"));
     lista = ["plano", "buraco", "apresentaInimigo", "espinhos", "muro", "grupo", "plataformas", "espinhos", "escada"];
   } else {
-    if (f.etapa === 0) fPlaca(f, 200, "Bem-vindo: " + mundo.nome + "!");
+    if (f.etapa === 0) fPlaca(f, 200, tr("Bem-vindo: {0}!", mundo.nome));
     const total = 6 + Math.round(d * 7);
     lista = [novoObstaculo, "apresentaInimigo"];
     let ultimo = "apresentaInimigo";
@@ -516,12 +516,12 @@ function gerarFase(indice) {
     }
     if (nome === "apresentaInimigo") {
       const tipo = mundo.inimigos[f.etapa];
-      let texto = "Novo inimigo: " + TIPOS_INIMIGO[tipo].nome + "!\n" + DICAS_INIMIGO[tipo];
-      if (indice === 0) texto = "Novo inimigo: Cobra! Pule nela\n{tiro}: revólver  {laco}: cipó-laço";
+      let texto = tr("Novo inimigo: {0}!", TIPOS_INIMIGO[tipo].nome) + "\n" + tr(DICAS_INIMIGO[tipo]);
+      if (indice === 0) texto = tr("Novo inimigo: Cobra! Pule nela\n{tiro}: revólver  {laco}: cipó-laço");
       fPlaca(f, x + 40, texto);
     } else if (DICAS_OBSTACULO[nome] && !mostradas[nome] && obstaculos.indexOf(nome) >= 0 &&
                (nome === novoObstaculo || indice === 0)) {
-      fPlaca(f, x + 40, (nome === novoObstaculo ? "Novo: " + NOMES_OBSTACULO[nome] + "!\n" : "") + DICAS_OBSTACULO[nome]);
+      fPlaca(f, x + 40, (nome === novoObstaculo ? tr("Novo: {0}!", NOMES_OBSTACULO[nome]) + "\n" : "") + tr(DICAS_OBSTACULO[nome]));
       mostradas[nome] = true;
     }
     // Power-up de vez em quando no começo do pedaço

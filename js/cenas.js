@@ -175,26 +175,26 @@ function desenharIntro() {
     if (c.t > 250) {
       ctx.globalAlpha = Math.min(1, (c.t - 250) / 16);
       ctx.font = "bold 46px " + FONTE;
-      textoSombra("O vento levou a banana!", LARGURA / 2, 168, ["#fff9c4", "#ffc21a"], 3);
+      textoSombra(tr("O vento levou a banana!"), LARGURA / 2, 168, ["#fff9c4", "#ffc21a"], 3);
       ctx.globalAlpha = 1;
     }
     if (c.t > 320) {
       ctx.globalAlpha = Math.min(1, (c.t - 320) / 16);
       ctx.font = "bold 24px " + FONTE;
-      textoSombra("Atravesse a Selva, o Deserto, a Era do Gelo e o Vulcão para recuperá-la!", LARGURA / 2, 214);
+      textoSombra(tr("Atravesse a Selva, o Deserto, a Era do Gelo e o Vulcão para recuperá-la!"), LARGURA / 2, 214);
       ctx.globalAlpha = 1;
     }
     if (c.t > 400) {
       ctx.globalAlpha = Math.min(1, (c.t - 400) / 16);
       ctx.font = "bold 20px " + FONTE;
-      textoSombra("Dizem que ela foi parar nas garras do Dragão de Magma...", LARGURA / 2, 250, "#ff922b");
+      textoSombra(tr("Dizem que ela foi parar nas garras do Dragão de Magma..."), LARGURA / 2, 250, "#ff922b");
       ctx.globalAlpha = 1;
     }
   }
   if (c.t > 30) {
     ctx.font = "bold 16px " + FONTE;
     ctx.globalAlpha = 0.65 + Math.sin(c.t * 0.08) * 0.35;
-    textoSombra("Aperte qualquer tecla para começar", LARGURA / 2, ALTURA - 20, "#dee2e6");
+    textoSombra(tr("Aperte qualquer tecla para começar"), LARGURA / 2, ALTURA - 20, "#dee2e6");
     ctx.globalAlpha = 1;
   }
 }
@@ -370,7 +370,7 @@ function atualizarFinal() {
       if (f.et === 20 || f.et === 50 || f.et === 80) {
         f.mordidas++;
         som("nham");
-        particula({ tipo: "texto", x: f.mx + 40, y: f.mbase - 130, vx: 0, vy: -1, g: 0, vida: 40, max: 40, texto: "Nham!", cor: "#ffffff", tam: 24 });
+        particula({ tipo: "texto", x: f.mx + 40, y: f.mbase - 130, vx: 0, vy: -1, g: 0, vida: 40, max: 40, texto: tr("Nham!"), cor: "#ffffff", tam: 24 });
         for (let i = 0; i < 8; i++) particula({ tipo: "q", x: f.mx, y: f.mbase - 100, vx: (Math.random() - 0.5) * 5, vy: -Math.random() * 4, g: 0.3, vida: 30, max: 30, cor: "#ffe066", tam: 6 });
       }
       if (f.et > 110) { som("vitoria"); proximaEtapa("festa"); }
@@ -532,24 +532,24 @@ function desenharFinal() {
       ctx.translate(LARGURA / 2, 136);
       ctx.scale(esc, esc);
       ctx.font = "bold 72px " + FONTE;
-      textoSombra("FIM!", 0, 0, ["#fff9c4", "#ffb700"], 4);
+      textoSombra(tr("FIM!"), 0, 0, ["#fff9c4", "#ffb700"], 4);
       ctx.restore();
       ctx.font = "bold 22px " + FONTE;
-      textoSombra("O primata derrotou o Dragão de Magma e finalmente comeu a sua banana!", LARGURA / 2, 188);
+      textoSombra(tr("O primata derrotou o Dragão de Magma e finalmente comeu a sua banana!"), LARGURA / 2, 188);
       ctx.globalAlpha = 1;
     }
   }
   if (f.etapa === "festa" && f.et > 120) {
     const st = save.stats;
     const linhas = [
-      "Nível " + save.nivel + "   ·   Moedas: " + save.moedas + (f.premio ? " (+" + f.premio + ")" : ""),
-      "Inimigos derrotados: " + st.inimigos + "   ·   Chutados pro espaço: " + st.chutes,
-      "Chefes derrotados: " + st.chefes + "   ·   Quedas: " + st.mortes,
-      "Tempo de jogo: " + formatarTempo(st.tempo)
+      tr("Nível {0}   ·   Moedas: {1}", save.nivel, save.moedas) + (f.premio ? " (+" + f.premio + ")" : ""),
+      tr("Inimigos derrotados: {0}   ·   Chutados pro espaço: {1}", st.inimigos, st.chutes),
+      tr("Chefes derrotados: {0}   ·   Quedas: {1}", st.chefes, st.mortes),
+      tr("Tempo de jogo: {0}", formatarTempo(st.tempo))
     ];
     const speedrun = linhaCronFinal();
     if (speedrun) linhas.push(speedrun);
-    if (f.cosmetico) linhas.push("Nova skin: " + f.cosmetico.nome + "!");
+    if (f.cosmetico) linhas.push(tr("Nova skin: {0}!", f.cosmetico.nome));
     ctx.globalAlpha = Math.min(1, (f.et - 120) / 30);
     painelPixel(LARGURA / 2 - 380, 250, 760, 40 + linhas.length * 28, "#ffd43b", "rgba(20,12,6,0.82)");
     ctx.font = "bold 18px " + FONTE;
@@ -559,7 +559,7 @@ function desenharFinal() {
   if (f.pronto) {
     ctx.font = "bold 18px " + FONTE;
     ctx.globalAlpha = 0.65 + Math.sin(f.et * 0.08) * 0.35;
-    textoSombra("Aperte qualquer tecla para voltar ao menu", LARGURA / 2, ALTURA - 20, "#dee2e6");
+    textoSombra(tr("Aperte qualquer tecla para voltar ao menu"), LARGURA / 2, ALTURA - 20, "#dee2e6");
     ctx.globalAlpha = 1;
   }
 }

@@ -4,12 +4,18 @@
 // CONFIGURAÇÕES
 // =========================
 
-// Fundo da Selva (primeiro mundo). Sem internet o jogo desenha um fundo próprio.
-const FUNDO_SELVA_URL = "https://static.vecteezy.com/ti/vetor-gratis/p1/48518715-8-mordeu-pixel-arte-selva-floresta-jogos-nivel-panorama-vetor.jpg";
+// Fundo da Selva (primeiro mundo). Vazio = o jogo desenha o próprio fundo em pixel art.
+// Para publicar (Poki, itch.io) deixe vazio: imagem de outro site pode sair do ar ou ter direitos autorais.
+const FUNDO_SELVA_URL = "";
 
 // Sua imagem do macaco: vira a skin "Original" na loja (se não carregar, a skin some).
 // As roupas são desenhadas para o macaco pixelado, então na sua imagem podem não encaixar perfeito.
-const IMAGEM_PERSONAGEM = "file:///C:/Users/info19/Documents/Captura_de_tela_2026-08-20_150440-removebg-preview.png";
+// Vazio = só as skins em pixel art. Um caminho do seu PC (file:///C:/...) só funciona no seu computador.
+const IMAGEM_PERSONAGEM = "";
+
+// Poki: true carrega o SDK de anúncios do Poki (intervalo entre fases e "assista para reviver").
+// Deixe false para itch.io, GitHub Pages ou jogar no seu PC.
+const USAR_POKI = false;
 
 // Moeda: por padrão é pixelada feita no código. Para usar seu PNG: imagem: "moeda.png", frames: quadros
 const MOEDA = { imagem: "", frames: 8, tamanho: 32 };
@@ -51,7 +57,7 @@ const NOMES_OBSTACULO = {
 function nomeFase(i) {
   const m = Math.floor(i / FASES_POR_MUNDO);
   const e = i % FASES_POR_MUNDO;
-  if (e === FASES_POR_MUNDO - 1) return MUNDOS[m].nome + " - Chefe";
+  if (e === FASES_POR_MUNDO - 1) return tr("{0} - Chefe", MUNDOS[m].nome);
   return MUNDOS[m].nome + " " + (m + 1) + "-" + (e + 1);
 }
 
@@ -613,8 +619,10 @@ const TECLAS_PADRAO = {
 };
 
 function nomeDaTecla(k) {
-  const nomes = { " ": "Espaço", arrowleft: "←", arrowright: "→", arrowup: "↑", arrowdown: "↓", shift: "Shift",
-    control: "Ctrl", alt: "Alt", enter: "Enter", tab: "Tab", backspace: "Apagar", capslock: "Caps" };
+  const nomes = { " ": tr("Espaço"), arrowleft: "←", arrowright: "→", arrowup: "↑", arrowdown: "↓", shift: "Shift",
+    control: "Ctrl", alt: "Alt", enter: "Enter", tab: "Tab", backspace: tr("Apagar"), capslock: "Caps" };
   if (!k) return "-";
   return nomes[k] || k.toUpperCase();
 }
+
+traduzirDados();   // idioma.js: nomes em inglês quando o jogo está em inglês

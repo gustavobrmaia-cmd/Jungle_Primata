@@ -66,11 +66,11 @@ function ganharXp(n, x, y) {
 function subiuNivel(n) {
   const moedas = 20 * n;
   save.moedas += moedas;
-  let extra = "+" + moedas + " moedas";
+  let extra = tr("+{0} moedas", moedas);
   const premio = premioDoNivel(n);
   if (premio && !temCosmetico(premio.id)) {
     save.comprados.push(premio.id);
-    extra += "  ·  Nova skin: " + premio.nome + "!";
+    extra += tr("  ·  Nova skin: {0}!", premio.nome);
   }
   if (jogador && estado === "jogo" && !jogador.morto) jogador.vidas = Math.min(vidasMax(), jogador.vidas + 1);
   animNivel = { t: 0, nivel: n, extra: extra };
@@ -95,15 +95,15 @@ function mostrarCartaoFase() {
   const m = MUNDOS[fase.mundo];
   if (fase.ehChefe) {
     cartao = { t: 0, titulo: m.nomeChefe, mundo: fase.mundo, chefe: m.chefe,
-      linhas: [m.nome + " - o chefe do mundo"] };
+      linhas: [tr("{0} - o chefe do mundo", m.nome)] };
     return;
   }
   const linhas = [
-    "Novo inimigo: " + TIPOS_INIMIGO[m.inimigos[fase.etapa]].nome,
-    "Novo obstáculo: " + NOMES_OBSTACULO[m.obstaculos[fase.etapa]]
+    tr("Novo inimigo: {0}", TIPOS_INIMIGO[m.inimigos[fase.etapa]].nome),
+    tr("Novo obstáculo: {0}", NOMES_OBSTACULO[m.obstaculos[fase.etapa]])
   ];
   const premio = premioDaFase(fase.indice);
-  if (premio && !temCosmetico(premio.id)) linhas.push("Prêmio ao terminar: " + premio.nome);
+  if (premio && !temCosmetico(premio.id)) linhas.push(tr("Prêmio ao terminar: {0}", premio.nome));
   cartao = { t: 0, titulo: nomeFase(fase.indice), mundo: fase.mundo, linhas: linhas };
 }
 
@@ -281,7 +281,7 @@ function desenharSubiuNivel() {
   painelPixel(-wp / 2, -62, wp, 138, "#ffd43b", "rgba(24,14,6,0.86)");
   ctx.textAlign = "center";
   ctx.font = "bold 60px " + FONTE;
-  textoSombra("NÍVEL " + a.nivel + "!", 0, 10, ["#fff9c4", "#ffb700"], 3);
+  textoSombra(tr("NÍVEL {0}!", a.nivel), 0, 10, ["#fff9c4", "#ffb700"], 3);
   ctx.font = "bold 20px " + FONTE;
   textoSombra(a.extra, 0, 56);
   // estrelinhas nos cantos da plaquinha
@@ -305,7 +305,7 @@ function desenharBarraXp(x, y, w) {
   painelPixel(x - 10, y - 5, 62 + w + 20, 26);
   ctx.font = "bold 16px " + FONTE;
   ctx.textAlign = "left";
-  textoSombra("Nv " + save.nivel, x, y + 12, "#bac8ff");
+  textoSombra(tr("Nv {0}", save.nivel), x, y + 12, "#bac8ff");
   const bx = x + 62;
   const k = limitar(save.xp / precisa, 0, 1);
   ctx.fillStyle = "#0d0704";

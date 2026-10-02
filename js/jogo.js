@@ -740,7 +740,7 @@ function caiuNoBuraco() {
   j.vy = 0;
   j.invencivel = 100;
   j.afundar = 0;
-  texto(j.x + j.w / 2, j.y - 10, "-1 vida", "#ff6b6b", 22);
+  texto(j.x + j.w / 2, j.y - 10, tr("-1 vida"), "#ff6b6b", 22);
 }
 
 function morrer() {
@@ -758,8 +758,17 @@ function morrer() {
 function perdeuTudo() {
   sujo = true;
   save.stats.mortes++;
-  mostrarMensagem("Você perdeu!", checkpointX !== null ? "Voltando do checkpoint..." : "Tentando de novo...", 90, function() {
-    trocarCena(function() { iniciarFase(fase.indice, true); });
+  if (podeReviver()) abrirReviver();   // Poki: "assista um anúncio para reviver"
+  else voltarDoCheckpoint();
+}
+
+function voltarDoCheckpoint() {
+  pausado = false;
+  atualizarTelas();
+  mostrarMensagem(tr("Você perdeu!"), checkpointX !== null ? tr("Voltando do checkpoint...") : tr("Tentando de novo..."), 90, function() {
+    intervaloComercial(function() {
+      trocarCena(function() { iniciarFase(fase.indice, true); });
+    });
   });
 }
 
@@ -938,9 +947,9 @@ function atirarInimigo(e) {
 
 function atualizarInimigos() {
   const centro = cameraX + LARGURA / 2;
-  for (let i = inimigos.length - 1; i >= 0; i--) {
+  for (let i = 0; i < inimigos.length; i++) {
     const e = inimigos[i];
-    if (e.remover) { inimigos.splice(i, 1); continue; }
+    if (e.remover) continue;
     if (e.espaco) { voarProEspaco(e); continue; }
     if (e.morto) {
       if (e.esmagado > 0) {
@@ -967,6 +976,17 @@ function atualizarInimigos() {
     }
     if (e.vivo) colisaoInimigoJogador(e);
   }
+  removerInimigosMarcados();
+}
+
+// Tira da lista quem foi marcado com "remover", só depois de todos andarem neste quadro:
+// assim uma morte em cadeia (nuke, chute, lava) nunca faz o loop pular um inimigo.
+function removerInimigosMarcados() {
+  let n = 0;
+  for (let i = 0; i < inimigos.length; i++) {
+    if (!inimigos[i].remover) inimigos[n++] = inimigos[i];
+  }
+  inimigos.length = n;
 }
 
 function colisaoInimigoJogador(e) {
@@ -1352,21 +1372,23 @@ function atualizarBanana() {
 function fimDaFase() {
   cronFimFase();
   const i = fase.indice;
-  let titulo = "Fase completa!";
+  let titulo = tr("Fase completa!");
   if (fase.ehChefe) {
-    titulo = MUNDOS[fase.mundo].nome + " completo!";
+    titulo = tr("{0} completo!", MUNDOS[fase.mundo].nome);
     save.chefes[fase.mundo] = true;
   }
   save.desbloqueado = Math.max(save.desbloqueado, Math.min(i + 1, TOTAL_FASES - 1));
   ganharXp(XP.fase + 15 * fase.mundo);
   const premio = darPremioDaFase(i);
-  let sub = "A banana escapou de novo! Próximo: " + nomeFase(i + 1);
-  if (premio) sub = "Você ganhou: " + premio.nome + "!  Próximo: " + nomeFase(i + 1);
+  let sub = tr("A banana escapou de novo! Próximo: {0}", nomeFase(i + 1));
+  if (premio) sub = tr("Você ganhou: {0}!  Próximo: {1}", premio.nome, nomeFase(i + 1));
   salvar();
   sujo = false;
   som("vitoria");
   mostrarMensagem(titulo, sub, 170, function() {
-    trocarCena(function() { iniciarFase(i + 1); });
+    intervaloComercial(function() {
+      trocarCena(function() { iniciarFase(i + 1); });
+    });
   });
 }
 
@@ -2647,7 +2669,7 @@ function desenharPlacas(cam) {
     sombraNoChao(p.x - 2, CHAO - 1, 36, 5);
     ctx.drawImage(SPR_PLACA, p.x, CHAO - 32);
     if (Math.abs(j.x + j.w / 2 - (p.x + 16)) < 260) {
-      const linhas = p.texto.replace(/\{(\w+)\}/g, function(m, a) { return teclaDe(a); }).split("\n");
+      const linhas = p.texto.replace(/\{(\w+)\}/g, function(m, a) { return nomeComando(a); }).split("\n");
       ctx.font = "bold 16px " + FONTE;
       let w = 0;
       linhas.forEach(function(l) { w = Math.max(w, ctx.measureText(l).width); });
@@ -3374,7 +3396,7 @@ function desenharHud() {
     const k = 1 - j.recarregando / total;
     ctx.font = "bold 14px " + FONTE;
     ctx.textAlign = "left";
-    textoSombra("recarregando", 26 + mb * 12, 114, "#ffe066");
+    textoSombra(tr("recarregando"), 26 + mb * 12, 114, "#ffe066");
     ctx.fillStyle = "#0d0704";
     ctx.fillRect(22, 118, 12 * mb - 4, 4);
     ctx.fillStyle = "#ffd43b";
@@ -3447,9 +3469,18 @@ function desenharHud() {
       ctx.fillStyle = "#d3f9d8";
       ctx.fillRect(x + 6, y + 47, Math.round(46 * (buffs[p.id] / p.duracao)), 2);
     }
+    // no controle: o poder escolhido (LT troca, RT usa) ganha moldura branca
+    const escolhido = controleAtivo && i === poderSelecionado;
+    if (escolhido) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x - 2, y - 2, 62, 3);
+      ctx.fillRect(x - 2, y + 57, 62, 3);
+      ctx.fillRect(x - 2, y - 2, 3, 62);
+      ctx.fillRect(x + 57, y - 2, 3, 62);
+    }
     ctx.font = "bold 13px " + FONTE;
     ctx.textAlign = "left";
-    textoSombra(teclaDe("poder" + (i + 1)), x + 8, y + 19, "#ffe066");
+    textoSombra(controleAtivo ? (escolhido ? "RT" : "") : teclaDe("poder" + (i + 1)), x + 8, y + 19, "#ffe066");
     ctx.textAlign = "right";
     textoSombra("x" + n, x + 53, y + 51, n > 0 ? "#ffffff" : "#868e96");
   });
@@ -3470,7 +3501,7 @@ function desenharHud() {
     }
     ctx.font = "bold 12px " + FONTE;
     ctx.textAlign = "left";
-    textoSombra(teclaDe("dash"), x + 8, y + 19, "#ffe066");
+    textoSombra(nomeComando("dash"), x + 8, y + 19, "#ffe066");
   }
 }
 

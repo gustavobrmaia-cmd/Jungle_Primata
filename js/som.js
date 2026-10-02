@@ -84,7 +84,9 @@ const SONS = {
   nham:      function() { ruido(0.12, 0.2, 1200); tom("square", 300, 200, 0.08, 0.04); }
 };
 
+let somBloqueado = false;   // anúncio na tela
+
 function som(nome) {
-  if (save.mudo || !audioCtx || !SONS[nome]) return;
+  if (save.mudo || somBloqueado || !audioCtx || !SONS[nome]) return;
   try { SONS[nome](); } catch (e) { /* sem som */ }
 }

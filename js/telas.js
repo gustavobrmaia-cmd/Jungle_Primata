@@ -109,12 +109,12 @@ function desenharBananasMenu() {
 
 // Raridade pela forma de ganhar o item: prêmios de fase/nível ou pelo preço
 function raridadeDe(item) {
-  if (item.fase !== undefined || item.nivel !== undefined) return { cls: "premio", nome: "Prêmio" };
+  if (item.fase !== undefined || item.nivel !== undefined) return { cls: "premio", nome: tr("Prêmio") };
   const p = item.preco || 0;
-  if (p >= 800) return { cls: "lendario", nome: "Lendário" };
-  if (p >= 400) return { cls: "epico", nome: "Épico" };
-  if (p >= 150) return { cls: "raro", nome: "Raro" };
-  return { cls: "comum", nome: "Comum" };
+  if (p >= 800) return { cls: "lendario", nome: tr("Lendário") };
+  if (p >= 400) return { cls: "epico", nome: tr("Épico") };
+  if (p >= 150) return { cls: "raro", nome: tr("Raro") };
+  return { cls: "comum", nome: tr("Comum") };
 }
 
 function mostrar(elemento, sim) {
@@ -131,31 +131,45 @@ function atualizarTelas() {
   const sobreposta = lojaAberta || controlesAbertos;
   mostrar(el("telaMenu"), estado === "menu" && telaAtual === "menu" && !sobreposta);
   mostrar(el("telaMapa"), estado === "menu" && telaAtual === "mapa" && !sobreposta);
-  mostrar(el("telaPausa"), estado === "jogo" && pausado && !sobreposta);
+  mostrar(el("telaPausa"), estado === "jogo" && pausado && !sobreposta && !reviverAberto);
+  mostrar(el("telaReviver"), estado === "jogo" && reviverAberto);
   mostrar(el("telaControles"), controlesAbertos);
   mostrar(el("botoesJogo"), estado === "jogo" && !pausado);
   mostrar(el("loja"), lojaAberta);
   el("menuMoedas").textContent = save.moedas;
-  el("menuProgresso").textContent = (save.zerou ? "Jogo zerado!" : "Próxima: " + nomeFase(save.desbloqueado)) +
-    (save.cronometro && save.recordes.run ? " · Recorde: " + formatarCron(save.recordes.run) : "");
+  el("menuProgresso").textContent = (save.zerou ? tr("Jogo zerado!") : tr("Próxima: {0}", nomeFase(save.desbloqueado))) +
+    (save.cronometro && save.recordes.run ? tr(" · Recorde: {0}", formatarCron(save.recordes.run)) : "");
   el("menuNivel").textContent = save.nivel;
   el("menuXp").style.width = Math.round((100 * save.xp) / xpParaSubir(save.nivel)) + "%";
   el("menuXpTexto").textContent = save.xp + "/" + xpParaSubir(save.nivel) + " XP";
-  const txtCron = "Cronômetro: " + (save.cronometro ? "ligado" : "desligado");
+  const txtCron = save.cronometro ? tr("Cronômetro: ligado") : tr("Cronômetro: desligado");
+  el("btnIdioma").textContent = tr("Idioma: Português");
   el("btnCron").textContent = txtCron;
   el("btnCronControles").textContent = txtCron;
-  el("btnSom").textContent = save.mudo ? "Som: desligado (" + teclaDe("som") + ")" : "Som: ligado (" + teclaDe("som") + ")";
-  el("menuControles").innerHTML = [
-    comando([teclaDe("esquerda"), teclaDe("direita")], "andar"),
-    comando([teclaDe("pulo")], "pular (segure: mais alto)"),
-    comando([teclaDe("baixo")], "deslizar"),
-    comando([teclaDe("tiro")], "revólver"),
-    comando([teclaDe("recarregar")], "recarregar"),
-    comando([teclaDe("laco")], "cipó-laço (puxa o inimigo e chuta pro espaço!)"),
-    comando([teclaDe("dash")], "dash (melhoria)"),
-    comando([teclaDe("poder1") + "-" + teclaDe("poder5")], "poderes"),
-    comando([teclaDe("loja")], "loja"),
-    comando([teclaDe("pausa")], "pausa")
+  el("btnSom").textContent = save.mudo ? tr("Som: desligado ({0})", teclaDe("som")) : tr("Som: ligado ({0})", teclaDe("som"));
+  el("menuControles").innerHTML = controleAtivo ? [
+    comando(["←", "→"], tr("andar")),
+    comando(["A"], tr("pular (segure: mais alto)")),
+    comando(["↓"], tr("deslizar")),
+    comando(["X"], tr("revólver")),
+    comando(["LB"], tr("recarregar")),
+    comando(["Y"], tr("cipó-laço (puxa o inimigo e chuta pro espaço!)")),
+    comando(["B"], tr("dash (melhoria)")),
+    comando(["LT"], tr("trocar poder")),
+    comando(["RT"], tr("usar poder")),
+    comando(["Back"], tr("loja")),
+    comando(["Start"], tr("pausa"))
+  ].join("") : [
+    comando([teclaDe("esquerda"), teclaDe("direita")], tr("andar")),
+    comando([teclaDe("pulo")], tr("pular (segure: mais alto)")),
+    comando([teclaDe("baixo")], tr("deslizar")),
+    comando([teclaDe("tiro")], tr("revólver")),
+    comando([teclaDe("recarregar")], tr("recarregar")),
+    comando([teclaDe("laco")], tr("cipó-laço (puxa o inimigo e chuta pro espaço!)")),
+    comando([teclaDe("dash")], tr("dash (melhoria)")),
+    comando([teclaDe("poder1") + "-" + teclaDe("poder5")], tr("poderes")),
+    comando([teclaDe("loja")], tr("loja")),
+    comando([teclaDe("pausa")], tr("pausa"))
   ].join("");
   if (telaAtual === "mapa") renderizarMapa();
 }
@@ -189,7 +203,7 @@ function voltarAoMenu() {
 }
 
 function pausar(sim) {
-  if (estado !== "jogo" || mensagemTravada()) return;
+  if (estado !== "jogo" || mensagemTravada() || reviverAberto) return;
   pausado = sim;
   soltarTeclas();
   atualizarTelas();
@@ -200,7 +214,7 @@ function mensagemTravada() {
 }
 
 function abrirLoja() {
-  if (estado === "intro" || estado === "final") return;
+  if (estado === "intro" || estado === "final" || reviverAberto) return;
   if (estado === "jogo" && mensagemTravada()) return;
   lojaDaPausa = estado === "jogo" && pausado;
   lojaAberta = true;
@@ -249,7 +263,7 @@ function renderizarControles() {
     tabela.className = "tabelaCtl";
     const cab = document.createElement("div");
     cab.className = "linha cab";
-    ["Ação", "Tecla 1", "Tecla 2", "Tecla 3"].forEach(function(t) {
+    [tr("Ação"), tr("Tecla 1"), tr("Tecla 2"), tr("Tecla 3")].forEach(function(t) {
       const c = document.createElement("span");
       c.textContent = t;
       cab.appendChild(c);
@@ -267,7 +281,7 @@ function renderizarControles() {
         b.tabIndex = -1;
         const esperando = capturando && capturando.acao === a.id && capturando.slot === slot;
         const k = (save.teclas[a.id] || [])[slot];
-        b.textContent = esperando ? "aperte..." : nomeDaTecla(k);
+        b.textContent = esperando ? tr("aperte...") : nomeDaTecla(k);
         b.classList.add("tecla");
         if (esperando) b.classList.add("esperando");
         else if (!k) b.classList.add("vazia");
@@ -342,7 +356,7 @@ function renderizarMapa() {
         b.appendChild(iconeTela(feita ? "coroa" : "caveira", 3));
         const t = document.createElement("span");
         t.className = "rotulo";
-        t.textContent = "Chefe";
+        t.textContent = tr("Chefe");
         b.appendChild(t);
       } else {
         const n = document.createElement("span");
@@ -357,7 +371,7 @@ function renderizarMapa() {
     card.appendChild(linha);
     const nomeChefe = document.createElement("div");
     nomeChefe.className = "nomeChefe";
-    nomeChefe.innerHTML = "Chefe: <b></b>";
+    nomeChefe.innerHTML = tr("Chefe: ") + "<b></b>";
     nomeChefe.querySelector("b").textContent = m.nomeChefe;
     card.appendChild(nomeChefe);
     box.appendChild(card);
@@ -442,10 +456,10 @@ function renderizarLoja() {
       cv.className = "icone";
       card.appendChild(cv);
       linhaTexto(card, "nome", p.nome);
-      linhaTexto(card, "desc", p.desc + ". Tecla " + teclaDe("poder" + (PODERES.indexOf(p) + 1)) + ".");
-      linhaTexto(card, "qtd", "Você tem: " + save.poderes[p.id]);
+      linhaTexto(card, "desc", tr("{0}. Tecla {1}.", p.desc, teclaDe("poder" + (PODERES.indexOf(p) + 1))));
+      linhaTexto(card, "qtd", tr("Você tem: {0}", save.poderes[p.id]));
       precoHtml(card, p.preco);
-      botao(card, save.moedas >= p.preco ? "Comprar" : "Faltam " + (p.preco - save.moedas), save.moedas < p.preco, { poder: p.id });
+      botao(card, save.moedas >= p.preco ? tr("Comprar") : tr("Faltam {0}", p.preco - save.moedas), save.moedas < p.preco, { poder: p.id });
       frag.appendChild(card);
     });
   } else if (abaAtual === "melhoria") {
@@ -456,15 +470,15 @@ function renderizarLoja() {
       cv.className = "icone";
       card.appendChild(cv);
       linhaTexto(card, "nome", m.nome);
-      linhaTexto(card, "desc", m.desc + " (permanente)");
+      linhaTexto(card, "desc", tr("{0} (permanente)", m.desc));
       if (tem) {
-        linhaTexto(card, "preco", "Comprado");
-        botao(card, "Comprado", true, { melhoria: m.id });
+        linhaTexto(card, "preco", tr("Comprado"));
+        botao(card, tr("Comprado"), true, { melhoria: m.id });
       } else {
         precoHtml(card, m.preco);
         const falta = m.requer && !temMelhoria(m.requer);
         const nomeRequer = falta ? MELHORIAS.find(function(x) { return x.id === m.requer; }).nome : "";
-        botao(card, falta ? "Precisa: " + nomeRequer : save.moedas >= m.preco ? "Comprar" : "Faltam " + (m.preco - save.moedas),
+        botao(card, falta ? tr("Precisa: {0}", nomeRequer) : save.moedas >= m.preco ? tr("Comprar") : tr("Faltam {0}", m.preco - save.moedas),
           falta || save.moedas < m.preco, { melhoria: m.id });
       }
       frag.appendChild(card);
@@ -484,24 +498,24 @@ function renderizarLoja() {
 
       linhaTexto(card, "nome", item.nome);
       const premio = item.fase !== undefined || item.nivel !== undefined;
-      if (tem) linhaTexto(card, "preco", equipado ? "Equipado" : "Seu");
-      else if (item.fase !== undefined) linhaTexto(card, "preco", "Passe a fase " + nomeFase(item.fase));
-      else if (item.nivel !== undefined) linhaTexto(card, "preco", "Chegue ao nível " + item.nivel);
+      if (tem) linhaTexto(card, "preco", equipado ? tr("Equipado") : tr("Seu"));
+      else if (item.fase !== undefined) linhaTexto(card, "preco", tr("Passe a fase {0}", nomeFase(item.fase)));
+      else if (item.nivel !== undefined) linhaTexto(card, "preco", tr("Chegue ao nível {0}", item.nivel));
       else precoHtml(card, item.preco);
 
       let texto;
       let desativado = false;
       if (!tem && premio) {
-        texto = "Bloqueado";
+        texto = tr("Bloqueado");
         desativado = true;
       } else if (!tem) {
-        texto = save.moedas >= item.preco ? "Comprar" : "Faltam " + (item.preco - save.moedas);
+        texto = save.moedas >= item.preco ? tr("Comprar") : tr("Faltam {0}", item.preco - save.moedas);
         desativado = save.moedas < item.preco;
       } else if (equipado) {
-        texto = abaAtual === "skin" ? "Equipado" : "Tirar";
+        texto = abaAtual === "skin" ? tr("Equipado") : tr("Tirar");
         desativado = abaAtual === "skin";
       } else {
-        texto = "Equipar";
+        texto = tr("Equipar");
       }
       botao(card, texto, desativado, { id: item.id });
       frag.appendChild(card);
@@ -595,9 +609,16 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
     else if (acao === "padraoControles") { save.teclas = copiaTeclasPadrao(); reconstruirMapaTeclas(); salvar(); renderizarControles(); atualizarTelas(); }
     else if (acao === "continuar") pausar(false);
     else if (acao === "pausar") pausar(true);
-    else if (acao === "reiniciar") { pausado = false; atualizarTelas(); trocarCena(function() { iniciarFase(fase.indice); }); }
+    else if (acao === "reiniciar") {
+      pausado = false;
+      atualizarTelas();
+      intervaloComercial(function() { trocarCena(function() { iniciarFase(fase.indice); }); });
+    }
+    else if (acao === "reviver") aceitarReviver();
+    else if (acao === "naoReviver") recusarReviver();
     else if (acao === "menu") voltarAoMenu();
     else if (acao === "som") { save.mudo = !save.mudo; salvar(); atualizarTelas(); }
     else if (acao === "cronometro") { save.cronometro = !save.cronometro; salvar(); atualizarTelas(); }
+    else if (acao === "idioma") trocarIdioma();
   });
 });

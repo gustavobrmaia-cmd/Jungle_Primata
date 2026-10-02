@@ -1,6 +1,7 @@
 # Jogo do Primata
 
-Abra o `index.html` no navegador. Mantenha a pasta `js/` e o `estilo.css` junto com ele.
+Abra o `index.html` no navegador. Mantenha as pastas `js/` e `fontes/` e o `estilo.css` junto com ele.
+O jogo não usa nada da internet: tudo (desenhos, sons e a fonte) vem desta pasta.
 
 O vento levou a banana do macaco! Atravesse 4 mundos (24 fases: 5 + o chefe em cada) para recuperá-la.
 Cada fase libera um inimigo novo, um obstáculo novo e um cosmético de prêmio.
@@ -21,6 +22,17 @@ maiores, aparecem mais inimigos e eles ficam mais rápidos.
 | L | loja · P / Esc pausa · M som |
 
 Todas as teclas podem ser trocadas no menu **Controles**.
+
+**Controle (Xbox / PlayStation):** analógico ou direcional anda, **A** pula, **X** atira,
+**Y** cipó-laço, **B** ou **RB** dash, **LB** recarrega, **LT** troca o poder escolhido e
+**RT** usa, **Start** pausa, **Back/Select** abre a loja. Nos menus o direcional escolhe,
+**A** confirma e **B** volta. Quando você usa o controle, as placas mostram os botões dele.
+
+## Idioma
+
+Português ou inglês. Sem escolher, segue o idioma do navegador (português para `pt`,
+inglês para o resto). Dá para trocar em **Controles → Idioma**. Os textos em inglês ficam em
+`js/idioma.js`: o texto em português é a chave e o inglês é o valor.
 
 ## Mundos
 
@@ -60,11 +72,26 @@ Opcional: liga em **Pausa** ou **Controles** ("Cronômetro: ligado"). Mostra no 
 Só conta o tempo jogando: pausa, loja, abertura e final não contam. Voltar ao menu cancela a run.
 Para uma run nova depois de zerar, entre em **Escolher fase → Selva 1-1**.
 
+## Publicar (Poki, itch.io, GitHub Pages)
+
+- **Sem links do seu computador:** em `js/dados.js`, `IMAGEM_PERSONAGEM` e `FUNDO_SELVA_URL`
+  ficam vazios (`""`), assim o jogo usa só a arte própria em pixel art.
+- **GitHub Pages:** o repositório precisa ser público (no plano grátis). Depois, em
+  *Settings → Pages*, escolha *Deploy from a branch*, `main` e `/ (root)`. O link fica
+  `https://<usuario>.github.io/jogo-do-primata/`.
+- **Netlify Drop** (funciona com repositório privado): abra `app.netlify.com/drop` e arraste a
+  pasta do jogo.
+- **Poki:** em `js/dados.js` mude `USAR_POKI` para `true`. O jogo carrega o SDK do Poki, avisa
+  quando a gameplay começa e para, mostra um intervalo comercial entre as fases e ao recomeçar,
+  e quando o macaco perde todas as vidas oferece "assista um anúncio para reviver" (volta no
+  último chão seguro com as vidas cheias, uma vez por tentativa). Durante o anúncio o jogo fica
+  parado e mudo. Com `false` nada disso carrega.
+
 ## Arquivos
 
 - `js/dados.js`: configurações, mundos, inimigos, skins, roupas, poderes e preços.
   Para usar sua imagem do macaco, coloque o caminho em `IMAGEM_PERSONAGEM`: ela aparece
-  como a skin "Original".
+  como a skin "Original" (só no seu PC; deixe vazio para publicar).
 - `js/fases.js`: gerador das fases.
 - `js/jogo.js`: física, jogador, inimigos e perigos.
 - `js/obstaculos.js`: obstáculos novos e power-ups.
@@ -74,3 +101,7 @@ Para uma run nova depois de zerar, entre em **Escolher fase → Selva 1-1**.
 - `js/cenas.js`: abertura e final.
 - `js/cronometro.js`: cronômetro de speedrun e recordes.
 - `js/telas.js`: menu, mapa, pausa e loja.
+- `js/idioma.js`: textos em inglês e troca de idioma.
+- `js/anuncios.js`: SDK do Poki (intervalo e anúncio premiado para reviver).
+- `js/controle.js`: suporte a controle (gamepad).
+- `fontes/`: fonte Pixelify Sans (licença SIL OFL em `fontes/OFL.txt`).

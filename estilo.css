@@ -6,6 +6,24 @@
    cantos cortados em degrau.
    ========================================================= */
 
+/* Fonte Pixelify Sans (licença SIL OFL, em fontes/OFL.txt): fica junto do jogo, sem depender da internet */
+@font-face {
+  font-family: "Pixelify Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("fontes/pixelify-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Pixelify Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("fontes/pixelify-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --fonte: "Pixelify Sans", monospace;
 
@@ -100,6 +118,14 @@ button {
 button:hover:not(:disabled) {
   transform: translateY(-2px);
   filter: brightness(1.12) saturate(1.05);
+}
+
+/* Botão escolhido com o controle (gamepad) */
+button.focoPad {
+  transform: translateY(-2px);
+  filter: brightness(1.15) saturate(1.1);
+  outline: 3px solid #ffffff;
+  outline-offset: 6px;
 }
 
 button:active:not(:disabled) {
@@ -430,11 +456,13 @@ kbd {
   gap: 18px;
   padding: 22px 44px 36px;
 }
-#telaPausa { background: radial-gradient(ellipse at 50% 46%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.62) 60%, rgba(12, 5, 0, 0.9) 100%); }
-#telaPausa .painelCentral { padding-bottom: 40px; }
+#telaPausa, #telaReviver { background: radial-gradient(ellipse at 50% 46%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.62) 60%, rgba(12, 5, 0, 0.9) 100%); }
+#telaPausa .painelCentral, #telaReviver .painelCentral { padding-bottom: 40px; }
 #telaPausa .botoes { gap: 16px; width: 330px; }
-#telaPausa .botoes button { font-size: 21px; padding: 9px 8px; }
-#telaPausa .botoes button.grande { font-size: 26px; padding: 11px 8px; }
+#telaReviver .botoes { gap: 16px; width: 420px; }
+#telaPausa .botoes button, #telaReviver .botoes button { font-size: 21px; padding: 9px 8px; }
+#telaPausa .botoes button.grande, #telaReviver .botoes button.grande { font-size: 26px; padding: 11px 8px; }
+#telaReviver .info { max-width: 480px; }
 
 
 /* ===== Mapa ===== */

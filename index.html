@@ -5,9 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jogo do Primata</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="estilo.css">
 </head>
 
@@ -74,6 +71,18 @@
       </div>
     </div>
 
+    <!-- Assista para reviver (só aparece com o SDK do Poki) -->
+    <div id="telaReviver" class="tela">
+      <div class="painelCentral">
+        <h2>Você perdeu!</h2>
+        <p class="info">Assista um anúncio para continuar daqui com todas as vidas.</p>
+        <div class="botoes">
+          <button class="grande" data-acao="reviver">Assistir e reviver (Enter)</button>
+          <button class="sec" data-acao="naoReviver">Voltar do checkpoint (Esc)</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Controles: trocar as teclas -->
     <div id="telaControles" class="tela">
       <div class="painelCentral largo">
@@ -83,6 +92,7 @@
         <div class="linhaBotoes">
           <button class="sec" data-acao="padraoControles">Restaurar padrão</button>
           <button class="sec" id="btnCronControles" data-acao="cronometro">Cronômetro</button>
+          <button class="sec" id="btnIdioma" data-acao="idioma">Idioma</button>
           <button data-acao="fecharControles">Voltar</button>
         </div>
       </div>
@@ -111,6 +121,7 @@
 
   <!-- A ordem importa: cada arquivo usa coisas dos anteriores -->
   <script src="js/util.js"></script>
+  <script src="js/idioma.js"></script>
   <script src="js/dados.js"></script>
   <script src="js/save.js"></script>
   <script src="js/pixelarte.js"></script>
@@ -125,7 +136,9 @@
   <script src="js/chefes.js"></script>
   <script src="js/cenas.js"></script>
   <script src="js/cronometro.js"></script>
+  <script src="js/anuncios.js"></script>
   <script src="js/telas.js"></script>
+  <script src="js/controle.js"></script>
   <script src="js/main.js"></script>
 
 </body>

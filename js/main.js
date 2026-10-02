@@ -33,6 +33,7 @@ const MOVIMENTO = { esquerda: true, direita: true, baixo: true, pulo: true };
 const ACOES_RAPIDAS = { tiro: true, laco: true, dash: true, recarregar: true };
 
 document.addEventListener("keydown", function(e) {
+  if (anuncios.aberto) { e.preventDefault(); return; }
   iniciarAudio();
   const k = e.key.toLowerCase();
 
@@ -86,6 +87,13 @@ document.addEventListener("keydown", function(e) {
     return;
   }
 
+  if (reviverAberto) {
+    if (e.repeat) return;
+    if (k === "enter") aceitarReviver();
+    else if (k === "escape") recusarReviver();
+    return;
+  }
+
   // Dentro da fase
   if ((k === "escape" || acao === "pausa") && !e.repeat) { pausar(!pausado); return; }
   if (acao === "loja" && !e.repeat) { abrirLoja(); return; }
@@ -122,12 +130,17 @@ let acumulado = 0;
 let contSalvar = 0;
 
 function passo() {
+  atualizarAnuncios();
+  if (anuncios.aberto) return;   // anúncio na tela: tudo parado
+  atualizarControle();
   let mundoClima = 0;
   if (estado === "jogo" || estado === "final") mundoClima = fase.mundo;
   else if (estado === "menu") mundoClima = Math.floor(save.desbloqueado / FASES_POR_MUNDO);
   atualizarClima(mundoClima);
 
-  if (estado === "jogo" && !pausado) cronPasso();
+  // Pausa, loja ou controles abertos: nenhum comando chega na física (teclado ou controle)
+  if (estado !== "jogo" || pausado) soltarTeclas();
+  else cronPasso();
   const fechando = atualizarTransicao();
   if (!fechando) {
     if (estado === "jogo") {
@@ -181,5 +194,7 @@ function ajustarTela() {
 window.addEventListener("resize", ajustarTela);
 ajustarTela();
 
+traduzirDom();
 atualizarTelas();
+iniciarAnuncios();
 requestAnimationFrame(quadro);

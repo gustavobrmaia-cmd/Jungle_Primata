@@ -151,7 +151,7 @@ function atualizarChefe() {
         const premio = save.chefes[fase.mundo] ? 60 : RECOMPENSA_CHEFE[fase.mundo];
         ganharMoedas(premio, LARGURA / 2, 200);
         save.chefes[fase.mundo] = true;
-        mostrarMensagem("Chefe derrotado!", "+" + premio + " moedas. Pegue a banana!", 150, null, false);
+        mostrarMensagem(tr("Chefe derrotado!"), tr("+{0} moedas. Pegue a banana!", premio), 150, null, false);
         soltarBananaDoCeu();
       }
     }
