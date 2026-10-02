@@ -136,10 +136,14 @@ function atualizarTelas() {
   mostrar(el("botoesJogo"), estado === "jogo" && !pausado);
   mostrar(el("loja"), lojaAberta);
   el("menuMoedas").textContent = save.moedas;
-  el("menuProgresso").textContent = save.zerou ? "Jogo zerado!" : "Próxima: " + nomeFase(save.desbloqueado);
+  el("menuProgresso").textContent = (save.zerou ? "Jogo zerado!" : "Próxima: " + nomeFase(save.desbloqueado)) +
+    (save.cronometro && save.recordes.run ? " · Recorde: " + formatarCron(save.recordes.run) : "");
   el("menuNivel").textContent = save.nivel;
   el("menuXp").style.width = Math.round((100 * save.xp) / xpParaSubir(save.nivel)) + "%";
   el("menuXpTexto").textContent = save.xp + "/" + xpParaSubir(save.nivel) + " XP";
+  const txtCron = "Cronômetro: " + (save.cronometro ? "ligado" : "desligado");
+  el("btnCron").textContent = txtCron;
+  el("btnCronControles").textContent = txtCron;
   el("btnSom").textContent = save.mudo ? "Som: desligado (" + teclaDe("som") + ")" : "Som: ligado (" + teclaDe("som") + ")";
   el("menuControles").innerHTML = [
     comando([teclaDe("esquerda"), teclaDe("direita")], "andar"),
@@ -173,6 +177,7 @@ function jogar() {
 }
 
 function voltarAoMenu() {
+  cronCancelarRun();
   estado = "menu";
   telaAtual = "menu";
   pausado = false;
@@ -593,5 +598,6 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
     else if (acao === "reiniciar") { pausado = false; atualizarTelas(); trocarCena(function() { iniciarFase(fase.indice); }); }
     else if (acao === "menu") voltarAoMenu();
     else if (acao === "som") { save.mudo = !save.mudo; salvar(); atualizarTelas(); }
+    else if (acao === "cronometro") { save.cronometro = !save.cronometro; salvar(); atualizarTelas(); }
   });
 });

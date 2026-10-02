@@ -205,6 +205,8 @@ function desenharIntro() {
 const final = { t: 0, etapa: "", pronto: false };
 
 function iniciarCenaFinal() {
+  cronFimFase();
+  cronFimRun();
   const j = jogador;
   const c = chefe;
   estado = "final";
@@ -545,6 +547,8 @@ function desenharFinal() {
       "Chefes derrotados: " + st.chefes + "   ·   Quedas: " + st.mortes,
       "Tempo de jogo: " + formatarTempo(st.tempo)
     ];
+    const speedrun = linhaCronFinal();
+    if (speedrun) linhas.push(speedrun);
     if (f.cosmetico) linhas.push("Nova skin: " + f.cosmetico.nome + "!");
     ctx.globalAlpha = Math.min(1, (f.et - 120) / 30);
     painelPixel(LARGURA / 2 - 380, 250, 760, 40 + linhas.length * 28, "#ffd43b", "rgba(20,12,6,0.82)");

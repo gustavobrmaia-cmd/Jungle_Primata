@@ -97,6 +97,7 @@ function iniciarFase(indice, doCheckpoint) {
   pausado = false;
   apertos.clear();
   if (!doCheckpoint) mostrarCartaoFase();
+  cronInicioFase(indice, doCheckpoint);
   if (typeof atualizarTelas === "function") atualizarTelas();
 }
 
@@ -1349,6 +1350,7 @@ function atualizarBanana() {
 }
 
 function fimDaFase() {
+  cronFimFase();
   const i = fase.indice;
   let titulo = "Fase completa!";
   if (fase.ehChefe) {
@@ -3634,4 +3636,5 @@ function desenharJogo() {
   desenharHud();
   desenharExtrasHud();
   desenharMensagem();
+  desenharCron();
 }

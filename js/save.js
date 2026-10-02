@@ -34,7 +34,9 @@ function saveNovo() {
     stats: { inimigos: 0, chutes: 0, chefes: 0, mortes: 0, tempo: 0 },
     viuIntro: false,
     zerou: false,
-    mudo: false
+    mudo: false,
+    cronometro: false,            // cronômetro de speedrun na tela
+    recordes: { fases: [], run: 0 }   // melhores tempos (em quadros de 1/60s)
   };
 }
 
@@ -100,6 +102,15 @@ let save = saveNovo();
   save.viuIntro = !!s.viuIntro;
   save.zerou = !!s.zerou;
   save.mudo = !!s.mudo;
+  save.cronometro = !!s.cronometro;
+  if (s.recordes && typeof s.recordes === "object") {
+    if (Array.isArray(s.recordes.fases)) {
+      save.recordes.fases = s.recordes.fases.slice(0, TOTAL_FASES).map(function(v) {
+        return typeof v === "number" && v > 0 ? Math.floor(v) : 0;
+      });
+    }
+    if (typeof s.recordes.run === "number" && s.recordes.run > 0) save.recordes.run = Math.floor(s.recordes.run);
+  }
 })();
 
 function salvar() {

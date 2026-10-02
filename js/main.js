@@ -127,6 +127,7 @@ function passo() {
   else if (estado === "menu") mundoClima = Math.floor(save.desbloqueado / FASES_POR_MUNDO);
   atualizarClima(mundoClima);
 
+  if (estado === "jogo" && !pausado) cronPasso();
   const fechando = atualizarTransicao();
   if (!fechando) {
     if (estado === "jogo") {

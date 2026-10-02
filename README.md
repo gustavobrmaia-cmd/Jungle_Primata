@@ -49,6 +49,17 @@ quando e ativam na hora (duram menos que os da loja).
 
 Moedas, compras e progresso ficam salvos no navegador.
 
+## Cronômetro de speedrun
+
+Opcional: liga em **Pausa** ou **Controles** ("Cronômetro: ligado"). Mostra no canto da tela:
+
+- **Total**: o tempo da run, que começa ao entrar na Selva 1-1 e para quando o Dragão de Magma cai.
+- **Fase**: o tempo da fase atual (morrer não zera) e o recorde dela.
+- Ao terminar uma fase aparece a diferença para o recorde (ex.: `-1.20  Recorde!`).
+
+Só conta o tempo jogando: pausa, loja, abertura e final não contam. Voltar ao menu cancela a run.
+Para uma run nova depois de zerar, entre em **Escolher fase → Selva 1-1**.
+
 ## Arquivos
 
 - `js/dados.js`: configurações, mundos, inimigos, skins, roupas, poderes e preços.
@@ -61,4 +72,5 @@ Moedas, compras e progresso ficam salvos no navegador.
 - `js/chefes.js`: os chefes.
 - `js/arte.js`: todos os desenhos em pixel art.
 - `js/cenas.js`: abertura e final.
+- `js/cronometro.js`: cronômetro de speedrun e recordes.
 - `js/telas.js`: menu, mapa, pausa e loja.
