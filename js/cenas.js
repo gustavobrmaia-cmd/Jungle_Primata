@@ -207,6 +207,7 @@ const final = { t: 0, etapa: "", pronto: false };
 function iniciarCenaFinal() {
   cronFimFase();
   cronFimRun();
+  avaliarFase();
   const j = jogador;
   const c = chefe;
   estado = "final";
@@ -228,6 +229,9 @@ function iniciarCenaFinal() {
   save.moedas += premio;
   final.premio = premio;
   save.chefes[3] = true;
+  // Zerou pela primeira vez: libera o modo speedrun (liga o cronômetro)
+  final.speedrun = !save.zerou && !save.cronometro;
+  if (final.speedrun) save.cronometro = true;
   save.zerou = true;
   save.desbloqueado = TOTAL_FASES - 1;
   final.cosmetico = darPremioDaFase(fase.indice);
@@ -547,8 +551,10 @@ function desenharFinal() {
       tr("Chefes derrotados: {0}   ·   Quedas: {1}", st.chefes, st.mortes),
       tr("Tempo de jogo: {0}", formatarTempo(st.tempo))
     ];
+    linhas.push(tr("Estrelas: {0}/{1}", totalEstrelas(), TOTAL_FASES * 3));
     const speedrun = linhaCronFinal();
     if (speedrun) linhas.push(speedrun);
+    if (f.speedrun) linhas.push(tr("Modo speedrun liberado! O cronômetro foi ligado."));
     if (f.cosmetico) linhas.push(tr("Nova skin: {0}!", f.cosmetico.nome));
     ctx.globalAlpha = Math.min(1, (f.et - 120) / 30);
     painelPixel(LARGURA / 2 - 380, 250, 760, 40 + linhas.length * 28, "#ffd43b", "rgba(20,12,6,0.82)");

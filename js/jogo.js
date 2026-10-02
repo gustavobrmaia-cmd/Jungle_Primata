@@ -70,7 +70,8 @@ function maxBalas() {
 // =========================
 
 function iniciarFase(indice, doCheckpoint) {
-  if (!doCheckpoint) checkpointX = null;
+  if (!doCheckpoint) { checkpointX = null; danoNaTentativa = false; }
+  resultadoFase = null;
   fase = gerarFase(indice);
   inimigos = fase.inimigos.map(criarInimigo);
   projeteis = [];
@@ -705,6 +706,7 @@ function machucar(origemX, ignorarInvencivel) {
   if (j.dash > 0 || buffs.escudo > 0) return;
   if (j.invencivel > 0 && !ignorarInvencivel) return;
   j.vidas--;
+  perdeuVida();
   j.invencivel = 90;
   tremor = 10;
   flashDano = 20;
@@ -724,6 +726,7 @@ function machucar(origemX, ignorarInvencivel) {
 function caiuNoBuraco() {
   const j = jogador;
   j.vidas--;
+  perdeuVida();
   tremor = 10;
   som("dano");
   if (j.vidas <= 0) {
@@ -1371,6 +1374,7 @@ function atualizarBanana() {
 
 function fimDaFase() {
   cronFimFase();
+  avaliarFase();
   const i = fase.indice;
   let titulo = tr("Fase completa!");
   if (fase.ehChefe) {
@@ -3667,6 +3671,7 @@ function desenharJogo() {
   desenharHud();
   desenharExtrasHud();
   desenharMensagem();
+  desenharResultadoFase();
   desenharCron();
   desenharToque();
 }

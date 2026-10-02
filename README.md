@@ -67,16 +67,22 @@ quando e ativam na hora (duram menos que os da loja).
 
 Moedas, compras e progresso ficam salvos no navegador.
 
+## Estrelas
+
+Cada fase tem 3 estrelas: **terminar**, **terminar sem perder nenhuma vida** e **terminar
+dentro da meta de tempo** (mostrada no fim da fase). Cada estrela nova vale 30 moedas. As
+estrelas aparecem no mapa e o total fica no menu (72 no máximo).
+
 ## Cronômetro de speedrun
 
-Opcional: liga em **Pausa** ou **Controles** ("Cronômetro: ligado"). Mostra no canto da tela:
+Liga sozinho na primeira vez que você zera (e dá para ligar/desligar em **Pausa** ou **Controles**) ("Cronômetro: ligado"). Mostra no canto da tela:
 
 - **Total**: o tempo da run, que começa ao entrar na Selva 1-1 e para quando o Dragão de Magma cai.
 - **Fase**: o tempo da fase atual (morrer não zera) e o recorde dela.
 - Ao terminar uma fase aparece a diferença para o recorde (ex.: `-1.20  Recorde!`).
 
 Só conta o tempo jogando: pausa, loja, abertura e final não contam. Voltar ao menu cancela a run.
-Para uma run nova depois de zerar, entre em **Escolher fase → Selva 1-1**.
+Depois de zerar, **Jogar** começa uma run nova na Selva 1-1.
 
 ## Publicar (Poki, itch.io, GitHub Pages)
 
@@ -106,6 +112,7 @@ Para uma run nova depois de zerar, entre em **Escolher fase → Selva 1-1**.
 - `js/arte.js`: todos os desenhos em pixel art.
 - `js/cenas.js`: abertura e final.
 - `js/cronometro.js`: cronômetro de speedrun e recordes.
+- `js/estrelas.js`: as 3 estrelas de cada fase.
 - `js/telas.js`: menu, mapa, pausa e loja.
 - `js/idioma.js`: textos em inglês e troca de idioma.
 - `js/anuncios.js`: SDK do Poki (intervalo e anúncio premiado para reviver).

@@ -137,9 +137,10 @@ function atualizarTelas() {
   mostrar(el("botoesJogo"), estado === "jogo" && !pausado);
   mostrar(el("loja"), lojaAberta);
   el("menuMoedas").textContent = save.moedas;
-  el("menuProgresso").textContent = (save.zerou ? tr("Jogo zerado!") : tr("Próxima: {0}", nomeFase(save.desbloqueado))) +
+  el("menuProgresso").textContent = (save.zerou ? tr("Zerado! Jogar = nova run") : tr("Próxima: {0}", nomeFase(save.desbloqueado))) +
     (save.cronometro && save.recordes.run ? tr(" · Recorde: {0}", formatarCron(save.recordes.run)) : "");
   el("menuNivel").textContent = save.nivel;
+  el("menuEstrelas").textContent = totalEstrelas() + "/" + TOTAL_FASES * 3;
   el("menuXp").style.width = Math.round((100 * save.xp) / xpParaSubir(save.nivel)) + "%";
   el("menuXpTexto").textContent = save.xp + "/" + xpParaSubir(save.nivel) + " XP";
   const txtCron = save.cronometro ? tr("Cronômetro: ligado") : tr("Cronômetro: desligado");
@@ -194,6 +195,7 @@ function sairDoMenu(fn) {
 
 function jogar() {
   if (!save.viuIntro) sairDoMenu(iniciarIntro);
+  else if (save.zerou) sairDoMenu(function() { iniciarFase(0); });   // depois de zerar: nova run desde o começo
   else sairDoMenu(function() { iniciarFase(save.desbloqueado); });
 }
 
@@ -312,6 +314,18 @@ el("listaControles").addEventListener("click", function(e) {
 
 // ---------- Mapa de fases ----------
 
+// Três estrelinhas embaixo do número da fase (apagadas as que faltam)
+function estrelasDoBotao(bits) {
+  const d = document.createElement("span");
+  d.className = "estrelasFase";
+  for (let k = 0; k < 3; k++) {
+    const img = iconeTela("estrela", 1.5);
+    if (!((bits >> k) & 1)) img.classList.add("apagada");
+    d.appendChild(img);
+  }
+  return d;
+}
+
 function renderizarMapa() {
   const box = el("mundos");
   box.innerHTML = "";
@@ -370,8 +384,8 @@ function renderizarMapa() {
         n.className = "num";
         n.textContent = (mi + 1) + "-" + (e + 1);
         b.appendChild(n);
-        if (feita) b.appendChild(iconeTela("estrela", 2));
       }
+      if (feita || (save.estrelas[i] || 0)) b.appendChild(estrelasDoBotao(save.estrelas[i] || 0));
       b.dataset.fase = i;
       linha.appendChild(b);
     }

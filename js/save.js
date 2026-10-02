@@ -36,7 +36,8 @@ function saveNovo() {
     mudo: false,
     idioma: "",                   // "pt", "en" ou vazio (segue o navegador)
     cronometro: false,            // cronômetro de speedrun na tela
-    recordes: { fases: [], run: 0 }   // melhores tempos (em quadros de 1/60s)
+    recordes: { fases: [], run: 0 },
+    estrelas: []                  // por fase: 1 = completa, 2 = sem perder vida, 4 = meta de tempo   // melhores tempos (em quadros de 1/60s)
   };
 }
 
@@ -103,6 +104,16 @@ let save = saveNovo();
   save.zerou = !!s.zerou;
   save.mudo = !!s.mudo;
   save.cronometro = !!s.cronometro;
+  if (Array.isArray(s.estrelas)) {
+    save.estrelas = s.estrelas.slice(0, TOTAL_FASES).map(function(v) { return typeof v === "number" ? v & 7 : 0; });
+  } else {
+    // save antigo: fases já passadas ganham a 1ª estrela
+    for (let i = 0; i < TOTAL_FASES; i++) {
+      const chefe = i % FASES_POR_MUNDO === FASES_POR_MUNDO - 1;
+      const feita = chefe ? save.chefes[Math.floor(i / FASES_POR_MUNDO)] : (i < save.desbloqueado || save.zerou);
+      save.estrelas[i] = feita ? 1 : 0;
+    }
+  }
   if (s.idioma === "pt" || s.idioma === "en") save.idioma = s.idioma;
   if (s.recordes && typeof s.recordes === "object") {
     if (Array.isArray(s.recordes.fases)) {

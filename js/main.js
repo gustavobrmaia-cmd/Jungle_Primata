@@ -122,6 +122,18 @@ window.addEventListener("blur", function() {
 
 window.addEventListener("beforeunload", salvar);
 
+// Aba escondida (trocou de app no celular, minimizou): pausa e cala o som
+document.addEventListener("visibilitychange", function() {
+  if (document.hidden) {
+    soltarTeclas();
+    if (estado === "jogo" && !pausado && !lojaAberta && !reviverAberto) pausar(true);
+    if (audioCtx && audioCtx.state === "running") audioCtx.suspend();
+    salvar();
+  } else if (audioCtx && audioCtx.state === "suspended" && !anuncios.aberto) {
+    audioCtx.resume();
+  }
+});
+
 
 // ---------- Loop: física em passos fixos de 1/60s, desenho a cada quadro ----------
 
