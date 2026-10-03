@@ -73,11 +73,12 @@ function intervaloComercial(depois) {
     });
 }
 
-// Anúncio premiado: fim(true) só se a pessoa assistiu até o fim
-function anuncioPremiado(fim) {
-  if (!anuncios.sdk || !anuncios.premiado) { fim(false); return; }
+// Anúncio premiado: fim(true) só se a pessoa assistiu até o fim.
+// tamanho ("small", "medium", "large") diz ao Poki o valor do prêmio.
+function anuncioPremiado(tamanho, fim) {
+  if (!premiadoDisponivel()) { fim(false); return; }
   abrirAnuncio();
-  anuncios.sdk.rewardedBreak(function() { /* começou */ })
+  anuncios.sdk.rewardedBreak({ size: tamanho, onStart: function() { /* começou: jogo já parado e mudo */ } })
     .then(function(ok) { return !!ok; }, function() { return false; })
     .then(function(ok) {
       fecharAnuncio();
@@ -86,10 +87,15 @@ function anuncioPremiado(fim) {
 }
 
 
+function premiadoDisponivel() {
+  return !!(anuncios.sdk && anuncios.premiado && !anuncios.aberto);
+}
+
+
 // ---------- Assista para reviver ----------
 
 function podeReviver() {
-  return !!(anuncios.sdk && anuncios.premiado && fase && !fase.reviveu);
+  return premiadoDisponivel() && !!fase && !fase.reviveu;
 }
 
 function abrirReviver() {
@@ -103,7 +109,7 @@ function aceitarReviver() {
   if (!reviverAberto) return;
   reviverAberto = false;
   atualizarTelas();
-  anuncioPremiado(function(ok) {
+  anuncioPremiado("medium", function(ok) {
     if (ok) reviverJogador();
     else voltarDoCheckpoint();
   });
@@ -133,4 +139,54 @@ function reviverJogador() {
   atualizarTelas();
   som("poder");
   texto(j.x + j.w / 2, j.y - 20, tr("Reviveu!"), "#69db7c", 26);
+}
+
+
+// ---------- Loja: prêmios opcionais por anúncio ----------
+
+// Moedas grátis crescem com o nível do jogador
+function moedasDoAnuncio() {
+  return Math.min(300, 40 + 10 * save.nivel);
+}
+
+function avisoLoja(texto, cor) {
+  const d = el("lojaDica");
+  d.textContent = texto;
+  d.style.color = cor || "";
+  clearTimeout(avisoLoja.t);
+  avisoLoja.t = setTimeout(function() {
+    d.textContent = tr("L ou Esc para voltar");
+    d.style.color = "";
+  }, 2500);
+}
+
+function moedasComAnuncio() {
+  const n = moedasDoAnuncio();
+  anuncioPremiado("medium", function(ok) {
+    if (ok) {
+      save.moedas += n;
+      som("compra");
+      salvar();
+      avisoLoja(tr("+{0} moedas!", n), "#ffe066");
+    } else {
+      avisoLoja(tr("O anúncio não terminou, nada ganho."), "#ff8787");
+    }
+    renderizarLoja();
+  });
+}
+
+function poderComAnuncio(id) {
+  const p = PODERES.find(function(x) { return x.id === id; });
+  if (!p) return;
+  anuncioPremiado("small", function(ok) {
+    if (ok) {
+      save.poderes[id]++;
+      som("compra");
+      salvar();
+      avisoLoja(tr("+1 {0}!", p.nome), "#69db7c");
+    } else {
+      avisoLoja(tr("O anúncio não terminou, nada ganho."), "#ff8787");
+    }
+    renderizarLoja();
+  });
 }

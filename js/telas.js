@@ -190,7 +190,8 @@ function soltarTeclas() {
 function sairDoMenu(fn) {
   telaAtual = "nenhuma";
   atualizarTelas();
-  trocarCena(fn);
+  // o Poki pede um intervalo antes de cada começo de gameplay (ele decide se mostra)
+  intervaloComercial(function() { trocarCena(fn); });
 }
 
 function jogar() {
@@ -455,6 +456,10 @@ function botao(card, texto, desativado, dados) {
 
 function renderizarLoja() {
   el("lojaMoedas").textContent = save.moedas;
+  // Prêmio opcional por anúncio (só aparece com o SDK do Poki e sem bloqueador)
+  const btnAnuncio = el("btnMoedasAnuncio");
+  btnAnuncio.style.display = premiadoDisponivel() ? "" : "none";
+  btnAnuncio.textContent = tr("Assistir anúncio: +{0} moedas", moedasDoAnuncio());
   desenharPrimata(el("previa").getContext("2d"), save.equip, 8, "parado");
 
   const abas = el("abas");
@@ -481,6 +486,10 @@ function renderizarLoja() {
       linhaTexto(card, "qtd", tr("Você tem: {0}", save.poderes[p.id]));
       precoHtml(card, p.preco);
       botao(card, save.moedas >= p.preco ? tr("Comprar") : tr("Faltam {0}", p.preco - save.moedas), save.moedas < p.preco, { poder: p.id });
+      if (premiadoDisponivel()) {
+        botao(card, tr("Grátis (anúncio)"), false, { poderAnuncio: p.id });
+        card.lastChild.classList.add("anuncio");
+      }
       frag.appendChild(card);
     });
   } else if (abaAtual === "melhoria") {
@@ -603,7 +612,8 @@ el("abas").addEventListener("click", function(e) {
 el("itens").addEventListener("click", function(e) {
   const b = e.target.closest("button");
   if (!b || b.disabled) return;
-  if (b.dataset.poder) comprarPoder(b.dataset.poder);
+  if (b.dataset.poderAnuncio) poderComAnuncio(b.dataset.poderAnuncio);
+  else if (b.dataset.poder) comprarPoder(b.dataset.poder);
   else if (b.dataset.melhoria) comprarMelhoria(b.dataset.melhoria);
   else usarCosmetico(abaAtual, b.dataset.id);
 });
@@ -641,5 +651,6 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
     else if (acao === "som") { save.mudo = !save.mudo; salvar(); atualizarTelas(); }
     else if (acao === "cronometro") { save.cronometro = !save.cronometro; salvar(); atualizarTelas(); }
     else if (acao === "idioma") trocarIdioma();
+    else if (acao === "moedasAnuncio") moedasComAnuncio();
   });
 });

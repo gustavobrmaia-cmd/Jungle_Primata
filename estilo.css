@@ -935,3 +935,13 @@ kbd {
 .estrelasFase .apagada { filter: grayscale(1) brightness(0.45); opacity: 0.7; }
 .fase.chefe .estrelasFase { margin-top: -2px; }
 .pilula.estrelas { color: var(--banana); }
+
+/* Botões que dão prêmio por anúncio: verdes, para não confundir com "Comprar" */
+button.anuncio {
+  --topo: #d3f9d8;
+  --meio: #69db7c;
+  --base: #37b24d;
+  --prof: #1f7a34;
+  --txt: #0b3d17;
+}
+#btnMoedasAnuncio { font-size: 16px; padding: 7px 12px; }
