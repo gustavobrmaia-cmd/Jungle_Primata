@@ -378,10 +378,11 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       if (c.t > 110) {
         virarChefe(c, "grandeMacaco", tr("Saru Gigante"));
         // plataformas aparecem para alcançar a cabeça do gigante
-        [[150, 440], [890, 440], [520, 320]].forEach(function(pp) {
-          fPlat(fase, pp[0], pp[1], 160);
+        // (laterais ao alcance de um pulo normal; a do meio, a partir das laterais)
+        [[130, CHAO - 110, 160], [910, CHAO - 110, 160], [430, CHAO - 225, 340]].forEach(function(pp) {
+          fPlat(fase, pp[0], pp[1], pp[2]);
           for (let i = 0; i < 8; i++) {
-            particula({ tipo: "q", x: pp[0] + Math.random() * 160, y: pp[1], vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 3, g: 0.1, vida: 30, max: 30, cor: "#fff3bf", tam: 6 });
+            particula({ tipo: "q", x: pp[0] + Math.random() * pp[2], y: pp[1], vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 3, g: 0.1, vida: 30, max: 30, cor: "#fff3bf", tam: 6 });
           }
         });
         c.y = CHAO - c.h - 120;
