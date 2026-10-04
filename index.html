@@ -39,11 +39,12 @@
           <span id="menuXpTexto" class="xpTexto"></span>
         </span>
       </div>
+      <div id="avisoRei"></div>
       <div class="botoes">
         <button class="grande" data-acao="jogar">Jogar (Enter)</button>
         <button class="sec" data-acao="mapa">Escolher fase</button>
         <button class="sec" data-acao="loja">Loja</button>
-        <button class="sec" data-acao="controles">Controles</button>
+        <button class="sec" data-acao="controles">Opções</button>
         <button class="sec" data-acao="historia">Ver história</button>
       </div>
       <div class="controles" id="menuControles"></div>
@@ -64,9 +65,8 @@
           <button class="grande" data-acao="continuar">Continuar (P)</button>
           <button class="sec" data-acao="loja">Loja (L)</button>
           <button class="sec" data-acao="reiniciar">Recomeçar fase</button>
-          <button class="sec" data-acao="controles">Controles</button>
+          <button class="sec" data-acao="controles">Opções</button>
           <button class="sec" id="btnSom" data-acao="som">Som</button>
-          <button class="sec" id="btnCron" data-acao="cronometro">Cronômetro</button>
           <button class="perigo" data-acao="menu">Menu principal</button>
         </div>
       </div>
@@ -84,16 +84,49 @@
       </div>
     </div>
 
+    <!-- Rei Macaco: depois de perder -->
+    <div id="telaRei" class="tela">
+      <div class="painelCentral">
+        <h2>O Rei Macaco venceu!</h2>
+        <p class="info" id="reiTentativas"></p>
+        <p class="info" id="reiAmanha">Volte amanhã: ele pode aparecer de novo.</p>
+        <div class="botoes">
+          <button class="grande" id="btnReiDeNovo" data-acao-rei="deNovo">Tentar de novo (Enter)</button>
+          <button class="anuncio" id="btnReiAnuncio" data-acao-rei="anuncio">Assistir anúncio: +3 tentativas</button>
+          <button class="sec" data-acao-rei="fechar">Voltar ao menu (Esc)</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Controles: trocar as teclas -->
     <div id="telaControles" class="tela">
       <div class="painelCentral largo">
-        <h2>Controles</h2>
-        <p class="info">Clique numa tecla e aperte a nova. <b>Delete</b> apaga. <b>Esc</b> volta.</p>
-        <div id="listaControles"></div>
+        <h2>Opções</h2>
+        <div class="abasOpcoes">
+          <button data-aba-opcoes="controles">Controles</button>
+          <button data-aba-opcoes="idioma">Idioma</button>
+          <button data-aba-opcoes="adicionais">Adicionais</button>
+        </div>
+        <div class="secaoOpcoes" id="opcControles">
+          <p class="info">Clique numa tecla e aperte a nova. <b>Delete</b> apaga. <b>Esc</b> volta.</p>
+          <div id="listaControles"></div>
+        </div>
+        <div class="secaoOpcoes" id="opcIdioma">
+          <p class="info">Escolha o idioma do jogo.</p>
+          <div class="botoesOpcoes">
+            <button id="btnIdiomaPt" data-acao="idiomaPt">Português</button>
+            <button id="btnIdiomaEn" data-acao="idiomaEn">English</button>
+          </div>
+        </div>
+        <div class="secaoOpcoes" id="opcAdicionais">
+          <div class="botoesOpcoes">
+            <button class="sec" id="btnCronControles" data-acao="cronometro">Cronômetro</button>
+            <button class="sec" id="btnSomOpcoes" data-acao="som">Som</button>
+          </div>
+          <p class="info">O cronômetro mostra o tempo da run e de cada fase, com os seus recordes.</p>
+        </div>
         <div class="linhaBotoes">
-          <button class="sec" data-acao="padraoControles">Restaurar padrão</button>
-          <button class="sec" id="btnCronControles" data-acao="cronometro">Cronômetro</button>
-          <button class="sec" id="btnIdioma" data-acao="idioma">Idioma</button>
+          <button class="sec" id="btnPadraoControles" data-acao="padraoControles">Restaurar padrão</button>
           <button data-acao="fecharControles">Voltar</button>
         </div>
       </div>
@@ -133,6 +166,7 @@
   <script src="js/arte_chefes.js"></script>
   <script src="js/arte_objetos.js"></script>
   <script src="js/arte.js"></script>
+  <script src="js/arte_rei.js"></script>
   <script src="js/som.js"></script>
   <script src="js/fases.js"></script>
   <script src="js/jogo.js"></script>
@@ -144,6 +178,7 @@
   <script src="js/anuncios.js"></script>
   <script src="js/telas.js"></script>
   <script src="js/estrelas.js"></script>
+  <script src="js/reimacaco.js"></script>
   <script src="js/controle.js"></script>
   <script src="js/toque.js"></script>
   <script src="js/main.js"></script>

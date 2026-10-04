@@ -380,6 +380,11 @@ const SKINS = [
     ] } }
 ];
 
+// Prêmio do chefe secreto (não dá para comprar)
+SKINS.push({ id: "reiMacaco", nome: "Rei Macaco", especial: "rei",
+  cores: { F: "#b06a2c", D: "#3b1d08", P: "#f2cfa0", B: "#e8b04a" },
+  detalhe: { y: 4, cores: { Y: "#f2b705", R: "#e03131" }, mapa: ["....Y..........Y....", ".....YYYYRYYYYY....."] } });
+
 if (IMAGEM_PERSONAGEM) {
   SKINS.unshift({ id: "original", nome: "Original", preco: 0, imagem: true });
 }
@@ -576,7 +581,9 @@ const MELHORIAS = [
   { id: "coracao1",  nome: "Coração Extra",    desc: "+1 coração de vida",                preco: 400 },
   { id: "coracao2",  nome: "Coração Extra II", desc: "+1 coração de vida",                preco: 800, requer: "coracao1" },
   { id: "revolver",  nome: "Revólver Turbo",   desc: "8 balas, tiro e recarga mais rápidos", preco: 500 },
-  { id: "cipoLongo", nome: "Cipó Longo",       desc: "O laço de cipó alcança mais longe", preco: 450 }
+  { id: "cipoLongo", nome: "Cipó Longo",       desc: "O laço de cipó alcança mais longe", preco: 450 },
+  // prêmio do chefe secreto (não dá para comprar)
+  { id: "nuvem",     nome: "Nuvem Mágica",     desc: "Uma vez por fase, se cair num buraco, a nuvem te salva sem perder vida", preco: 0, especial: "rei" }
 ];
 
 const ABAS = [

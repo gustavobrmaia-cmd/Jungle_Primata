@@ -95,7 +95,7 @@ function premiadoDisponivel() {
 // ---------- Assista para reviver ----------
 
 function podeReviver() {
-  return premiadoDisponivel() && !!fase && !fase.reviveu;
+  return premiadoDisponivel() && !!fase && !fase.reviveu && !fase.secreta;
 }
 
 function abrirReviver() {

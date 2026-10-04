@@ -37,7 +37,8 @@ function saveNovo() {
     idioma: "",                   // "pt", "en" ou vazio (segue o navegador)
     cronometro: false,            // cronômetro de speedrun na tela
     recordes: { fases: [], run: 0 },
-    estrelas: []                  // por fase: 1 = completa, 2 = sem perder vida, 4 = meta de tempo   // melhores tempos (em quadros de 1/60s)
+    estrelas: [],
+    rei: { dia: "", ativo: false, tentativas: 0, anuncio: false, vencido: false, vitorias: 0 }   // chefe secreto do dia                  // por fase: 1 = completa, 2 = sem perder vida, 4 = meta de tempo   // melhores tempos (em quadros de 1/60s)
   };
 }
 
@@ -104,6 +105,14 @@ let save = saveNovo();
   save.zerou = !!s.zerou;
   save.mudo = !!s.mudo;
   save.cronometro = !!s.cronometro;
+  if (s.rei && typeof s.rei === "object") {
+    save.rei.dia = typeof s.rei.dia === "string" ? s.rei.dia : "";
+    save.rei.ativo = !!s.rei.ativo;
+    save.rei.tentativas = typeof s.rei.tentativas === "number" ? Math.max(0, Math.floor(s.rei.tentativas)) : 0;
+    save.rei.anuncio = !!s.rei.anuncio;
+    save.rei.vencido = !!s.rei.vencido;
+    save.rei.vitorias = typeof s.rei.vitorias === "number" ? Math.floor(s.rei.vitorias) : 0;
+  }
   if (Array.isArray(s.estrelas)) {
     save.estrelas = s.estrelas.slice(0, TOTAL_FASES).map(function(v) { return typeof v === "number" ? v & 7 : 0; });
   } else {

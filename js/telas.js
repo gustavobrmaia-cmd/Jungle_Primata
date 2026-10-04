@@ -109,6 +109,7 @@ function desenharBananasMenu() {
 
 // Raridade pela forma de ganhar o item: prêmios de fase/nível ou pelo preço
 function raridadeDe(item) {
+  if (item.especial) return { cls: "lendario", nome: tr("Lendário") };
   if (item.fase !== undefined || item.nivel !== undefined) return { cls: "premio", nome: tr("Prêmio") };
   const p = item.preco || 0;
   if (p >= 800) return { cls: "lendario", nome: tr("Lendário") };
@@ -128,12 +129,14 @@ function comando(teclasNomes, texto) {
 }
 
 function atualizarTelas() {
-  const sobreposta = lojaAberta || controlesAbertos;
+  const sobreposta = lojaAberta || controlesAbertos || (telaReiAberta && estado === "menu");
   mostrar(el("telaMenu"), estado === "menu" && telaAtual === "menu" && !sobreposta);
   mostrar(el("telaMapa"), estado === "menu" && telaAtual === "mapa" && !sobreposta);
   mostrar(el("telaPausa"), estado === "jogo" && pausado && !sobreposta && !reviverAberto);
   mostrar(el("telaReviver"), estado === "jogo" && reviverAberto);
   mostrar(el("telaControles"), controlesAbertos);
+  mostrar(el("telaRei"), telaReiAberta && estado === "menu" && !lojaAberta && !controlesAbertos);
+  atualizarAvisoRei();
   mostrar(el("botoesJogo"), estado === "jogo" && !pausado);
   mostrar(el("loja"), lojaAberta);
   el("menuMoedas").textContent = save.moedas;
@@ -144,9 +147,9 @@ function atualizarTelas() {
   el("menuXp").style.width = Math.round((100 * save.xp) / xpParaSubir(save.nivel)) + "%";
   el("menuXpTexto").textContent = save.xp + "/" + xpParaSubir(save.nivel) + " XP";
   const txtCron = save.cronometro ? tr("Cronômetro: ligado") : tr("Cronômetro: desligado");
-  el("btnIdioma").textContent = tr("Idioma: Português");
-  el("btnCron").textContent = txtCron;
   el("btnCronControles").textContent = txtCron;
+  el("btnSomOpcoes").textContent = save.mudo ? tr("Som: desligado ({0})", teclaDe("som")) : tr("Som: ligado ({0})", teclaDe("som"));
+  if (controlesAbertos) renderizarOpcoes();
   el("btnSom").textContent = save.mudo ? tr("Som: desligado ({0})", teclaDe("som")) : tr("Som: ligado ({0})", teclaDe("som"));
   el("menuControles").innerHTML = toqueAtivo ? [
     comando(["←", "→"], tr("arraste do lado esquerdo: andar e deslizar")),
@@ -249,8 +252,11 @@ function aoMudarVisual() {
 
 // ---------- Controles (trocar as teclas) ----------
 
+let abaOpcoes = "controles";
+
 function abrirControles() {
   controlesAbertos = true;
+  abaOpcoes = "controles";
   capturando = null;
   if (estado === "jogo") pausado = true;
   soltarTeclas();
@@ -263,6 +269,28 @@ function fecharControles() {
   capturando = null;
   atualizarTelas();
 }
+
+// Mostra só a aba escolhida da tela de Opções
+function renderizarOpcoes() {
+  [["controles", "opcControles"], ["idioma", "opcIdioma"], ["adicionais", "opcAdicionais"]].forEach(function(a) {
+    el(a[1]).style.display = abaOpcoes === a[0] ? "" : "none";
+  });
+  document.querySelectorAll("[data-aba-opcoes]").forEach(function(b) {
+    b.className = b.dataset.abaOpcoes === abaOpcoes ? "ativa" : "sec";
+  });
+  el("btnPadraoControles").style.display = abaOpcoes === "controles" ? "" : "none";
+  el("btnIdiomaPt").className = IDIOMA === "pt" ? "ativa" : "sec";
+  el("btnIdiomaEn").className = IDIOMA === "en" ? "ativa" : "sec";
+}
+
+document.querySelectorAll("[data-aba-opcoes]").forEach(function(b) {
+  b.tabIndex = -1;
+  b.addEventListener("click", function() {
+    abaOpcoes = b.dataset.abaOpcoes;
+    capturando = null;
+    renderizarOpcoes();
+  });
+});
 
 function renderizarControles() {
   const box = el("listaControles");
@@ -504,6 +532,9 @@ function renderizarLoja() {
       if (tem) {
         linhaTexto(card, "preco", tr("Comprado"));
         botao(card, tr("Comprado"), true, { melhoria: m.id });
+      } else if (m.especial) {
+        linhaTexto(card, "preco", tr("Derrote o Rei Macaco"));
+        botao(card, tr("Bloqueado"), true, { melhoria: m.id });
       } else {
         precoHtml(card, m.preco);
         const falta = m.requer && !temMelhoria(m.requer);
@@ -527,8 +558,9 @@ function renderizarLoja() {
       card.appendChild(cv);
 
       linhaTexto(card, "nome", item.nome);
-      const premio = item.fase !== undefined || item.nivel !== undefined;
+      const premio = item.fase !== undefined || item.nivel !== undefined || !!item.especial;
       if (tem) linhaTexto(card, "preco", equipado ? tr("Equipado") : tr("Seu"));
+      else if (item.especial) linhaTexto(card, "preco", tr("Derrote o Rei Macaco"));
       else if (item.fase !== undefined) linhaTexto(card, "preco", tr("Passe a fase {0}", nomeFase(item.fase)));
       else if (item.nivel !== undefined) linhaTexto(card, "preco", tr("Chegue ao nível {0}", item.nivel));
       else precoHtml(card, item.preco);
@@ -588,7 +620,7 @@ function comprarPoder(id) {
 
 function comprarMelhoria(id) {
   const m = MELHORIAS.find(function(x) { return x.id === id; });
-  if (!m || temMelhoria(id) || save.moedas < m.preco) return;
+  if (!m || m.especial || temMelhoria(id) || save.moedas < m.preco) return;
   if (m.requer && !temMelhoria(m.requer)) return;
   save.moedas -= m.preco;
   save.melhorias.push(id);
@@ -640,6 +672,10 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
     else if (acao === "padraoControles") { save.teclas = copiaTeclasPadrao(); reconstruirMapaTeclas(); salvar(); renderizarControles(); atualizarTelas(); }
     else if (acao === "continuar") pausar(false);
     else if (acao === "pausar") pausar(true);
+    else if (acao === "reiniciar" && fase && fase.secreta && save.rei.tentativas <= 0) {
+      voltarAoMenu();
+      abrirTelaRei();
+    }
     else if (acao === "reiniciar") {
       pausado = false;
       atualizarTelas();
@@ -650,7 +686,8 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
     else if (acao === "menu") voltarAoMenu();
     else if (acao === "som") { save.mudo = !save.mudo; salvar(); atualizarTelas(); }
     else if (acao === "cronometro") { save.cronometro = !save.cronometro; salvar(); atualizarTelas(); }
-    else if (acao === "idioma") trocarIdioma();
+    else if (acao === "idiomaPt") { if (IDIOMA !== "pt") trocarIdioma(); }
+    else if (acao === "idiomaEn") { if (IDIOMA !== "en") trocarIdioma(); }
     else if (acao === "moedasAnuncio") moedasComAnuncio();
   });
 });

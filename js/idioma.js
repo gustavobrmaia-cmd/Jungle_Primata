@@ -246,6 +246,34 @@ const EN = {
   "Tecla 3": "Key 3",
   "aperte...": "press...",
   "trocar poder": "switch power",
+  "Rei Macaco": "Monkey King",
+  "Grande Macaco": "Great Ape",
+  "Nível {0}+: um macaco lendário pode aparecer 1 vez por dia": "Level {0}+: a legendary monkey may show up once a day",
+  "Você venceu o Rei Macaco hoje! Ele pode voltar amanhã.": "You beat the Monkey King today! He may be back tomorrow.",
+  "Volte amanhã: o Rei Macaco pode aparecer": "Come back tomorrow: the Monkey King may show up",
+  "O Rei Macaco apareceu! Enfrentar ({0})": "The Monkey King is here! Fight ({0})",
+  "Rei Macaco: +3 tentativas (anúncio)": "Monkey King: +3 tries (watch ad)",
+  "Sem tentativas contra o Rei Macaco hoje. Volte amanhã!": "No tries left against the Monkey King today. Come back tomorrow!",
+  "O Rei Macaco venceu!": "The Monkey King won!",
+  "Tentativas restantes: {0}": "Tries left: {0}",
+  "Nova skin: Rei Macaco  ·  Nova melhoria: Nuvem Mágica  ·  +{0} moedas": "New skin: Monkey King  ·  New upgrade: Magic Cloud  ·  +{0} coins",
+  "Rei Macaco derrotado!": "Monkey King defeated!",
+  "A lua cheia nasceu...": "The full moon is rising...",
+  "Fase {0}/2": "Phase {0}/2",
+  "O macaco lendário! Tentativas restantes: {0}": "The legendary monkey! Tries left: {0}",
+  "Nuvem Mágica!": "Magic Cloud!",
+  "Nuvem Mágica": "Magic Cloud",
+  "Uma vez por fase, se cair num buraco, a nuvem te salva sem perder vida": "Once per stage, if you fall in a pit, the cloud saves you without losing a life",
+  "Derrote o Rei Macaco": "Defeat the Monkey King",
+  "Volte amanhã: ele pode aparecer de novo.": "Come back tomorrow: he may show up again.",
+  "Tentar de novo (Enter)": "Try again (Enter)",
+  "Assistir anúncio: +3 tentativas": "Watch ad: +3 tries",
+  "Voltar ao menu (Esc)": "Back to menu (Esc)",
+  "Opções": "Options",
+  "Idioma": "Language",
+  "Adicionais": "Extras",
+  "Escolha o idioma do jogo.": "Choose the game language.",
+  "O cronômetro mostra o tempo da run e de cada fase, com os seus recordes.": "The timer shows your run and stage times, with your records.",
   "Assistir anúncio: +{0} moedas": "Watch ad: +{0} coins",
   "Grátis (anúncio)": "Free (watch ad)",
   "+{0} moedas!": "+{0} coins!",
@@ -422,5 +450,6 @@ function traduzirDom() {
 function trocarIdioma() {
   save.idioma = IDIOMA === "en" ? "pt" : "en";
   salvar();
+  try { sessionStorage.setItem("primata-abrir-idioma", "1"); } catch (e) { /* sem sessionStorage */ }
   location.reload();
 }

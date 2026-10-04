@@ -22,15 +22,16 @@ maiores, aparecem mais inimigos e eles ficam mais rápidos.
 | 1 a 5 | usar poderes |
 | L | loja · P / Esc pausa · M som |
 
-Todas as teclas podem ser trocadas no menu **Controles**.
+Todas as teclas podem ser trocadas em **Opções → Controles**. Em **Opções** também ficam o
+idioma e os adicionais (cronômetro e som).
 
 **Controle (Xbox / PlayStation):** analógico ou direcional anda, **A** pula, **X** atira,
 **Y** cipó-laço, **B** ou **RB** dash, **LB** recarrega, **LT** troca o poder escolhido e
 **RT** usa, **Start** pausa, **Back/Select** abre a loja. Nos menus o direcional escolhe,
 **A** confirma e **B** volta. Quando você usa o controle, as placas mostram os botões dele.
 
-**Celular / tablet (toque):** arraste o dedo do lado esquerdo da tela para andar (para baixo
-desliza). Do lado direito ficam os botões **PULO** (segure para pular mais alto), **TIRO**,
+**Celular / tablet (toque):** o analógico fica fixo no canto esquerdo: incline para andar e puxe
+um pouco para baixo para deslizar (na diagonal corre e desliza). Do lado direito ficam os botões **PULO** (segure para pular mais alto), **TIRO**,
 **LAÇO** e **DASH**. Toque num poder no canto de baixo para usar. Com o celular em pé, o jogo
 pede para girar.
 
@@ -66,6 +67,19 @@ quando e ativam na hora (duram menos que os da loja).
 - **Melhorias** (permanentes, mais caras): Dash, Coração Extra I e II, Revólver Turbo e Cipó Longo.
 
 Moedas, compras e progresso ficam salvos no navegador.
+
+## Rei Macaco (chefe secreto do dia)
+
+A partir do **nível 15**, na primeira vez que você abre o jogo no dia, há uma chance (40%) do
+**Rei Macaco** aparecer. O menu avisa discretamente embaixo das moedas e do nível.
+- Cada aparição dá **3 tentativas**. Acabou? Um anúncio premiado dá mais 3 (uma vez por dia).
+- **1ª barra de vida:** o Rei Macaco, rápido, com bastão que estica, saltos e pêssegos.
+- Quando ela esvazia, cai a noite, nasce a **lua cheia** e ele vira o **Grande Macaco**
+  (2ª barra, bem mais forte).
+- Vencer dá **300 moedas**; na primeira vitória também a skin **Rei Macaco** e a melhoria
+  **Nuvem Mágica** (uma vez por fase, se cair num buraco, a nuvem te salva sem perder vida).
+
+Inspirado na lenda chinesa do Rei Macaco (tiara dourada, bastão e cauda).
 
 ## Estrelas
 
@@ -116,6 +130,7 @@ Depois de zerar, **Jogar** começa uma run nova na Selva 1-1.
 - `js/cenas.js`: abertura e final.
 - `js/cronometro.js`: cronômetro de speedrun e recordes.
 - `js/estrelas.js`: as 3 estrelas de cada fase.
+- `js/reimacaco.js` e `js/arte_rei.js`: o chefe secreto do dia (lógica e desenhos).
 - `js/telas.js`: menu, mapa, pausa e loja.
 - `js/idioma.js`: textos em inglês e troca de idioma.
 - `js/anuncios.js`: SDK do Poki (intervalo e anúncio premiado para reviver).

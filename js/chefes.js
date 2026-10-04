@@ -61,13 +61,17 @@ function fisicaChefe(c) {
 
 function danoChefe(dano, origemX, ignoraInvencivel) {
   const c = chefe;
-  if (!c || !c.vivo || c.intangivel || c.estado === "entrada") return;
+  if (!c || !c.vivo || c.intangivel || c.cena || c.estado === "entrada") return;
   if (c.invencivel > 0 && !ignoraInvencivel) return;
   if (c.estado === "tonto") dano *= 2;
   c.hp -= dano;
   c.flash = 6;
   c.invencivel = 6;
   som("pisao");
+  if (c.hp <= 0 && c.tipo === "reiMacaco") {
+    reiTransformar(c);   // 1ª barra do chefe secreto: vira o Grande Macaco
+    return;
+  }
   if (c.hp <= 0) {
     c.hp = 0;
     c.vivo = false;
@@ -148,11 +152,15 @@ function atualizarChefe() {
         c.foiPro = true;
         particula({ tipo: "estrela", x: limitar(c.x + c.w / 2, 40, LARGURA - 40), y: 26, vx: 0, vy: 0, g: 0, vida: 70, max: 70 });
         som("estrela");
-        const premio = save.chefes[fase.mundo] ? 60 : RECOMPENSA_CHEFE[fase.mundo];
-        ganharMoedas(premio, LARGURA / 2, 200);
-        save.chefes[fase.mundo] = true;
-        mostrarMensagem(tr("Chefe derrotado!"), tr("+{0} moedas. Pegue a banana!", premio), 150, null, false);
-        soltarBananaDoCeu();
+        if (fase.secreta) {
+          reiVencido();
+        } else {
+          const premio = save.chefes[fase.mundo] ? 60 : RECOMPENSA_CHEFE[fase.mundo];
+          ganharMoedas(premio, LARGURA / 2, 200);
+          save.chefes[fase.mundo] = true;
+          mostrarMensagem(tr("Chefe derrotado!"), tr("+{0} moedas. Pegue a banana!", premio), 150, null, false);
+          soltarBananaDoCeu();
+        }
       }
     }
     atualizarCaixa(c);
@@ -163,7 +171,7 @@ function atualizarChefe() {
   atualizarCaixa(c);
 
   // Encostar no chefe machuca (pular na cabeça dele dá dano)
-  if (!j.morto && !c.intangivel && encosta(j, c.caixa)) {
+  if (!j.morto && !c.intangivel && !c.cena && encosta(j, c.caixa)) {
     if (j.vy > 0 && j.pesAntes <= c.caixa.y + 26) {
       danoChefe(3, j.x + j.w / 2, true);
       c.invencivel = 30;
@@ -950,6 +958,12 @@ function desenharVidaChefe() {
   ctx.font = "bold 20px " + FONTE;
   ctx.textAlign = "center";
   textoSombra(c.nome, bx + bw / 2, y + 28, "#ffe066");
+  if (c.secreto) {
+    ctx.font = "bold 15px " + FONTE;
+    ctx.textAlign = "right";
+    textoSombra(tr("Fase {0}/2", c.fase2 ? 2 : 1), bx + bw, y + 26, "#ffffff");
+    ctx.textAlign = "center";
+  }
 
   // barra: moldura, fundo, "dano recente" em branco que escorre e a vida em degradê
   if (c.hpAtraso === undefined || c.hpAtraso < c.hp) c.hpAtraso = c.hp;

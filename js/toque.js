@@ -2,7 +2,7 @@
 
 // =========================
 // TOQUE (celular e tablet)
-// Lado esquerdo da tela: arraste o dedo para andar (e para baixo para deslizar).
+// Lado esquerdo da tela: analógico parado no lugar; incline para andar, um pouco para baixo desliza.
 // Lado direito: botões PULO, TIRO, LAÇO e DASH. Toque num poder do HUD para usar.
 // Os controles só aparecem depois do primeiro toque; o teclado ou o controle escondem de novo.
 // =========================
@@ -16,7 +16,7 @@ const BOTOES_TOQUE = [
   { acao: "dash", x: 1130, y: 432, r: 42, rotulo: "DASH", melhoria: "dash" }
 ];
 
-const STICK = { x: 190, y: 520, r: 74, morta: 18 };
+const STICK = { x: 190, y: 520, r: 74, morta: 16, baixo: 24 };
 
 const toque = {
   stick: null,      // { id, ox, oy, x, y } dedo do lado esquerdo
@@ -94,7 +94,8 @@ canvas.addEventListener("touchstart", function(e) {
       toque.botoes[t.identifier] = b.acao;
       if (!mensagemTravada()) apertos.add(b.acao);
     } else if (p.x < LARGURA / 2 && !toque.stick) {
-      toque.stick = { id: t.identifier, ox: p.x, oy: p.y, x: p.x, y: p.y };
+      // a base fica sempre no mesmo lugar; a direção é medida a partir do centro dela
+      toque.stick = { id: t.identifier, ox: STICK.x, oy: STICK.y, x: p.x, y: p.y };
     }
   }
 }, { passive: false });
@@ -107,14 +108,6 @@ canvas.addEventListener("touchmove", function(e) {
       const p = pontoDoJogo(t);
       toque.stick.x = p.x;
       toque.stick.y = p.y;
-      // o centro acompanha o dedo se ele for longe demais (não precisa voltar até o começo)
-      const dx = p.x - toque.stick.ox;
-      const dy = p.y - toque.stick.oy;
-      const d = Math.hypot(dx, dy);
-      if (d > STICK.r) {
-        toque.stick.ox = p.x - (dx / d) * STICK.r;
-        toque.stick.oy = p.y - (dy / d) * STICK.r;
-      }
     }
   }
 }, { passive: false });
@@ -156,7 +149,8 @@ function atualizarToque() {
       const dy = s.y - s.oy;
       agora.esquerda = dx < -STICK.morta;
       agora.direita = dx > STICK.morta;
-      agora.baixo = dy > STICK.r * 0.55;
+      // basta puxar um pouco para baixo; inclinado na diagonal também desliza correndo
+      agora.baixo = dy > STICK.baixo && dy > Math.abs(dx) * 0.45;
     }
     Object.keys(toque.botoes).forEach(function(id) {
       if (toque.botoes[id] === "pulo") agora.pulo = true;

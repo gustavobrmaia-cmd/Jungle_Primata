@@ -72,7 +72,7 @@ function maxBalas() {
 function iniciarFase(indice, doCheckpoint) {
   if (!doCheckpoint) { checkpointX = null; danoNaTentativa = false; }
   resultadoFase = null;
-  fase = gerarFase(indice);
+  fase = indice === FASE_REI ? gerarFaseRei() : gerarFase(indice);
   inimigos = fase.inimigos.map(criarInimigo);
   projeteis = [];
   particulas = [];
@@ -90,7 +90,7 @@ function iniciarFase(indice, doCheckpoint) {
   const x0 = doCheckpoint && checkpointX !== null ? checkpointX : fase.inicioX;
   jogador = criarJogador(x0, CHAO - 72);
 
-  chefe = fase.ehChefe ? criarChefe(fase.mundo) : null;
+  chefe = fase.ehChefe ? (fase.secreta ? criarChefeRei() : criarChefe(fase.mundo)) : null;
   banana = fase.ehChefe ? null : { x: fase.fimX, y: CHAO - 44, base: CHAO - 44, estado: "parada", t: 0, rot: 0, vy: 0 };
 
   cameraX = limitar(jogador.x - LARGURA * 0.4, 0, Math.max(0, fase.largura - LARGURA));
@@ -725,6 +725,23 @@ function machucar(origemX, ignorarInvencivel) {
 
 function caiuNoBuraco() {
   const j = jogador;
+  if (temMelhoria("nuvem") && !fase.nuvemUsada && !j.morto) {
+    fase.nuvemUsada = true;
+    cancelarLaco();
+    j.cipo = null;
+    if (j.deslizando) { j.deslizando = false; j.h = 72; }
+    j.x = j.seguro.x;
+    j.y = j.seguro.y;
+    j.vx = 0;
+    j.vy = -6;
+    j.invencivel = 60;
+    som("poder");
+    texto(j.x + j.w / 2, j.y - 20, tr("Nuvem Mágica!"), "#e7f5ff", 24);
+    for (let i = 0; i < 14; i++) {
+      particula({ tipo: "q", x: j.x + j.w / 2 + (Math.random() - 0.5) * 70, y: j.y + j.h, vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 1.5, g: 0, vida: 40, max: 40, cor: i % 2 ? "#ffffff" : "#d0def0", tam: 12 });
+    }
+    return;
+  }
   j.vidas--;
   perdeuVida();
   tremor = 10;
@@ -761,7 +778,8 @@ function morrer() {
 function perdeuTudo() {
   sujo = true;
   save.stats.mortes++;
-  if (podeReviver()) abrirReviver();   // Poki: "assista um anúncio para reviver"
+  if (fase.secreta) reiPerdeu();          // Rei Macaco: gasta a tentativa
+  else if (podeReviver()) abrirReviver();   // Poki: "assista um anúncio para reviver"
   else voltarDoCheckpoint();
 }
 
@@ -3625,6 +3643,7 @@ function desenharJogo() {
   const ty = tremor > 0 ? Math.round((Math.random() - 0.5) * Math.min(tremor, 14)) : 0;
 
   desenharFundo(fase.mundo, cam);
+  desenharLuaRei();
 
   ctx.save();
   ctx.translate(-cam + tx, ty);
@@ -3647,7 +3666,7 @@ function desenharJogo() {
   desenharAvisos();
   desenharPlantas(cam);
   desenharInimigos(cam);
-  if (chefe) desenharChefe();
+  if (chefe) { desenharChefe(); desenharBastaoRei(); }
   desenharAura();
   desenharJogador();
   desenharProjeteis();
@@ -3668,6 +3687,7 @@ function desenharJogo() {
     ctx.fillRect(0, 0, LARGURA, ALTURA);
   }
 
+  desenharNoiteRei();
   desenharHud();
   desenharExtrasHud();
   desenharMensagem();

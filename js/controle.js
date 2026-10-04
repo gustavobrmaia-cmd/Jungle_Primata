@@ -121,7 +121,7 @@ function soltarPad() {
 
 // A tela que está por cima e recebe o controle
 function telaDoPad() {
-  const ids = ["loja", "telaControles", "telaReviver", "telaPausa", "telaMapa", "telaMenu"];
+  const ids = ["loja", "telaControles", "telaRei", "telaReviver", "telaPausa", "telaMapa", "telaMenu"];
   for (let i = 0; i < ids.length; i++) {
     const e = el(ids[i]);
     if (e.classList.contains("aberta")) return e;
@@ -225,6 +225,7 @@ function voltarComPad(tela) {
   if (tela.id === "loja") fecharLoja();
   else if (tela.id === "telaControles") fecharControles();
   else if (tela.id === "telaReviver") recusarReviver();
+  else if (tela.id === "telaRei") fecharTelaRei();
   else if (tela.id === "telaPausa") pausar(false);
   else if (tela.id === "telaMapa") { telaAtual = "menu"; atualizarTelas(); }
   marcarFoco(null);

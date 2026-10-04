@@ -79,6 +79,13 @@ document.addEventListener("keydown", function(e) {
     if ((k === "escape" || acao === "loja") && !e.repeat) fecharLoja();
     return;
   }
+  if (estado === "menu" && telaReiAberta) {
+    if ((k === "escape" || k === "enter") && !e.repeat) {
+      if (k === "enter" && save.rei.tentativas > 0) enfrentarRei();
+      else fecharTelaRei();
+    }
+    return;
+  }
   if (estado === "menu") {
     if (e.repeat) return;
     if (k === "enter" && telaAtual === "menu") jogar();
@@ -152,7 +159,7 @@ function passo() {
   atualizarClima(mundoClima);
 
   // Pausa, loja ou controles abertos: nenhum comando chega na física (teclado ou controle)
-  if (estado !== "jogo" || pausado) soltarTeclas();
+  if (estado !== "jogo" || pausado || reiEmCena()) soltarTeclas();
   else cronPasso();
   const fechando = atualizarTransicao();
   if (!fechando) {
@@ -209,5 +216,14 @@ ajustarTela();
 
 traduzirDom();
 atualizarTelas();
+// acabou de trocar o idioma: reabre as Opções na aba Idioma
+try {
+  if (sessionStorage.getItem("primata-abrir-idioma")) {
+    sessionStorage.removeItem("primata-abrir-idioma");
+    abrirControles();
+    abaOpcoes = "idioma";
+    renderizarOpcoes();
+  }
+} catch (e) { /* sem sessionStorage */ }
 iniciarAnuncios();
 requestAnimationFrame(quadro);

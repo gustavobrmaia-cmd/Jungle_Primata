@@ -119,37 +119,38 @@ function cauda(linhaInicial, mapa) {
 }
 const CAUDA_EM_PE = cauda(10, [
   ".DDD..",
-  "DFLFD.",
-  "DFDSD.",
-  "DFDDD.",
-  "DFD...",
-  "DFD...",
-  "DSFD..",
-  ".DSFD.",
+  "DLFFD.",
+  "DFDFD.",
+  "DSDFD.",
+  ".DDFD.",
+  "..DFD.",
+  "..DFD.",
   "..DSFD",
-  "...DD."
+  "...DSF",
+  "....DD"
 ]);
 const CAUDAS = {
   repouso: CAUDA_EM_PE,
   alta: CAUDA_EM_PE,
-  // correndo e pulando: mais baixa, esticada para trás
-  baixa: cauda(13, [
+  // correndo e pulando: mais baixa
+  baixa: cauda(12, [
     ".DDD..",
-    "DFLFD.",
-    "DFDSD.",
-    "DFDDD.",
-    "DSFD..",
-    ".DSFDD",
-    "..DDD."
+    "DLFFD.",
+    "DFDFD.",
+    ".DDFD.",
+    "..DFD.",
+    "..DSFD",
+    "...DSF",
+    "....DD"
   ]),
   // chutando e atirando: enroladinha embaixo
   enrolada: cauda(14, [
     ".DDD..",
-    "DFLFD.",
-    "DFDSD.",
-    "DSDDD.",
-    ".DSFDD",
-    "..DDD."
+    "DLFFD.",
+    "DSDFD.",
+    ".DDSFD",
+    "...DSF",
+    "....DD"
   ])
 };
 
