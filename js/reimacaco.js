@@ -21,12 +21,12 @@ const MOEDAS_REI = 300;
 let reiNoite = 0;              // 0 = dia, 1 = noite de lua cheia (2ª fase)
 let telaReiAberta = false;
 
-DEF_CHEFES.reiMacaco = { hp: 30, margem: [24, 20, 24, 0] };
-DEF_CHEFES.grandeMacaco = { hp: 54, margem: [26, 34, 26, 0] };
+DEF_CHEFES.reiMacaco = { hp: 40, margem: [24, 20, 24, 0] };
+DEF_CHEFES.grandeMacaco = { hp: 66, margem: [26, 34, 26, 0] };
 AURA_CHEFE.reiMacaco = { aura: "255,200,60", olho: "255,220,120", contorno: "#ffc83c" };
 AURA_CHEFE.grandeMacaco = { aura: "255,40,40", olho: "255,40,40", contorno: "#ff2a2a" };
 QUADROS_ATAQUE.reiMacaco = ["chute", "carrega", "rajada", "estocada", "corre0", "corre1"];
-QUADROS_ATAQUE.grandeMacaco = ["rugido", "sopro", "pisao2", "palmas1", "varrida1"];
+QUADROS_ATAQUE.grandeMacaco = ["rugido", "sopro", "pisao2", "palmas1", "varrida1", "palmas0"];
 
 
 // ---------- Aparição do dia ----------
@@ -210,13 +210,22 @@ function maoDoSaru(c, quadro) {
 
 IA_CHEFES.reiMacaco = function(c, raiva) {
   const j = jogador;
+  // dois pisões seguidos na cabeça: ele some e contra-ataca com a voadora
+  if (c.pisadas && tempo - c.ultimaPisada > 150) c.pisadas = 0;
+  if (c.pisadas >= 2 && !c.cena && ["parado", "cansado", "estocada", "tonto"].indexOf(c.estado) >= 0) {
+    c.pisadas = 0;
+    c.combo = true;
+    c.bastao = 0;
+    c.caixaBastao = null;
+    irPara(c, "teleporte");
+  }
   switch (c.estado) {
     case "parado":
       olharProJogador(c);
       c.vx = aproximar(c.vx, 0, 0.4);
       if (c.noChao && c.t % 40 === 20) c.vy = -5;
       fisicaChefe(c);
-      if (c.t > (raiva ? 34 : 54)) proximoAtaque(c, ["teleporte", "rajada", "nuvem", "estocada"]);
+      if (c.t > (raiva ? 24 : 38)) proximoAtaque(c, ["teleporte", "rajada", "nuvem", "estocada"]);
       break;
 
     // some, reaparece atrás do jogador e dá uma voadora
@@ -245,8 +254,8 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       }
       // prepara a voadora (aparece um "!") e só depois avança
       if (c.t === 25) { olharProJogador(c); som("negado"); }
-      if (c.t > 42) {
-        c.vx = c.dir * (raiva ? 8.5 : 7);
+      if (c.t > (raiva ? 38 : 42)) {
+        c.vx = c.dir * (raiva ? 9.5 : 8);
         if (tempo % 3 === 0) poeira(c.x + c.w / 2 - c.dir * 30, CHAO, 1);
       }
       fisicaChefe(c);
@@ -256,15 +265,21 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
         som("pancada");
         c.vx = -c.dir * 3;
         c.vy = -6;
-      } else if (c.t > 100) irPara(c, "parado");
+        c.combo = false;
+      } else if (c.t > 100) {
+        // furioso: some de novo e dá outra voadora em seguida
+        if (raiva && !c.combo) { c.combo = true; irPara(c, "teleporte"); }
+        else { c.combo = false; irPara(c, "parado"); }
+      }
       break;
 
     // junta energia nas mãos e solta uma rajada que atravessa a arena (pule por cima)
     case "rajada": {
       c.vx = 0;
       fisicaChefe(c);
-      const carga = raiva ? 38 : 52;
-      if (c.t === 1) { olharProJogador(c); som("poder"); }
+      const carga = raiva ? 34 : 44;
+      const alta = raiva ? carga + 52 : -1;     // 2ª rajada, na altura de quem pula
+      if (c.t === 1) { olharProJogador(c); som("poder"); c.avisoAlto = 0; }
       if (c.t < carga) {
         c.carga = c.t / carga;
         if (c.t % 4 === 0) {
@@ -279,6 +294,22 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
         tremor = 10;
         som("nuke");
       }
+      // a 2ª rajada: ele dá um pulinho, a linha de aviso aparece no alto e o raio sai lá em cima
+      if (alta > 0 && c.t > carga + 22 && c.t < alta) {
+        c.avisoAlto = (c.t - carga - 22) / (alta - carga - 22);
+        if (c.t === alta - 14) c.vy = -7;
+        if (c.t % 4 === 0) {
+          const m = maoDoSaru(c, "carrega");
+          particula({ tipo: "q", x: m.x + (Math.random() - 0.5) * 50, y: m.y + (Math.random() - 0.5) * 50, vx: 0, vy: 0, g: 0, vida: 12, max: 12, cor: "#a5d8ff", tam: 5 });
+        }
+      }
+      if (c.t === alta) {
+        c.avisoAlto = 0;
+        const m = maoDoSaru(c, "rajada");
+        c.feixe = { x0: m.x, y: CHAO - 137, h: 34, t: 0 };
+        tremor = 10;
+        som("nuke");
+      }
       if (c.feixe) {
         const f = c.feixe;
         f.t++;
@@ -288,14 +319,14 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
         if (!j.morto && f.t > 2 && f.t < 16 && encosta(j, { x: f.x, y: f.y + 4, w: f.w, h: f.h - 8 })) machucar(c.x + c.w / 2);
         if (f.t > 22) c.feixe = null;
       }
-      if (c.t > carga + 26) irPara(c, "cansado");
+      if (c.t > (alta > 0 ? alta : carga) + 26) { c.avisoAlto = 0; irPara(c, "cansado"); }
       break;
     }
 
     case "cansado":
       c.vx = aproximar(c.vx, 0, 0.3);
       fisicaChefe(c);
-      if (c.t > 46) irPara(c, "parado");
+      if (c.t > (raiva ? 26 : 36)) irPara(c, "parado");
       break;
 
     // sobe numa nuvem dourada, cruza a arena e solta esferas de energia
@@ -310,7 +341,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
         if (c.x < 10 || c.x > LARGURA - c.w - 10) c.vx = -c.vx;
         c.dir = c.vx > 0 ? 1 : -1;
         c.y = alto + Math.sin(c.t * 0.08) * 8;
-        if (c.t % (raiva ? 22 : 30) === 0) {
+        if (c.t % (raiva ? 16 : 22) === 0) {
           projeteis.push({ tipo: "esfera", x: c.x + c.w / 2 - 12, y: c.y + c.h, w: 24, h: 24, vx: limitar((j.x - c.x) / 120, -2, 2), vy: 1, g: 0.22, vida: 300, quebraNoChao: true });
           som("tiro");
         }
@@ -330,8 +361,8 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       fisicaChefe(c);
       if (c.t === 24) som("laco");
       if (c.t >= 24 && c.t < 70) {
-        const k = c.t < 44 ? (c.t - 24) / 20 : 1 - (c.t - 54) / 16;
-        c.bastao = Math.max(0, Math.min(1, k)) * 520;
+        const k = c.t < 40 ? (c.t - 24) / 16 : 1 - (c.t - 54) / 16;
+        c.bastao = Math.max(0, Math.min(1, k)) * 600;
         const y = c.y + 19 * 3 - 6;
         const x0 = c.dir > 0 ? c.x + c.w - 6 : c.x + 6 - c.bastao;
         c.caixaBastao = { x: x0, y: y, w: c.bastao, h: 14 };
@@ -346,7 +377,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
     case "tonto":
       c.vx = aproximar(c.vx, 0, 0.25);
       fisicaChefe(c);
-      if (c.t > 100) irPara(c, "parado");
+      if (c.t > 80) irPara(c, "parado");
       break;
 
     // ----- cutscene: cai a noite, nasce a lua cheia e ele vira o Saru Gigante -----
@@ -354,6 +385,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       c.vx = 0;
       c.voando = false;
       fisicaChefe(c);
+      recuarDoSaru(c);
       reiNoite = Math.min(1, c.t / 70);
       j.invencivel = Math.max(j.invencivel, 30);
       if (c.t === 1) {
@@ -367,6 +399,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
     case "transforma":
       c.vx = 0;
       fisicaChefe(c);
+      recuarDoSaru(c);
       j.invencivel = Math.max(j.invencivel, 30);
       tremor = Math.max(tremor, 4);
       c.flash = c.t % 10 < 4 ? 6 : 0;
@@ -377,6 +410,13 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       }
       if (c.t > 110) {
         virarChefe(c, "grandeMacaco", tr("Saru Gigante"));
+        // o gigante nasce sem cair em cima do macaco (se o macaco ficou encurralado, ele nasce do outro lado)
+        const cj = j.x + j.w / 2;
+        const folga = c.w / 2 + j.w / 2 + 50;
+        if (Math.abs(cj - (c.x + c.w / 2)) < folga) {
+          const lado = cj < LARGURA / 2 ? 1 : -1;
+          c.x = limitar(cj + lado * folga - c.w / 2, 0, LARGURA - c.w);
+        }
         // plataformas aparecem para alcançar a cabeça do gigante
         // (laterais ao alcance de um pulo normal; a do meio, a partir das laterais)
         [[130, CHAO - 110, 160], [910, CHAO - 110, 160], [430, CHAO - 225, 340]].forEach(function(pp) {
@@ -397,6 +437,20 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       break;
   }
 };
+
+// Na cutscene o macaco dá uns passos para trás, de frente para o Saru
+// (o último golpe costuma ser na cabeça e ele ficava dentro do Saru)
+function recuarDoSaru(c) {
+  const j = jogador;
+  if (j.morto) return;
+  const dx = j.x + j.w / 2 - (c.x + c.w / 2);
+  const lado = dx === 0 ? (j.x < LARGURA / 2 ? -1 : 1) : Math.sign(dx);
+  j.dir = -lado;
+  if (Math.abs(dx) < 260 && j.noChao) {
+    const nx = j.x + lado * 2.4;
+    if (nx > 4 && nx + j.w < LARGURA - 4) j.vx = lado * 2.4;
+  }
+}
 
 // Primeira barra esvaziou: começa a transformação (chamado pelo danoChefe)
 function reiTransformar(c) {
@@ -420,9 +474,9 @@ QUADRO_CHEFE.reiMacaco = function(c, raiva) {
     case "parado":
       return c.noChao ? resp : "salto";
     case "teleporte":
-      return t > 42 ? "chute" : t > 24 ? "carrega" : resp;
+      return t > (raiva ? 38 : 42) ? "chute" : t > 24 ? "carrega" : resp;
     case "rajada":
-      return c.feixe ? "rajada" : "carrega";
+      return c.feixe ? "rajada" : c.noChao ? "carrega" : "salto";
     case "cansado":
       return Math.floor(tempo / 12) % 2 ? "parado1" : "carrega";
     case "nuvem":
@@ -449,35 +503,63 @@ function bocaDoGigante(c) {
 
 IA_CHEFES.grandeMacaco = function(c, raiva) {
   const j = jogador;
+  // Quem fica em cima dele (plataformas ou pulando na cabeça sem parar) leva um tapa por cima
+  const emCima = !j.morto && j.y + j.h <= c.y + 60 && Math.abs(j.x + j.w / 2 - (c.x + c.w / 2)) < c.w / 2 + 70;
+  c.acima = emCima ? (c.acima || 0) + 1 : 0;
+  if (c.pisadas && tempo - c.ultimaPisada > 180) c.pisadas = 0;
+  const podeTapa = c.estado === "parado" || c.estado === "pisao" || c.estado === "palmas" || (c.estado === "tonto" && c.t > 30);
+  if (podeTapa && (c.acima > (raiva ? 24 : 36) || c.pisadas >= 2)) {
+    c.acima = 0;
+    c.pisadas = 0;
+    irPara(c, "tapa");
+  }
   switch (c.estado) {
     case "parado":
       olharProJogador(c);
-      c.vx = Math.abs(alvoX(c) - c.x) > 220 ? aproximar(c.vx, c.dir * 1.3, 0.15) : aproximar(c.vx, 0, 0.3);
+      c.vx = Math.abs(alvoX(c) - c.x) > 220 ? aproximar(c.vx, c.dir * 1.6, 0.15) : aproximar(c.vx, 0, 0.3);
       fisicaChefe(c);
-      if (c.t > (raiva ? 38 : 58)) proximoAtaque(c, ["sopro", "pisao", "palmas", "varrida"]);
+      if (c.t > (raiva ? 28 : 42)) proximoAtaque(c, ["sopro", "pisao", "palmas", "varrida"]);
       break;
+
+    // tapa por cima da cabeça: limpa as plataformas acima dele (saia de cima!)
+    case "tapa": {
+      c.vx = 0;
+      fisicaChefe(c);
+      const prep = raiva ? 40 : 50;
+      if (c.t === 1) { olharProJogador(c); som("rugido"); }
+      if (c.t === prep) { tremor = 16; som("pancada"); }
+      if (c.t >= prep && c.t < prep + 14) {
+        const topo = CHAO - 360;
+        c.caixaTapa = { x: c.x + 10, y: topo, w: c.w - 20, h: c.y + 60 - topo };
+        if (!j.morto && encosta(j, c.caixaTapa)) machucar(c.x + c.w / 2);
+      } else {
+        c.caixaTapa = null;
+      }
+      if (c.t > prep + 28) irPara(c, "parado");
+      break;
+    }
 
     // raio pela boca: acerta o chão perto dele e a explosão vai correndo até a parede (pule por cima)
     case "sopro": {
       c.vx = 0;
       fisicaChefe(c);
-      if (c.t === 1) { c.rastro = null; olharProJogador(c); som("rugido"); }
-      const carga = raiva ? 34 : 46;
-      if (c.t === carga) {
-        c.rastro = { x: c.x + c.w / 2 + c.dir * 120, dir: c.dir };
+      if (c.t === 1) { c.rastros = []; olharProJogador(c); som("rugido"); }
+      const carga = raiva ? 32 : 40;
+      if (c.t === carga || (raiva && c.t === carga + 44)) {
+        if (c.t > carga) olharProJogador(c);
+        c.rastros.push({ x: c.x + c.w / 2 + c.dir * 120, dir: c.dir });
         tremor = 12;
         som("nuke");
       }
-      if (c.rastro) {
-        const r = c.rastro;
-        r.x += r.dir * (raiva ? 8.5 : 7);
+      c.rastros = c.rastros.filter(function(r) {
+        r.x += r.dir * (raiva ? 8.5 : 7.5);
         if (tempo % 2 === 0) {
           particula({ tipo: "q", x: r.x + (Math.random() - 0.5) * 30, y: CHAO - Math.random() * 30, vx: (Math.random() - 0.5) * 4, vy: -3 - Math.random() * 4, g: 0.3, vida: 26, max: 26, cor: Math.random() < 0.5 ? "#ff6b6b" : "#ffd43b", tam: 9 });
         }
         if (!j.morto && encosta(j, { x: r.x - 20, y: CHAO - 46, w: 40, h: 46 })) machucar(r.x);
-        if (r.x < -40 || r.x > LARGURA + 40) c.rastro = null;
-      }
-      if (c.t > carga && !c.rastro) irPara(c, "parado");
+        return r.x > -40 && r.x < LARGURA + 40;
+      });
+      if (c.t > (raiva ? carga + 44 : carga) && !c.rastros.length) irPara(c, "parado");
       break;
     }
 
@@ -490,7 +572,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
         tremor = 26;
         som("pancada");
         poeira(c.x + c.w / 2, CHAO, 12);
-        chuvaDoCeu(raiva ? 6 : 4, "pedra", 44, 44);
+        chuvaDoCeu(raiva ? 9 : 6, "pedra", 44, 44);
       }
       if (c.t > 76) irPara(c, "parado");
       break;
@@ -500,7 +582,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
       c.vx = 0;
       fisicaChefe(c);
       if (c.t === 1) olharProJogador(c);
-      if (c.t === 30 || (raiva && c.t === 70)) {
+      if (c.t === 30 || c.t === 70 || (raiva && c.t === 105)) {
         const baixa = c.t === 70;
         const y = baixa ? CHAO - 46 : CHAO - 104;
         c.ondas = c.ondas || [];
@@ -509,7 +591,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
         tremor = 12;
         som("pancada");
       }
-      if (c.t > (raiva ? 104 : 64)) irPara(c, "parado");
+      if (c.t > (raiva ? 130 : 96)) irPara(c, "parado");
       break;
 
     // varrida rente ao chão: depois o punho fica preso e ele fica tonto
@@ -536,7 +618,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
     case "tonto":
       c.vx = 0;
       fisicaChefe(c);
-      if (c.t > 90) irPara(c, "parado");
+      if (c.t > 70) irPara(c, "parado");
       break;
   }
 
@@ -561,11 +643,13 @@ QUADRO_CHEFE.grandeMacaco = function(c, raiva) {
       if (Math.abs(c.vx) > 0.5) return Math.floor(tempo / 9) % 2 ? "andar1" : "andar0";
       return resp;
     case "sopro":
-      return c.rastro || t < 10 ? "sopro" : "rugido";
+      return (c.rastros && c.rastros.length) || t < 10 ? "sopro" : "rugido";
     case "pisao":
       return t < 30 ? "pisao" : t < 44 ? "pisao2" : resp;
     case "palmas":
-      return (t >= 26 && t < 40) || (t >= 66 && t < 80) ? "palmas1" : "palmas0";
+      return (t >= 26 && t < 40) || (t >= 66 && t < 80) || (t >= 101 && t < 115) ? "palmas1" : "palmas0";
+    case "tapa":
+      return t < (raiva ? 40 : 50) ? "palmas0" : "palmas1";
     case "varrida":
       return t < 26 ? "varrida0" : "varrida1";
     case "tonto":
@@ -595,7 +679,7 @@ function desenharExtrasRei() {
   }
 
   // aviso da voadora
-  if (c.estado === "teleporte" && c.t > 24 && c.t <= 42) {
+  if (c.estado === "teleporte" && c.t > 24 && c.t <= (c.hp <= c.hpMax / 2 ? 38 : 42)) {
     ctx.font = "bold 40px " + FONTE;
     ctx.textAlign = "center";
     textoSombra("!", c.x + c.w / 2, c.y - 8 - (c.t % 10 < 5 ? 4 : 0), ["#fff3bf", "#ff6b00"], 3);
@@ -608,6 +692,13 @@ function desenharExtrasRei() {
     ctx.fillStyle = "rgba(165,216,255," + (0.15 + 0.35 * k * (tempo % 6 < 3 ? 1 : 0.6)) + ")";
     const x0 = c.dir > 0 ? m.x : 0;
     ctx.fillRect(Math.round(x0), Math.round(m.y - 2), Math.round(c.dir > 0 ? LARGURA - m.x : m.x), 4);
+  }
+
+  // linha de aviso da 2ª rajada (alta): quem ficar no chão escapa
+  if (c.estado === "rajada" && c.avisoAlto > 0) {
+    const k = c.avisoAlto;
+    ctx.fillStyle = "rgba(165,216,255," + (0.3 + 0.5 * k * (tempo % 6 < 3 ? 1 : 0.6)) + ")";
+    ctx.fillRect(0, CHAO - 124, LARGURA, 8);
   }
 
   // energia juntando nas mãos
@@ -655,23 +746,40 @@ function desenharExtrasRei() {
   // raio da boca do gigante até a explosão no chão
   if (c.estado === "sopro") {
     const boca = bocaDoGigante(c);
-    const carga = c.rastro ? 1 : Math.min(1, c.t / 40);
+    const rs = c.rastros || [];
+    const carga = rs.length ? 1 : Math.min(1, c.t / 40);
     luzAditiva(boca.x, boca.y, 30 + carga * 40, "255,70,50", 0.45 * carga);
-    if (c.rastro) {
-      const r = c.rastro;
-      ctx.strokeStyle = "rgba(255,90,60,0.85)";
-      ctx.lineWidth = 16;
-      ctx.beginPath(); ctx.moveTo(boca.x, boca.y); ctx.lineTo(r.x, CHAO - 10); ctx.stroke();
-      ctx.strokeStyle = "rgba(255,240,200,0.95)";
-      ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.moveTo(boca.x, boca.y); ctx.lineTo(r.x, CHAO - 10); ctx.stroke();
-      luzAditiva(r.x, CHAO - 30, 90, "255,120,40", 0.55);
-      ctx.fillStyle = "#ff6b00";
-      ctx.fillRect(Math.round(r.x - 26), CHAO - 50, 52, 50);
-      ctx.fillStyle = "#ffd43b";
-      ctx.fillRect(Math.round(r.x - 16), CHAO - 40, 32, 40);
-      ctx.fillStyle = "#fff3bf";
-      ctx.fillRect(Math.round(r.x - 8), CHAO - 30, 16, 30);
+    rs.forEach(function(r, i) {
+      if (i === rs.length - 1) {
+        ctx.strokeStyle = "rgba(255,90,60,0.85)";
+        ctx.lineWidth = 16;
+        ctx.beginPath(); ctx.moveTo(boca.x, boca.y); ctx.lineTo(r.x, CHAO - 10); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,240,200,0.95)";
+        ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(boca.x, boca.y); ctx.lineTo(r.x, CHAO - 10); ctx.stroke();
+      }
+      explosaoDoSopro(r);
+    });
+  }
+
+  // tapa por cima: aviso vermelho acima da cabeça e depois o impacto
+  if (c.estado === "tapa") {
+    const prep = c.hp <= c.hpMax / 2 ? 40 : 50;
+    const x = c.x + 10, w = c.w - 20, topo = CHAO - 360, base = c.y + 60;
+    if (c.t < prep) {
+      ctx.fillStyle = "rgba(255,60,60," + (0.08 + 0.14 * (c.t / prep) * (tempo % 8 < 4 ? 1 : 0.5)) + ")";
+      ctx.fillRect(Math.round(x), topo, Math.round(w), Math.round(base - topo));
+      ctx.font = "bold 40px " + FONTE;
+      ctx.textAlign = "center";
+      textoSombra("!", c.x + c.w / 2, c.y - 10 - (c.t % 10 < 5 ? 4 : 0), ["#fff3bf", "#ff3b3b"], 3);
+    } else if (c.caixaTapa) {
+      const a = 1 - (c.t - prep) / 14;
+      luzAditiva(c.x + c.w / 2, c.y, 220, "255,200,120", 0.5 * a);
+      ctx.fillStyle = "rgba(255,240,200," + (0.35 * a) + ")";
+      ctx.fillRect(Math.round(x), topo, Math.round(w), Math.round(base - topo));
+      ctx.strokeStyle = "rgba(255,255,255," + (0.9 * a) + ")";
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.ellipse(c.x + c.w / 2, c.y + 20, w / 2, 70 + (1 - a) * 60, 0, Math.PI, Math.PI * 2); ctx.stroke();
     }
   }
 
@@ -700,6 +808,17 @@ function desenharExtrasRei() {
     ctx.fillStyle = "rgba(233,227,213,0.35)";
     ctx.fillRect(Math.round(v.x), CHAO - 24, Math.round(v.w), 24);
   }
+}
+
+// explosão do raio da boca correndo pelo chão
+function explosaoDoSopro(r) {
+  luzAditiva(r.x, CHAO - 30, 90, "255,120,40", 0.55);
+  ctx.fillStyle = "#ff6b00";
+  ctx.fillRect(Math.round(r.x - 26), CHAO - 50, 52, 50);
+  ctx.fillStyle = "#ffd43b";
+  ctx.fillRect(Math.round(r.x - 16), CHAO - 40, 32, 40);
+  ctx.fillStyle = "#fff3bf";
+  ctx.fillRect(Math.round(r.x - 8), CHAO - 30, 16, 30);
 }
 
 // Lua cheia (atrás do cenário da frente)

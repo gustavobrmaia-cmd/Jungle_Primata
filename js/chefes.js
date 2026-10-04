@@ -175,6 +175,8 @@ function atualizarChefe() {
     if (j.vy > 0 && j.pesAntes <= c.caixa.y + 26) {
       danoChefe(3, j.x + j.w / 2, true);
       c.invencivel = 30;
+      c.pisadas = (c.pisadas || 0) + 1;
+      c.ultimaPisada = tempo;
       j.vy = -14;
       j.pulouNormal = false;
       j.pulosExtras = 1;
