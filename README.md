@@ -79,7 +79,8 @@ discretamente embaixo das moedas e do nível.
   Furioso, emenda duas voadoras. Dois pisões seguidos na cabeça dele e ele some e contra-ataca.
 - Quando ela esvazia, cai a noite, nasce a **lua cheia** e ele vira o **Saru Gigante** (2ª barra):
   raio pela boca que vai explodindo o chão (pule), pisão com chuva de pedras, palmas com ondas de
-  choque (a alta você passa deslizando, a baixa pulando) e varrida rente ao chão que o deixa tonto.
+  choque (a alta você passa deslizando, a baixa pulando), rugido com ondas de som na altura da
+  cabeça dele (fique no chão) e varrida rente ao chão que o deixa tonto.
   As plataformas da arena ajudam a pular na cabeça dele, mas quem fica em cima dele leva um
   **tapa por cima** (aparece um "!" e uma área vermelha: saia de cima).
 - Vencer dá **300 moedas**; na primeira vitória também a skin **Saru** e a melhoria

@@ -479,8 +479,8 @@ QUADRO_CHEFE.reiMacaco = function(c, raiva) {
 
 // ---------- Luta: 2ª fase (Saru Gigante) ----------
 
-function bocaDoGigante(c) {
-  const fr = SPR_CHEFE.grandeMacaco.q.sopro;
+function bocaDoGigante(c, quadro) {
+  const fr = SPR_CHEFE.grandeMacaco.q[quadro || "sopro"];
   return { x: c.x + (c.dir > 0 ? fr.boca[0] * 3 : c.w - fr.boca[0] * 3), y: c.y + fr.boca[1] * 3 };
 }
 
@@ -501,7 +501,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
       olharProJogador(c);
       c.vx = Math.abs(alvoX(c) - c.x) > 220 ? aproximar(c.vx, c.dir * 1.6, 0.15) : aproximar(c.vx, 0, 0.3);
       fisicaChefe(c);
-      if (c.t > (raiva ? 28 : 42)) proximoAtaque(c, ["sopro", "pisao", "palmas", "varrida"]);
+      if (c.t > (raiva ? 28 : 42)) proximoAtaque(c, ["sopro", "pisao", "palmas", "varrida", "rugido"]);
       break;
 
     // tapa por cima da cabeça: limpa as plataformas acima dele (saia de cima!)
@@ -519,6 +519,28 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
         c.caixaTapa = null;
       }
       if (c.t > prep + 28) irPara(c, "parado");
+      break;
+    }
+
+    // rugido: puxa o ar e solta ondas de som na altura da cabeça dele (fique no chão!)
+    case "rugido": {
+      c.vx = 0;
+      fisicaChefe(c);
+      const prep = raiva ? 34 : 44;
+      if (c.t === 1) olharProJogador(c);
+      if (c.t < prep && c.t % 3 === 0) {
+        const b = bocaDoGigante(c, "rugido");
+        const a = Math.random() * Math.PI * 2;
+        particula({ tipo: "q", x: b.x + Math.cos(a) * 90, y: b.y + Math.sin(a) * 60, vx: -Math.cos(a) * 5, vy: -Math.sin(a) * 3.5, g: 0, vida: 16, max: 16, cor: "#fff3bf", tam: 5 });
+      }
+      if (c.t === prep || (raiva && c.t === prep + 30)) {
+        const b = bocaDoGigante(c, "rugido");
+        c.ondasSom = c.ondasSom || [];
+        c.ondasSom.push({ x: b.x, y: b.y, dir: c.dir, t: 0 });
+        tremor = 18;
+        som("rugido");
+      }
+      if (c.t > prep + (raiva ? 64 : 34)) irPara(c, "parado");
       break;
     }
 
@@ -605,6 +627,16 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
       break;
   }
 
+  // ondas do rugido atravessam a arena na altura da cabeça
+  if (c.ondasSom) {
+    c.ondasSom = c.ondasSom.filter(function(o) {
+      o.x += o.dir * 9;
+      o.t++;
+      if (!j.morto && encosta(j, { x: o.x - 22, y: o.y - 38, w: 44, h: 76 })) machucar(o.x);
+      return o.x > -80 && o.x < LARGURA + 80;
+    });
+  }
+
   // ondas de choque das palmas andam pela arena
   if (c.ondas) {
     c.ondas = c.ondas.filter(function(o) {
@@ -633,6 +665,8 @@ QUADRO_CHEFE.grandeMacaco = function(c, raiva) {
       return (t >= 26 && t < 40) || (t >= 66 && t < 80) || (t >= 101 && t < 115) ? "palmas1" : "palmas0";
     case "tapa":
       return t < (raiva ? 40 : 50) ? "palmas0" : "palmas1";
+    case "rugido":
+      return t < (raiva ? 34 : 44) ? "parado1" : "rugido";
     case "varrida":
       return t < 26 ? "varrida0" : "varrida1";
     case "tonto":
@@ -757,6 +791,31 @@ function desenharExtrasRei() {
       ctx.lineWidth = 8;
       ctx.beginPath(); ctx.ellipse(c.x + c.w / 2, c.y + 20, w / 2, 70 + (1 - a) * 60, 0, Math.PI, Math.PI * 2); ctx.stroke();
     }
+  }
+
+  // rugido: faixa de aviso na altura da boca enquanto ele puxa o ar, depois ondas de som
+  if (c.estado === "rugido" && c.t < (c.hp <= c.hpMax / 2 ? 34 : 44)) {
+    const b = bocaDoGigante(c, "rugido");
+    const k = c.t / (c.hp <= c.hpMax / 2 ? 34 : 44);
+    ctx.fillStyle = "rgba(255,243,191," + (0.06 + 0.14 * k * (tempo % 6 < 3 ? 1 : 0.6)) + ")";
+    const x0 = c.dir > 0 ? b.x : 0;
+    ctx.fillRect(Math.round(x0), Math.round(b.y - 38), Math.round(c.dir > 0 ? LARGURA - b.x : b.x), 76);
+  }
+  if (c.ondasSom) {
+    c.ondasSom.forEach(function(o) {
+      const a = Math.min(1, o.t / 6);
+      const ini = o.dir > 0 ? -Math.PI / 2.6 : Math.PI - Math.PI / 2.6;
+      const fim = o.dir > 0 ? Math.PI / 2.6 : Math.PI + Math.PI / 2.6;
+      luzAditiva(o.x, o.y, 80, "255,210,130", 0.45 * a);
+      ctx.fillStyle = "rgba(255,243,191," + (0.22 * a) + ")";
+      ctx.beginPath(); ctx.arc(o.x - o.dir * 30, o.y, 40, ini, fim); ctx.fill();
+      [0, 1, 2].forEach(function(i) {
+        const r = 20 + i * 14;
+        ctx.strokeStyle = "rgba(255," + (250 - i * 25) + "," + (200 - i * 50) + "," + ((1 - i * 0.2) * a) + ")";
+        ctx.lineWidth = 10 - i * 2;
+        ctx.beginPath(); ctx.arc(o.x - o.dir * (34 - i * 14), o.y, r + 18, ini, fim); ctx.stroke();
+      });
+    });
   }
 
   // ondas de choque das palmas: meia-lua de ar brilhante andando para os lados
