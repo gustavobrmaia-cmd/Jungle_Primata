@@ -83,7 +83,10 @@ discretamente embaixo das moedas e do nível.
   cabeça dele (fique no chão) e varrida rente ao chão que o deixa tonto.
   As plataformas da arena ajudam a pular na cabeça dele, mas quem fica em cima dele leva um
   **tapa por cima** (aparece um "!" e uma área vermelha: saia de cima).
-- Vencer dá **300 moedas**; na primeira vitória também a skin **Saru** e a melhoria
+- **Fica mais forte a cada vitória** (até o Nv 6): mais vida, ataca mais cedo, golpes mais rápidos,
+  mais pedras e esferas, e fica furioso mais cedo (no Nv 6 já começa furioso, com aura roxa).
+  Cada nível rende +100 moedas e +100 XP. A primeira luta é sempre a mais fácil.
+- Vencer dá **300 moedas** (+100 por nível); na primeira vitória também a skin **Saru** e a melhoria
   **Nuvem Mágica** (uma vez por fase, se cair num buraco, a nuvem te salva sem perder vida).
 
 ## Estrelas

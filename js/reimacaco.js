@@ -29,6 +29,46 @@ QUADROS_ATAQUE.reiMacaco = ["chute", "carrega", "rajada", "estocada", "corre0", 
 QUADROS_ATAQUE.grandeMacaco = ["rugido", "sopro", "pisao2", "palmas1", "varrida1", "palmas0"];
 
 
+// ---------- O Saru fica mais forte a cada vitória ----------
+// Nível 0 na primeira luta; cada vitória sobe 1 (até NIVEL_MAX_SARU). Por nível:
+// +10% de vida, ataca mais cedo, golpes um pouco mais rápidos, mais pedras/esferas,
+// e fica furioso mais cedo (no nível máximo já começa furioso). Rende mais moedas e XP.
+const NIVEL_MAX_SARU = 5;
+
+function nivelSaru() {
+  return Math.min(save.rei.vitorias || 0, NIVEL_MAX_SARU);
+}
+
+function nomeSaru(gigante) {
+  const n = nivelSaru();
+  const base = gigante ? tr("Saru Gigante") : tr("Saru");
+  return n ? base + " " + tr("Nv {0}", n + 1) : base;
+}
+
+// Furioso: com metade da vida no nível 0; a cada nível, 10% mais cedo
+function raivaSaru(c, raiva) {
+  c.raiva = raiva || c.hp <= c.hpMax * (0.5 + 0.1 * (c.nivelSaru || 0));
+  return c.raiva;
+}
+
+function ritmoSaru(c) { return 1 - 0.06 * (c.nivelSaru || 0); }     // espera entre golpes
+function velSaru(c) { return 1 + 0.04 * (c.nivelSaru || 0); }       // velocidade dos golpes
+
+function vidaSaru(c) {
+  c.hp = c.hpMax = Math.round(c.def.hp * (1 + 0.1 * (c.nivelSaru || 0)));
+  c.hpAtraso = c.hp;
+}
+
+// Aura muda de cor nos níveis altos (laranja-vermelha no 3+, roxa no máximo)
+const AURA_SARU_PADRAO = { reiMacaco: AURA_CHEFE.reiMacaco, grandeMacaco: AURA_CHEFE.grandeMacaco };
+function auraSaru(n) {
+  AURA_CHEFE.reiMacaco = n >= NIVEL_MAX_SARU ? { aura: "190,90,255", olho: "220,170,255", contorno: "#be5aff" }
+    : n >= 3 ? { aura: "255,110,40", olho: "255,190,120", contorno: "#ff6e28" } : AURA_SARU_PADRAO.reiMacaco;
+  AURA_CHEFE.grandeMacaco = n >= NIVEL_MAX_SARU ? { aura: "170,40,255", olho: "210,120,255", contorno: "#aa28ff" }
+    : AURA_SARU_PADRAO.grandeMacaco;
+}
+
+
 // ---------- Aparição do dia ----------
 
 function hojeTexto() {
@@ -64,7 +104,9 @@ function atualizarAvisoRei() {
     return;
   }
   if (save.rei.vencido) {
-    d.textContent = tr("Você venceu o Saru hoje! Ele pode voltar amanhã.");
+    // depois da vitória de hoje, a próxima aparição já vem um nível acima (até o máximo)
+    d.textContent = (save.rei.vitorias || 0) <= NIVEL_MAX_SARU
+      ? tr("Você venceu o Saru hoje! Ele pode voltar amanhã, mais forte.") : tr("Você venceu o Saru hoje! Ele pode voltar amanhã.");
     return;
   }
   if (!save.rei.ativo) {
@@ -75,7 +117,8 @@ function atualizarAvisoRei() {
   b.tabIndex = -1;
   b.className = "botaoRei";
   if (save.rei.tentativas > 0) {
-    b.textContent = tr("O Saru apareceu! Enfrentar ({0})", save.rei.tentativas);
+    b.textContent = nivelSaru() ? tr("O Saru Nv {1} apareceu! Enfrentar ({0})", save.rei.tentativas, nivelSaru() + 1)
+      : tr("O Saru apareceu! Enfrentar ({0})", save.rei.tentativas);
     b.addEventListener("click", function() { iniciarAudio(); enfrentarRei(); });
   } else if (premiadoDisponivel() && !save.rei.anuncio) {
     b.textContent = tr("Saru: +3 tentativas (anúncio)");
@@ -111,7 +154,10 @@ function criarChefeRei() {
   salvar();
   reiNoite = 0;
   const c = criarChefe(0);
-  virarChefe(c, "reiMacaco", tr("Saru"));
+  c.nivelSaru = nivelSaru();
+  auraSaru(c.nivelSaru);
+  virarChefe(c, "reiMacaco", nomeSaru(false));
+  vidaSaru(c);
   c.y = -c.h - 40;
   c.secreto = true;
   return c;
@@ -143,16 +189,18 @@ function reiPerdeu() {
 
 function reiVencido() {
   const primeira = !temCosmetico("reiMacaco");
-  save.moedas += MOEDAS_REI;
+  const n = chefe && chefe.nivelSaru || 0;
+  const moedas = MOEDAS_REI + 100 * n;
+  save.moedas += moedas;
   save.rei.vencido = true;
   save.rei.vitorias = (save.rei.vitorias || 0) + 1;
-  let sub = tr("+{0} moedas", MOEDAS_REI);
+  let sub = tr("+{0} moedas", moedas);
   if (primeira) {
     save.comprados.push("reiMacaco");
     if (!temMelhoria("nuvem")) save.melhorias.push("nuvem");
-    sub = tr("Nova skin: Saru  ·  Nova melhoria: Nuvem Mágica  ·  +{0} moedas", MOEDAS_REI);
+    sub = tr("Nova skin: Saru  ·  Nova melhoria: Nuvem Mágica  ·  +{0} moedas", moedas);
   }
-  ganharXp(500);
+  ganharXp(500 + 100 * n);
   salvar();
   som("vitoria");
   mostrarMensagem(tr("Saru derrotado!"), sub, 240, function() {
@@ -210,6 +258,7 @@ function maoDoSaru(c, quadro) {
 
 IA_CHEFES.reiMacaco = function(c, raiva) {
   const j = jogador;
+  raiva = raivaSaru(c, raiva);
   // dois pisões seguidos na cabeça: ele some e contra-ataca com a voadora
   if (c.pisadas && tempo - c.ultimaPisada > 150) c.pisadas = 0;
   if (c.pisadas >= 2 && !c.cena && ["parado", "cansado", "estocada", "tonto"].indexOf(c.estado) >= 0) {
@@ -225,7 +274,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       c.vx = aproximar(c.vx, 0, 0.4);
       if (c.noChao && c.t % 40 === 20) c.vy = -5;
       fisicaChefe(c);
-      if (c.t > (raiva ? 24 : 38)) proximoAtaque(c, ["teleporte", "rajada", "nuvem", "estocada"]);
+      if (c.t > (raiva ? 24 : 38) * ritmoSaru(c)) proximoAtaque(c, ["teleporte", "rajada", "nuvem", "estocada"]);
       break;
 
     // some, reaparece atrás do jogador e dá uma voadora
@@ -255,7 +304,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       // prepara a voadora (aparece um "!") e só depois avança
       if (c.t === 25) { olharProJogador(c); som("negado"); }
       if (c.t > (raiva ? 38 : 42)) {
-        c.vx = c.dir * (raiva ? 9.5 : 8);
+        c.vx = c.dir * (raiva ? 9.5 : 8) * velSaru(c);
         if (tempo % 3 === 0) poeira(c.x + c.w / 2 - c.dir * 30, CHAO, 1);
       }
       fisicaChefe(c);
@@ -309,7 +358,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
     case "cansado":
       c.vx = aproximar(c.vx, 0, 0.3);
       fisicaChefe(c);
-      if (c.t > (raiva ? 26 : 36)) irPara(c, "parado");
+      if (c.t > (raiva ? 26 : 36) * ritmoSaru(c)) irPara(c, "parado");
       break;
 
     // sobe numa nuvem dourada, cruza a arena e solta esferas de energia
@@ -324,7 +373,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
         if (c.x < 10 || c.x > LARGURA - c.w - 10) c.vx = -c.vx;
         c.dir = c.vx > 0 ? 1 : -1;
         c.y = alto + Math.sin(c.t * 0.08) * 8;
-        if (c.t % (raiva ? 16 : 22) === 0) {
+        if (c.t % Math.max(10, (raiva ? 16 : 22) - (c.nivelSaru || 0)) === 0) {
           projeteis.push({ tipo: "esfera", x: c.x + c.w / 2 - 12, y: c.y + c.h, w: 24, h: 24, vx: limitar((j.x - c.x) / 120, -2, 2), vy: 1, g: 0.22, vida: 300, quebraNoChao: true });
           som("tiro");
         }
@@ -392,7 +441,8 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
         }
       }
       if (c.t > 110) {
-        virarChefe(c, "grandeMacaco", tr("Saru Gigante"));
+        virarChefe(c, "grandeMacaco", nomeSaru(true));
+        vidaSaru(c);
         // o gigante nasce sem cair em cima do macaco (se o macaco ficou encurralado, ele nasce do outro lado)
         const cj = j.x + j.w / 2;
         const folga = c.w / 2 + j.w / 2 + 50;
@@ -449,6 +499,7 @@ function reiTransformar(c) {
 }
 
 QUADRO_CHEFE.reiMacaco = function(c, raiva) {
+  if (c.raiva !== undefined) raiva = c.raiva;
   const t = c.t;
   const resp = Math.floor(tempo / 26) % 2 ? "parado1" : "parado0";
   switch (c.estado) {
@@ -486,6 +537,7 @@ function bocaDoGigante(c, quadro) {
 
 IA_CHEFES.grandeMacaco = function(c, raiva) {
   const j = jogador;
+  raiva = raivaSaru(c, raiva);
   // Quem fica em cima dele (plataformas ou pulando na cabeça sem parar) leva um tapa por cima
   const emCima = !j.morto && j.y + j.h <= c.y + 60 && Math.abs(j.x + j.w / 2 - (c.x + c.w / 2)) < c.w / 2 + 70;
   c.acima = emCima ? (c.acima || 0) + 1 : 0;
@@ -501,7 +553,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
       olharProJogador(c);
       c.vx = Math.abs(alvoX(c) - c.x) > 220 ? aproximar(c.vx, c.dir * 1.6, 0.15) : aproximar(c.vx, 0, 0.3);
       fisicaChefe(c);
-      if (c.t > (raiva ? 28 : 42)) proximoAtaque(c, ["sopro", "pisao", "palmas", "varrida", "rugido"]);
+      if (c.t > (raiva ? 28 : 42) * ritmoSaru(c)) proximoAtaque(c, ["sopro", "pisao", "palmas", "varrida", "rugido"]);
       break;
 
     // tapa por cima da cabeça: limpa as plataformas acima dele (saia de cima!)
@@ -557,7 +609,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
         som("nuke");
       }
       c.rastros = c.rastros.filter(function(r) {
-        r.x += r.dir * (raiva ? 8.5 : 7.5);
+        r.x += r.dir * (raiva ? 8.5 : 7.5) * velSaru(c);
         if (tempo % 2 === 0) {
           particula({ tipo: "q", x: r.x + (Math.random() - 0.5) * 30, y: CHAO - Math.random() * 30, vx: (Math.random() - 0.5) * 4, vy: -3 - Math.random() * 4, g: 0.3, vida: 26, max: 26, cor: Math.random() < 0.5 ? "#ff6b6b" : "#ffd43b", tam: 9 });
         }
@@ -577,7 +629,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
         tremor = 26;
         som("pancada");
         poeira(c.x + c.w / 2, CHAO, 12);
-        chuvaDoCeu(raiva ? 9 : 6, "pedra", 44, 44);
+        chuvaDoCeu((raiva ? 9 : 6) + (c.nivelSaru || 0), "pedra", 44, 44);
       }
       if (c.t > 76) irPara(c, "parado");
       break;
@@ -630,7 +682,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
   // ondas do rugido atravessam a arena na altura da cabeça
   if (c.ondasSom) {
     c.ondasSom = c.ondasSom.filter(function(o) {
-      o.x += o.dir * 9;
+      o.x += o.dir * 9 * velSaru(c);
       o.t++;
       if (!j.morto && encosta(j, { x: o.x - 22, y: o.y - 38, w: 44, h: 76 })) machucar(o.x);
       return o.x > -80 && o.x < LARGURA + 80;
@@ -640,7 +692,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
   // ondas de choque das palmas andam pela arena
   if (c.ondas) {
     c.ondas = c.ondas.filter(function(o) {
-      o.x += o.dir * 8;
+      o.x += o.dir * 8 * velSaru(c);
       o.vida--;
       if (!j.morto && encosta(j, { x: o.x - 18, y: o.y, w: 36, h: o.h })) machucar(o.x);
       return o.vida > 0 && o.x > -60 && o.x < LARGURA + 60;
@@ -649,6 +701,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
 };
 
 QUADRO_CHEFE.grandeMacaco = function(c, raiva) {
+  if (c.raiva !== undefined) raiva = c.raiva;
   const t = c.t;
   const resp = Math.floor(tempo / 26) % 2 ? "parado1" : "parado0";
   switch (c.estado) {
@@ -696,7 +749,7 @@ function desenharExtrasRei() {
   }
 
   // aviso da voadora
-  if (c.estado === "teleporte" && c.t > 24 && c.t <= (c.hp <= c.hpMax / 2 ? 38 : 42)) {
+  if (c.estado === "teleporte" && c.t > 24 && c.t <= (c.raiva ? 38 : 42)) {
     ctx.font = "bold 40px " + FONTE;
     ctx.textAlign = "center";
     textoSombra("!", c.x + c.w / 2, c.y - 8 - (c.t % 10 < 5 ? 4 : 0), ["#fff3bf", "#ff6b00"], 3);
@@ -774,7 +827,7 @@ function desenharExtrasRei() {
 
   // tapa por cima: aviso vermelho acima da cabeça e depois o impacto
   if (c.estado === "tapa") {
-    const prep = c.hp <= c.hpMax / 2 ? 40 : 50;
+    const prep = c.raiva ? 40 : 50;
     const x = c.x + 10, w = c.w - 20, topo = CHAO - 360, base = c.y + 60;
     if (c.t < prep) {
       ctx.fillStyle = "rgba(255,60,60," + (0.08 + 0.14 * (c.t / prep) * (tempo % 8 < 4 ? 1 : 0.5)) + ")";
@@ -794,9 +847,9 @@ function desenharExtrasRei() {
   }
 
   // rugido: faixa de aviso na altura da boca enquanto ele puxa o ar, depois ondas de som
-  if (c.estado === "rugido" && c.t < (c.hp <= c.hpMax / 2 ? 34 : 44)) {
+  if (c.estado === "rugido" && c.t < (c.raiva ? 34 : 44)) {
     const b = bocaDoGigante(c, "rugido");
-    const k = c.t / (c.hp <= c.hpMax / 2 ? 34 : 44);
+    const k = c.t / (c.raiva ? 34 : 44);
     ctx.fillStyle = "rgba(255,243,191," + (0.06 + 0.14 * k * (tempo % 6 < 3 ? 1 : 0.6)) + ")";
     const x0 = c.dir > 0 ? b.x : 0;
     ctx.fillRect(Math.round(x0), Math.round(b.y - 38), Math.round(c.dir > 0 ? LARGURA - b.x : b.x), 76);

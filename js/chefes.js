@@ -709,7 +709,8 @@ function desenharBananaDragao(dir, fr, w, comBanana) {
 function desenharChefe() {
   const c = chefe;
   const spr = SPR_CHEFE[c.tipo];
-  const raiva = c.hp <= c.hpMax / 2 && c.vivo;
+  // (o Saru decide sozinho quando fica furioso: em níveis altos, mais cedo)
+  const raiva = (c.raiva !== undefined ? c.raiva : c.hp <= c.hpMax / 2) && c.vivo;
 
   // Quadro atual (o "dano" aparece nos últimos tiques do piscar)
   let nome = QUADRO_CHEFE[c.tipo](c, raiva);
