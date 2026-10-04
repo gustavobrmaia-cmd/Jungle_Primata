@@ -533,7 +533,7 @@ function renderizarLoja() {
         linhaTexto(card, "preco", tr("Comprado"));
         botao(card, tr("Comprado"), true, { melhoria: m.id });
       } else if (m.especial) {
-        linhaTexto(card, "preco", tr("Derrote o Rei Macaco"));
+        linhaTexto(card, "preco", tr("Derrote o Saru"));
         botao(card, tr("Bloqueado"), true, { melhoria: m.id });
       } else {
         precoHtml(card, m.preco);
@@ -560,7 +560,7 @@ function renderizarLoja() {
       linhaTexto(card, "nome", item.nome);
       const premio = item.fase !== undefined || item.nivel !== undefined || !!item.especial;
       if (tem) linhaTexto(card, "preco", equipado ? tr("Equipado") : tr("Seu"));
-      else if (item.especial) linhaTexto(card, "preco", tr("Derrote o Rei Macaco"));
+      else if (item.especial) linhaTexto(card, "preco", tr("Derrote o Saru"));
       else if (item.fase !== undefined) linhaTexto(card, "preco", tr("Passe a fase {0}", nomeFase(item.fase)));
       else if (item.nivel !== undefined) linhaTexto(card, "preco", tr("Chegue ao nível {0}", item.nivel));
       else precoHtml(card, item.preco);

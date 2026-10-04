@@ -778,7 +778,7 @@ function morrer() {
 function perdeuTudo() {
   sujo = true;
   save.stats.mortes++;
-  if (fase.secreta) reiPerdeu();          // Rei Macaco: gasta a tentativa
+  if (fase.secreta) reiPerdeu();          // Saru: gasta a tentativa
   else if (podeReviver()) abrirReviver();   // Poki: "assista um anúncio para reviver"
   else voltarDoCheckpoint();
 }
@@ -3666,7 +3666,7 @@ function desenharJogo() {
   desenharAvisos();
   desenharPlantas(cam);
   desenharInimigos(cam);
-  if (chefe) { desenharChefe(); desenharBastaoRei(); }
+  if (chefe) { if (chefeVisivel()) desenharChefe(); desenharExtrasRei(); }
   desenharAura();
   desenharJogador();
   desenharProjeteis();

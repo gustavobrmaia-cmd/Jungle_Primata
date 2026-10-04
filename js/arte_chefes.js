@@ -18,39 +18,21 @@ const COR_GORILA = {
   safira: ["#0b3a78", "#1c7ed6", "#74c0fc", "#e7f5ff"]
 };
 
-const COR_GRANDE_MACACO = {
-  pelo: rampaDe("#5b3a22", 5),
-  peito: rampaDe("#76502f", 4),
-  pele: rampaDe("#c9966a", 4),
-  palma: rampaDe("#8f5c3e", 4),
-  ouro: rampaDe("#f2b705", 5)
-};
-
 // Pose: bob (sobe/desce o corpo), br = braços {e: [cotovelo x,y, punho x,y], d: [...]}, pe = pernas (dy esq, dir),
 // boca 0-2, olhos "raiva"|"fechado"|"tonto"|"arregala", cab = [dx, dy] da cabeça, incl = inclinação do corpo
-// gigante = true: o Grande Macaco (chefe secreto): sem capa e sem joias, com cauda, presas,
-// olhos vermelhos e a tiara dourada rachada. Usa as mesmas poses do Gorila Rei.
-function gorilaQuadro(p, gigante) {
-  const C = gigante ? COR_GRANDE_MACACO : COR_GORILA;
+function gorilaQuadro(p) {
+  const C = COR_GORILA;
   const b = pxNovo(48, 44);
   const bob = p.bob || 0;
   const cab = p.cab || [0, 0];
   const pe = p.pe || [0, 0];
   const tx = p.tx || 0;
 
-  if (gigante) {
-    // cauda grossa saindo de trás e subindo enrolada
-    const ca = [[14 + tx, 34 + bob], [6, 33 + bob], [2.5, 26 + bob], [3.5, 19 + bob], [7, 16 + bob], [9.5, 18.5 + bob]];
-    for (let i = 0; i < ca.length - 1; i++) {
-      pxMembro(b, ca[i][0], ca[i][1], ca[i + 1][0], ca[i + 1][1], 3.2 - i * 0.35, 3 - i * 0.35, C.pelo, { tex: pxTexPelo(40 + i, 0.2) });
-    }
-  } else {
-    // capa vermelha por trás
-    pxPoligono(b, [[12 + tx, 15 + bob], [36 + tx, 15 + bob], [44, 36 + bob + (pe[1] > 0 ? 0 : 0)], [41, 40], [7, 40], [4, 36 + bob]], C.capa, { curva: 0.5, rim: "#4a0a12" });
-    // dobras da capa
-    pxLinha(b, 8, 38, 10, 30, C.capa[0]);
-    pxLinha(b, 40, 38, 38, 30, C.capa[0]);
-  }
+  // capa vermelha por trás
+  pxPoligono(b, [[12 + tx, 15 + bob], [36 + tx, 15 + bob], [44, 36 + bob + (pe[1] > 0 ? 0 : 0)], [41, 40], [7, 40], [4, 36 + bob]], C.capa, { curva: 0.5, rim: "#4a0a12" });
+  // dobras da capa
+  pxLinha(b, 8, 38, 10, 30, C.capa[0]);
+  pxLinha(b, 40, 38, 38, 30, C.capa[0]);
 
   // pernas e pés
   [[15 + tx, pe[0]], [33 + tx, pe[1]]].forEach(function(l, i) {
@@ -67,11 +49,9 @@ function gorilaQuadro(p, gigante) {
   pxElipse(b, 28.5 + tx, 25.5 + bob, 6.8, 5.2, C.peito, { rim: C.pelo[1], tex: pxTexPelo(14) });
   pxLinha(b, 24 + tx, 22 + bob, 24 + tx, 29 + bob, C.pelo[1]);
   // medalhão dourado no peito
-  if (!gigante) {
-    pxElipse(b, 24 + tx, 22.5 + bob, 2.4, 2.4, C.ouro, { rim: "#5c3a06" });
-    pxPonto(b, 24 + tx, 22 + bob, C.rubi[2]);
-    pxPonto(b, 23 + tx, 21 + bob, C.rubi[3]);
-  }
+  pxElipse(b, 24 + tx, 22.5 + bob, 2.4, 2.4, C.ouro, { rim: "#5c3a06" });
+  pxPonto(b, 24 + tx, 22 + bob, C.rubi[2]);
+  pxPonto(b, 23 + tx, 21 + bob, C.rubi[3]);
 
   // braços (de trás pra frente: esquerdo, direito)
   const br = p.br || {};
@@ -86,15 +66,13 @@ function gorilaQuadro(p, gigante) {
     pxPonto(b, a[2] - 2, a[3] + 4, "#2a1812");
     pxPonto(b, a[2] + 1, a[3] + 4, "#2a1812");
     // pulseira de ouro
-    if (!gigante) {
-      pxLinha(b, a[2] - 3, a[3] - 3, a[2] + 3, a[3] - 3, C.ouro[2]);
-      pxLinha(b, a[2] - 3, a[3] - 2, a[2] + 3, a[3] - 2, C.ouro[1]);
-    }
+    pxLinha(b, a[2] - 3, a[3] - 3, a[2] + 3, a[3] - 3, C.ouro[2]);
+    pxLinha(b, a[2] - 3, a[3] - 2, a[2] + 3, a[3] - 2, C.ouro[1]);
   }
   braco(9 + tx, 21 + bob, bE, true);
   braco(39 + tx, 21 + bob, bD, false);
   // ombreiras de ouro
-  if (!gigante) [[9, true], [39, false]].forEach(function(s) {
+  [[9, true], [39, false]].forEach(function(s) {
     pxElipse(b, s[0] + tx, 17 + bob, 4.2, 2.6, C.ouro, { rim: "#5c3a06" });
     pxPonto(b, s[0] + tx + (s[1] ? -1 : 0), 16 + bob, C.ouro[4]);
   });
@@ -128,12 +106,6 @@ function gorilaQuadro(p, gigante) {
     } else if (ol === "arregala") {
       pxRet(b, ex - 0.5, ey - 0.5, 3, 3, "#fff3bf");
       pxPonto(b, ex + 1.5 - (i ? 1 : 0), ey + 0.5, "#c92a2a");
-    } else if (gigante) {
-      // olhos vermelhos acesos, sem pupila
-      pxRet(b, ex - 0.5, ey, 3, 2, "#ff2a2a");
-      pxPonto(b, ex + (i ? 1 : 0), ey, "#ffd0d0");
-      pxPonto(b, ex + (i ? 2 : -1), ey - 1, "#1a0e08");
-      pxPonto(b, ex + (i ? 1 : 0), ey - 1, "#1a0e08");
     } else {
       pxRet(b, ex, ey, 2, 2, "#ffd43b");
       pxPonto(b, ex + (i ? 0 : 1), ey + 1, "#c92a2a");
@@ -164,24 +136,6 @@ function gorilaQuadro(p, gigante) {
     pxPonto(b, hx + 2, my - 1, "#ffffff");
   }
 
-  if (gigante) {
-    // presas para fora da boca
-    pxRet(b, hx - 3, my - 3, 1, 2, "#fff8e8");
-    pxRet(b, hx + 2, my - 3, 1, 2, "#fff8e8");
-    // tiara dourada rachada na testa
-    const ty = hy - 4;
-    pxRet(b, hx - 7, ty, 15, 2, C.ouro[2]);
-    pxRet(b, hx - 7, ty, 15, 1, C.ouro[3]);
-    pxRet(b, hx - 7, ty + 1, 15, 1, C.ouro[1]);
-    pxPonto(b, hx + 3, ty, "#2a1812");
-    pxPonto(b, hx + 4, ty + 1, "#2a1812");
-    pxPonto(b, hx - 1, ty, "#c92a2a");
-    pxPonto(b, hx, ty + 1, "#c92a2a");
-    pxFiapos(b, 0.35, 7, null, [C.pelo[1], C.pelo[2]]);
-    pxContorno(b, "#0b0806");
-    return { b: b, olhos: ox.map(function(ex) { return [ex + 1, hy + 2.5]; }) };
-  }
-
   // coroa
   const cx = hx;
   const cy = hy - 8;
@@ -201,7 +155,7 @@ function gorilaQuadro(p, gigante) {
   return { b: b, olhos: ox.map(function(ex) { return [ex + 1, hy + 2.5]; }) };
 }
 
-function gorilaQuadros(gigante) {
+function gorilaQuadros() {
   const q = {};
   const def = {
     parado0: {},
@@ -223,9 +177,9 @@ function gorilaQuadros(gigante) {
     dano: { bob: 1, cab: [-1, 1], olhos: "fechado", boca: 1, br: { e: [4, 26, 8, 30], d: [44, 26, 40, 30] } }
   };
   Object.keys(def).forEach(function(k) {
-    const r = gorilaQuadro(def[k], gigante);
-    const s = pxSprite(pxCanvas(r.b, gigante ? 4 : 3));
-    s.olhos = r.olhos.map(function(o) { return gigante ? [o[0] * 4 / 3, o[1] * 4 / 3] : o; });
+    const r = gorilaQuadro(def[k]);
+    const s = pxSprite(pxCanvas(r.b, 3));
+    s.olhos = r.olhos;
     q[k] = s;
   });
   return q;

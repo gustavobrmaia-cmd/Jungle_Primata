@@ -68,18 +68,20 @@ quando e ativam na hora (duram menos que os da loja).
 
 Moedas, compras e progresso ficam salvos no navegador.
 
-## Rei Macaco (chefe secreto do dia)
+## Saru (chefe secreto do dia)
 
 A partir do **nível 15**, na primeira vez que você abre o jogo no dia, há uma chance (40%) do
-**Rei Macaco** aparecer. O menu avisa discretamente embaixo das moedas e do nível.
+**Saru** aparecer: um macaco lutador de cabelo espetado e quimono laranja. O menu avisa
+discretamente embaixo das moedas e do nível.
 - Cada aparição dá **3 tentativas**. Acabou? Um anúncio premiado dá mais 3 (uma vez por dia).
-- **1ª barra de vida:** o Rei Macaco, rápido, com bastão que estica, saltos e pêssegos.
-- Quando ela esvazia, cai a noite, nasce a **lua cheia** e ele vira o **Grande Macaco**
-  (2ª barra, bem mais forte).
-- Vencer dá **300 moedas**; na primeira vitória também a skin **Rei Macaco** e a melhoria
+- **1ª barra de vida (Saru):** some e reaparece atrás de você com uma voadora, junta energia e solta
+  uma rajada que atravessa a arena (pule), voa numa nuvem soltando esferas de energia e estica o bastão.
+- Quando ela esvazia, cai a noite, nasce a **lua cheia** e ele vira o **Saru Gigante** (2ª barra):
+  raio pela boca que vai explodindo o chão (pule), pisão com chuva de pedras, palmas com ondas de
+  choque (a alta você passa deslizando, a baixa pulando) e varrida rente ao chão que o deixa tonto.
+  As plataformas da arena ajudam a pular na cabeça dele.
+- Vencer dá **300 moedas**; na primeira vitória também a skin **Saru** e a melhoria
   **Nuvem Mágica** (uma vez por fase, se cair num buraco, a nuvem te salva sem perder vida).
-
-Inspirado na lenda chinesa do Rei Macaco (tiara dourada, bastão e cauda).
 
 ## Estrelas
 

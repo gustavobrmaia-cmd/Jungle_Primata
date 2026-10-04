@@ -61,7 +61,7 @@ function fisicaChefe(c) {
 
 function danoChefe(dano, origemX, ignoraInvencivel) {
   const c = chefe;
-  if (!c || !c.vivo || c.intangivel || c.cena || c.estado === "entrada") return;
+  if (!c || !c.vivo || c.intangivel || c.cena || c.sumido || c.estado === "entrada") return;
   if (c.invencivel > 0 && !ignoraInvencivel) return;
   if (c.estado === "tonto") dano *= 2;
   c.hp -= dano;
@@ -69,7 +69,7 @@ function danoChefe(dano, origemX, ignoraInvencivel) {
   c.invencivel = 6;
   som("pisao");
   if (c.hp <= 0 && c.tipo === "reiMacaco") {
-    reiTransformar(c);   // 1ª barra do chefe secreto: vira o Grande Macaco
+    reiTransformar(c);   // 1ª barra do chefe secreto: vira o Saru Gigante
     return;
   }
   if (c.hp <= 0) {
@@ -171,7 +171,7 @@ function atualizarChefe() {
   atualizarCaixa(c);
 
   // Encostar no chefe machuca (pular na cabeça dele dá dano)
-  if (!j.morto && !c.intangivel && !c.cena && encosta(j, c.caixa)) {
+  if (!j.morto && !c.intangivel && !c.cena && !c.sumido && encosta(j, c.caixa)) {
     if (j.vy > 0 && j.pesAntes <= c.caixa.y + 26) {
       danoChefe(3, j.x + j.w / 2, true);
       c.invencivel = 30;

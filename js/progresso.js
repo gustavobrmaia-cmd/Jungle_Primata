@@ -94,7 +94,7 @@ function darPremioDaFase(i) {
 function mostrarCartaoFase() {
   const m = MUNDOS[fase.mundo];
   if (fase.secreta) {
-    cartao = { t: 0, titulo: tr("Rei Macaco"), mundo: 0, chefe: "reiMacaco",
+    cartao = { t: 0, titulo: tr("Saru"), mundo: 0, chefe: "reiMacaco",
       linhas: [tr("O macaco lendário! Tentativas restantes: {0}", save.rei.tentativas)] };
     return;
   }
