@@ -460,7 +460,7 @@ function renderizarLoja() {
   const btnAnuncio = el("btnMoedasAnuncio");
   btnAnuncio.style.display = premiadoDisponivel() ? "" : "none";
   btnAnuncio.textContent = tr("Assistir anúncio: +{0} moedas", moedasDoAnuncio());
-  desenharPrimata(el("previa").getContext("2d"), save.equip, 8, "parado");
+  desenharPrimata(el("previa").getContext("2d"), save.equip, 7, "parado");
 
   const abas = el("abas");
   abas.innerHTML = "";
@@ -520,7 +520,7 @@ function renderizarLoja() {
       const equipado = save.equip[abaAtual] === item.id;
       const card = novoCartao(equipado ? "equipado" : "", raridadeDe(item));
 
-      const cv = criarCanvas(80, 80);
+      const cv = criarCanvas(96, 96);
       const teste = Object.assign({}, save.equip);
       teste[abaAtual] = item.id;
       desenharPrimata(cv.getContext("2d"), teste, 4, "parado");

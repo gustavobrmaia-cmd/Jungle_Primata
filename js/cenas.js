@@ -33,7 +33,7 @@ function desenharMacacoCena(x, base, pose, dir, giro) {
   ctx.save();
   ctx.translate(Math.round(x), Math.round(base));
   if (giro) { ctx.translate(0, -40); ctx.rotate(giro); ctx.translate(0, 40); }
-  ctx.drawImage(spr, -40, -80);
+  ctx.drawImage(spr, -48, -80);
   ctx.restore();
 }
 

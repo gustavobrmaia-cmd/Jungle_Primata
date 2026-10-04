@@ -107,40 +107,68 @@ const PERNAS = {
   tras: [[18, 3, "DFFDDDDFSD"], [19, 3, "DPPD..DPPD"]]
 };
 
-// Cauda (fica atrás do braço direito): sobe pela beirada e termina num gancho
-function gancho(y, folga) {
-  // y = linha do topo do gancho; a parte reta desce até o chão
-  const l = [
-    [y, 15, "DDDDD"],
-    [y + 1, 15, "DFFFD"],
-    [y + 2, 15, "DLDSD"],
-    [y + 3, 15, ".DDSD"]
-  ];
-  for (let r = y + 4; r <= 18; r++) l.push([r, 17, "DSD"]);
-  l.push([19, 16, "DSSD"]);
-  return l;
+// Grade do macaco: 24 x 20. O corpo fica nas 20 colunas do meio; as 2 de cada lado
+// sobram para a cauda fazer a curva (ela fica do lado de trás: à esquerda olhando para a direita).
+const LARG_PRIMATA = 24;
+const MARGEM_PRIMATA = 2;
+
+// Cauda desenhada pixel a pixel (grade de 24 colunas, a partir da coluna 0).
+// Sai de trás do quadril, sobe em S pelo lado de trás e termina num gancho na altura do ombro.
+function cauda(linhaInicial, mapa) {
+  return mapa.map(function(l, i) { return [linhaInicial + i, 0, l]; });
 }
+const CAUDA_EM_PE = cauda(10, [
+  ".DDD..",
+  "DFLFD.",
+  "DFDSD.",
+  "DFDDD.",
+  "DFD...",
+  "DFD...",
+  "DSFD..",
+  ".DSFD.",
+  "..DSFD",
+  "...DD."
+]);
 const CAUDAS = {
-  repouso: gancho(10),
-  baixa: gancho(12),
-  alta: gancho(9),
-  enrolada: gancho(16)
+  repouso: CAUDA_EM_PE,
+  alta: CAUDA_EM_PE,
+  // correndo e pulando: mais baixa, esticada para trás
+  baixa: cauda(13, [
+    ".DDD..",
+    "DFLFD.",
+    "DFDSD.",
+    "DFDDD.",
+    "DSFD..",
+    ".DSFDD",
+    "..DDD."
+  ]),
+  // chutando e atirando: enroladinha embaixo
+  enrolada: cauda(14, [
+    ".DDD..",
+    "DFLFD.",
+    "DFDSD.",
+    "DSDDD.",
+    ".DSFDD",
+    "..DDD."
+  ])
 };
 
 function montarPose(d) {
   const g = [];
-  for (let y = 0; y < 20; y++) g.push(new Array(20).fill("."));
-  const poe = function(lista) {
+  for (let y = 0; y < 20; y++) g.push(new Array(LARG_PRIMATA).fill("."));
+  // as partes do corpo foram desenhadas numa grade de 20: entram deslocadas pela margem
+  const poe = function(lista, ox) {
+    ox = ox === undefined ? MARGEM_PRIMATA : ox;
     lista.forEach(function(b) {
       for (let i = 0; i < b[2].length; i++) {
         const c = b[2][i];
-        const x = b[1] + i;
-        if (c !== "." && x >= 0 && x < 20 && b[0] >= 0 && b[0] < 20) g[b[0]][x] = c;
+        const x = b[1] + i + ox;
+        if (c !== "." && x >= 0 && x < LARG_PRIMATA && b[0] >= 0 && b[0] < 20) g[b[0]][x] = c;
       }
     });
   };
   const dx = d.dx || 0;
-  poe(d.cauda || CAUDAS.repouso);
+  poe(d.cauda || CAUDAS.repouso, 0);
   poe(d.atras || []);
   poe(d.tronco || TRONCO);
   poe(CABECA);
@@ -225,35 +253,41 @@ function paletaSkin(skin, corPelo) {
   return p;
 }
 
+// Desenha o macaco centralizado e com os pés na borda de baixo do canvas
 function desenharPrimata(g, equip, escala, pose) {
-  const tam = 20 * escala;
+  const W = g.canvas.width;
+  const H = g.canvas.height;
   g.imageSmoothingEnabled = false;
-  g.clearRect(0, 0, tam, tam);
+  g.clearRect(0, 0, W, H);
+  const ox = Math.round((W / escala - LARG_PRIMATA) / 2);   // em pixels da grade
+  const oy = Math.round(H / escala - 20);
+  const oc = ox + MARGEM_PRIMATA;                          // onde começa o corpo (grade de 20)
 
   const skin = buscarItem("skin", equip.skin) || SKINS[0];
 
   if (skin.imagem && personagemOk) {
-    // Sua imagem, encaixada no quadrado sem esticar
+    // Sua imagem, encaixada no quadrado do corpo sem esticar
+    const tam = 20 * escala;
     const s = Math.min(tam / imgPersonagem.naturalWidth, tam / imgPersonagem.naturalHeight);
     const w = imgPersonagem.naturalWidth * s;
     const h = imgPersonagem.naturalHeight * s;
-    g.drawImage(imgPersonagem, (tam - w) / 2, tam - h, w, h);
+    g.drawImage(imgPersonagem, oc * escala + (tam - w) / 2, oy * escala + tam - h, w, h);
   } else {
     const base = skin.imagem ? buscarItem("skin", "classico") : skin;
     const mapa = MAPAS_POSE[pose || "parado"];
     if (base.faixas) {
       for (let y = 0; y < mapa.length; y++) {
-        pintarMapa(g, [mapa[y]], paletaSkin(base, base.faixas[y % base.faixas.length]), escala, 0, y);
+        pintarMapa(g, [mapa[y]], paletaSkin(base, base.faixas[y % base.faixas.length]), escala, ox, oy + y);
       }
     } else {
-      pintarMapa(g, mapa, paletaSkin(base), escala);
+      pintarMapa(g, mapa, paletaSkin(base), escala, ox, oy);
     }
-    if (base.detalhe) pintarMapa(g, base.detalhe.mapa, base.detalhe.cores, escala, 0, base.detalhe.y);
+    if (base.detalhe) pintarMapa(g, base.detalhe.mapa, base.detalhe.cores, escala, oc, oy + base.detalhe.y);
   }
 
   CAMADAS.forEach(function(tipo) {
     const item = equip[tipo] && buscarItem(tipo, equip[tipo]);
-    if (item) pintarMapa(g, item.mapa, item.cores, escala, 0, item.y);
+    if (item) pintarMapa(g, item.mapa, item.cores, escala, oc, oy + item.y);
   });
 }
 
@@ -261,7 +295,7 @@ const SPRITES_PRIMATA = {};
 
 function montarSprites() {
   Object.keys(POSES).forEach(function(pose) {
-    const c = criarCanvas(80, 80);
+    const c = criarCanvas(LARG_PRIMATA * 4, 80);   // 96 x 80
     desenharPrimata(c.getContext("2d"), save.equip, 4, pose);
     SPRITES_PRIMATA[pose] = { d: c, e: espelhar(c) };
   });
@@ -2736,9 +2770,10 @@ function montarFundoDeserto() {
     const c = {
       sombra: M("#a84a62"), luz: M("#f08a5a"), sombraLinha: M("#963e58"), luzLinha: M("#dc7448"), ponta: "#ffd9a0"
     };
-    piramidePx(meio, 150, 142, 40, c);
-    piramidePx(meio, 215, 142, 22, c);
-    piramidePx(meio, 420, 142, 30, c);
+    // a base vai até 162 (o mesmo topo de antes): fica sempre enterrada nas dunas, nunca "flutua"
+    piramidePx(meio, 150, 162, 60, c);
+    piramidePx(meio, 215, 162, 42, c);
+    piramidePx(meio, 420, 162, 50, c);
     dunasPx(meio, r, { base: 148, amp: 9, harm: [[2, 0.9], [4, 0.7], [9, 0.25]], sombra: M("#9a3f5c"), luz: M("#e87c58"), rim: M("#ffb078") });
     dunasPx(meio, r, { base: 160, amp: 8, harm: [[3, 0.8], [5, 0.5], [10, 0.2]], sombra: M("#842f50"), luz: M("#d4644e"), rim: M("#f59a68") });
   }

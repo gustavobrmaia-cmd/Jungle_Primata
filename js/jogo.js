@@ -1506,7 +1506,7 @@ function fantasma(alfa) {
   const j = jogador;
   const spr = (SPRITES_PRIMATA[poseJogador()] || SPRITES_PRIMATA.parado)[j.dir > 0 ? "d" : "e"];
   const img = animTingir(spr, j.dash > 0 ? "#5ec8ff" : "#ffd43b");
-  particula({ tipo: "fantasma", img: img, x: Math.round(j.x + j.w / 2 - 40), y: Math.round(j.y + j.h - 80), vx: 0, vy: 0, g: 0, vida: 16, max: 16, alfa: alfa });
+  particula({ tipo: "fantasma", img: img, x: Math.round(j.x + j.w / 2 - 48), y: Math.round(j.y + j.h - 80), vx: 0, vy: 0, g: 0, vida: 16, max: 16, alfa: alfa });
 }
 
 function atualizarParticulas() {
@@ -3122,7 +3122,7 @@ function desenharJogador() {
   if (j.morto) {
     ctx.translate(cx, base - 40);
     ctx.rotate(j.giro);
-    desenharSpr(-40, -40);
+    desenharSpr(-48, -40);
     ctx.restore();
     return;
   }
@@ -3131,7 +3131,7 @@ function desenharJogador() {
   if (j.cipo) {
     ctx.translate(cx, Math.round(j.y + 6));
     ctx.rotate(-j.cipoTh * 0.85);
-    desenharSpr(-40, -10);
+    desenharSpr(-48, -10);
     ctx.restore();
     return;
   }
@@ -3141,7 +3141,7 @@ function desenharJogador() {
     ctx.translate(cx, base - 26);
     ctx.rotate(-j.dir * 1.4);
     ctx.scale(0.78, 0.78);
-    desenharSpr(-40, -40);
+    desenharSpr(-48, -40);
     ctx.restore();
     return;
   }
@@ -3191,7 +3191,7 @@ function desenharJogador() {
   }
   ctx.scale(sx, sy);
   const sprY = -80;
-  desenharSpr(-40, sprY);
+  desenharSpr(-48, sprY);
 
   // Revólver na mão (a mão fica em x 28..36 do centro, linhas 15-16 do sprite)
   if ((pose === "tiro" || pose === "tiro2") && !j.laco) {
@@ -3438,8 +3438,8 @@ function desenharHud() {
     }
     // a cabecinha do macaco anda pela barra
     const hx = bx + largura;
-    ctx.drawImage(silhuetaDe(SPRITES_PRIMATA.parado.d, "#0d0704"), 0, 12, 80, 48, hx - 15, 33, 30, 18);
-    ctx.drawImage(SPRITES_PRIMATA.parado.d, 0, 12, 80, 48, hx - 14, 34, 28, 17);
+    ctx.drawImage(silhuetaDe(SPRITES_PRIMATA.parado.d, "#0d0704"), 8, 12, 80, 48, hx - 15, 33, 30, 18);
+    ctx.drawImage(SPRITES_PRIMATA.parado.d, 8, 12, 80, 48, hx - 14, 34, 28, 17);
     const perto = k > 0.85;
     if (perto) luzAditiva(bx + 306, 42, 26, "255,215,70", 0.4 + Math.sin(tempo * 0.15) * 0.15);
     ctx.drawImage(SPR_BANANA, bx + 300 - 6, 32, 24, 20);

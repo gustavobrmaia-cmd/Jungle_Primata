@@ -668,7 +668,7 @@ kbd {
   align-items: center;
   justify-content: center;
 }
-#previa { width: 160px; height: 160px; }
+#previa { width: 168px; height: 168px; }
 
 .abas { display: flex; flex-direction: column; gap: 14px; width: 100%; padding: 4px 4px 0; }
 .abas button {
