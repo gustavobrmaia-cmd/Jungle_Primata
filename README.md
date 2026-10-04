@@ -76,8 +76,7 @@ discretamente embaixo das moedas e do nível.
 - Cada aparição dá **3 tentativas**. Acabou? Um anúncio premiado dá mais 3 (uma vez por dia).
 - **1ª barra de vida (Saru):** some e reaparece atrás de você com uma voadora, junta energia e solta
   uma rajada que atravessa a arena (pule), voa numa nuvem soltando esferas de energia e estica o bastão.
-  Furioso, emenda duas voadoras e solta uma 2ª rajada alta (fique no chão). Dois pisões seguidos na
-  cabeça dele e ele some e contra-ataca.
+  Furioso, emenda duas voadoras. Dois pisões seguidos na cabeça dele e ele some e contra-ataca.
 - Quando ela esvazia, cai a noite, nasce a **lua cheia** e ele vira o **Saru Gigante** (2ª barra):
   raio pela boca que vai explodindo o chão (pule), pisão com chuva de pedras, palmas com ondas de
   choque (a alta você passa deslizando, a baixa pulando) e varrida rente ao chão que o deixa tonto.

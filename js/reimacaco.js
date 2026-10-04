@@ -278,8 +278,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       c.vx = 0;
       fisicaChefe(c);
       const carga = raiva ? 34 : 44;
-      const alta = raiva ? carga + 52 : -1;     // 2ª rajada, na altura de quem pula
-      if (c.t === 1) { olharProJogador(c); som("poder"); c.avisoAlto = 0; }
+      if (c.t === 1) { olharProJogador(c); som("poder"); }
       if (c.t < carga) {
         c.carga = c.t / carga;
         if (c.t % 4 === 0) {
@@ -294,22 +293,6 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
         tremor = 10;
         som("nuke");
       }
-      // a 2ª rajada: ele dá um pulinho, a linha de aviso aparece no alto e o raio sai lá em cima
-      if (alta > 0 && c.t > carga + 22 && c.t < alta) {
-        c.avisoAlto = (c.t - carga - 22) / (alta - carga - 22);
-        if (c.t === alta - 14) c.vy = -7;
-        if (c.t % 4 === 0) {
-          const m = maoDoSaru(c, "carrega");
-          particula({ tipo: "q", x: m.x + (Math.random() - 0.5) * 50, y: m.y + (Math.random() - 0.5) * 50, vx: 0, vy: 0, g: 0, vida: 12, max: 12, cor: "#a5d8ff", tam: 5 });
-        }
-      }
-      if (c.t === alta) {
-        c.avisoAlto = 0;
-        const m = maoDoSaru(c, "rajada");
-        c.feixe = { x0: m.x, y: CHAO - 137, h: 34, t: 0 };
-        tremor = 10;
-        som("nuke");
-      }
       if (c.feixe) {
         const f = c.feixe;
         f.t++;
@@ -319,7 +302,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
         if (!j.morto && f.t > 2 && f.t < 16 && encosta(j, { x: f.x, y: f.y + 4, w: f.w, h: f.h - 8 })) machucar(c.x + c.w / 2);
         if (f.t > 22) c.feixe = null;
       }
-      if (c.t > (alta > 0 ? alta : carga) + 26) { c.avisoAlto = 0; irPara(c, "cansado"); }
+      if (c.t > carga + 26) irPara(c, "cansado");
       break;
     }
 
@@ -476,7 +459,7 @@ QUADRO_CHEFE.reiMacaco = function(c, raiva) {
     case "teleporte":
       return t > (raiva ? 38 : 42) ? "chute" : t > 24 ? "carrega" : resp;
     case "rajada":
-      return c.feixe ? "rajada" : c.noChao ? "carrega" : "salto";
+      return c.feixe ? "rajada" : "carrega";
     case "cansado":
       return Math.floor(tempo / 12) % 2 ? "parado1" : "carrega";
     case "nuvem":
@@ -577,7 +560,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
       if (c.t > 76) irPara(c, "parado");
       break;
 
-    // palmas: onda de choque alta (deslize por baixo) e, furioso, uma baixa (pule)
+    // palmas: onda de choque alta (deslize por baixo) e depois uma baixa (pule); furioso, mais uma alta
     case "palmas":
       c.vx = 0;
       fisicaChefe(c);
@@ -692,13 +675,6 @@ function desenharExtrasRei() {
     ctx.fillStyle = "rgba(165,216,255," + (0.15 + 0.35 * k * (tempo % 6 < 3 ? 1 : 0.6)) + ")";
     const x0 = c.dir > 0 ? m.x : 0;
     ctx.fillRect(Math.round(x0), Math.round(m.y - 2), Math.round(c.dir > 0 ? LARGURA - m.x : m.x), 4);
-  }
-
-  // linha de aviso da 2ª rajada (alta): quem ficar no chão escapa
-  if (c.estado === "rajada" && c.avisoAlto > 0) {
-    const k = c.avisoAlto;
-    ctx.fillStyle = "rgba(165,216,255," + (0.3 + 0.5 * k * (tempo % 6 < 3 ? 1 : 0.6)) + ")";
-    ctx.fillRect(0, CHAO - 124, LARGURA, 8);
   }
 
   // energia juntando nas mãos
