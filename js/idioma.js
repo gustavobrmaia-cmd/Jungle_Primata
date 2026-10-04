@@ -366,7 +366,7 @@ const EN = {
   "O vento levou a banana!": "The wind took the banana!",
   "Atravesse a Selva, o Deserto, a Era do Gelo e o Vulcão para recuperá-la!": "Cross the Jungle, the Desert, the Ice Age and the Volcano to get it back!",
   "Dizem que ela foi parar nas garras do Dragão de Magma...": "Rumor has it the Magma Dragon is keeping it...",
-  "Aperte qualquer tecla para começar": "Press any key to start",
+  "Clique ou aperte qualquer tecla para começar": "Click or press any key to start",
   "Nham!": "Nom!",
   "FIM!": "THE END!",
   "O primata derrotou o Dragão de Magma e finalmente comeu a sua banana!": "The primate beat the Magma Dragon and finally ate the banana!",
@@ -375,7 +375,7 @@ const EN = {
   "Chefes derrotados: {0}   ·   Quedas: {1}": "Bosses defeated: {0}   ·   Falls: {1}",
   "Tempo de jogo: {0}": "Play time: {0}",
   "Nova skin: {0}!": "New skin: {0}!",
-  "Aperte qualquer tecla para voltar ao menu": "Press any key to return to the menu",
+  "Clique ou aperte qualquer tecla para voltar ao menu": "Click or press any key to return to the menu",
 
   // ---------- Telas (index.html) ----------
   "PAUSA (P)": "PAUSE (P)",

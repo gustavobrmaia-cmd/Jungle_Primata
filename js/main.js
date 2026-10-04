@@ -129,6 +129,13 @@ window.addEventListener("blur", function() {
 
 window.addEventListener("beforeunload", salvar);
 
+// Clique do mouse também pula a abertura e volta do final (quem joga no Poki usa muito o mouse)
+canvas.addEventListener("mousedown", function() {
+  iniciarAudio();
+  if (estado === "intro" && intro.t > 30) terminarIntro();
+  else if (estado === "final" && final.pronto) trocarCena(voltarAoMenu);
+});
+
 // Aba escondida (trocou de app no celular, minimizou): pausa e cala o som
 document.addEventListener("visibilitychange", function() {
   if (document.hidden) {

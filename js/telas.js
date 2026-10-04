@@ -138,6 +138,10 @@ function atualizarTelas() {
   mostrar(el("telaRei"), telaReiAberta && estado === "menu" && !lojaAberta && !controlesAbertos);
   atualizarAvisoRei();
   mostrar(el("botoesJogo"), estado === "jogo" && !pausado);
+  if (typeof nomeComando === "function") {
+    el("botoesJogo").querySelector('[data-acao="pausar"]').textContent = tr("PAUSA") + (toqueAtivo ? "" : " (" + nomeComando("pausa") + ")");
+    el("botoesJogo").querySelector('[data-acao="loja"]').textContent = tr("LOJA") + (toqueAtivo ? "" : " (" + nomeComando("loja") + ")");
+  }
   mostrar(el("loja"), lojaAberta);
   el("menuMoedas").textContent = save.moedas;
   el("menuProgresso").textContent = (save.zerou ? tr("Zerado! Jogar = nova run") : tr("Próxima: {0}", nomeFase(save.desbloqueado))) +

@@ -478,19 +478,20 @@ function gerarFase(indice) {
   f.dificuldade = d;
   f.pool = mundo.inimigos.slice(0, f.etapa + 1);
 
-  // Começo
+  // Começo (o macaco nasce à direita do analógico de toque, que fica no canto esquerdo)
   fChao(f, 0, 640);
-  f.decoracoes.push({ x: 380, spr: f.mundo });
+  f.inicioX = 280;
+  f.decoracoes.push({ x: 620, spr: f.mundo });
 
   const novoObstaculo = mundo.obstaculos[f.etapa];
   const obstaculos = mundo.obstaculos.slice(0, f.etapa + 1);
   let lista;
 
   if (indice === 0) {
-    fPlaca(f, 200, tr("{esquerda}/{direita} andar   {pulo} pular\nSegure {pulo} para pular mais alto"));
+    fPlaca(f, 440, tr("{esquerda}/{direita} andar   {pulo} pular\nSegure {pulo} para pular mais alto"));
     lista = ["plano", "buraco", "apresentaInimigo", "espinhos", "muro", "grupo", "plataformas", "espinhos", "escada"];
   } else {
-    if (f.etapa === 0) fPlaca(f, 200, tr("Bem-vindo: {0}!", mundo.nome));
+    if (f.etapa === 0) fPlaca(f, 440, tr("Bem-vindo: {0}!", mundo.nome));
     const total = 6 + Math.round(d * 7);
     lista = [novoObstaculo, "apresentaInimigo"];
     let ultimo = "apresentaInimigo";

@@ -194,7 +194,7 @@ function desenharIntro() {
   if (c.t > 30) {
     ctx.font = "bold 16px " + FONTE;
     ctx.globalAlpha = 0.65 + Math.sin(c.t * 0.08) * 0.35;
-    textoSombra(toqueAtivo ? tr("Toque na tela para começar") : tr("Aperte qualquer tecla para começar"), LARGURA / 2, ALTURA - 20, "#dee2e6");
+    textoSombra(toqueAtivo ? tr("Toque na tela para começar") : tr("Clique ou aperte qualquer tecla para começar"), LARGURA / 2, ALTURA - 20, "#dee2e6");
     ctx.globalAlpha = 1;
   }
 }
@@ -565,7 +565,7 @@ function desenharFinal() {
   if (f.pronto) {
     ctx.font = "bold 18px " + FONTE;
     ctx.globalAlpha = 0.65 + Math.sin(f.et * 0.08) * 0.35;
-    textoSombra(toqueAtivo ? tr("Toque na tela para voltar ao menu") : tr("Aperte qualquer tecla para voltar ao menu"), LARGURA / 2, ALTURA - 20, "#dee2e6");
+    textoSombra(toqueAtivo ? tr("Toque na tela para voltar ao menu") : tr("Clique ou aperte qualquer tecla para voltar ao menu"), LARGURA / 2, ALTURA - 20, "#dee2e6");
     ctx.globalAlpha = 1;
   }
 }
