@@ -117,40 +117,38 @@ const MARGEM_PRIMATA = 2;
 function cauda(linhaInicial, mapa) {
   return mapa.map(function(l, i) { return [linhaInicial + i, 0, l]; });
 }
+// Em pé: sobe colada no lado do corpo e faz o gancho na altura do ombro; a base sempre
+// encosta no quadril (coluna 7 da grade, que é igual em todas as poses).
 const CAUDA_EM_PE = cauda(10, [
-  ".DDD..",
-  "DLFFD.",
-  "DFDFD.",
-  "DSDFD.",
-  ".DDFD.",
-  "..DFD.",
-  "..DFD.",
-  "..DSFD",
-  "...DSF",
-  "....DD"
+  ".DDD...",
+  "DLFFD..",
+  "DFDFD..",
+  "DSDFD..",
+  ".DDFD..",
+  "..DFD..",
+  "..DFD..",
+  "..DSFFD",
+  "...DSFF",
+  "....DDD"
+]);
+// Enroladinha ao lado do quadril (poses com os braços levantados ou esticados)
+const CAUDA_ENROLADA = cauda(14, [
+  ".DDD....",
+  "DLFFD...",
+  "DFDFDDDD",
+  "DSDFFFFF",
+  ".DDDDDDD"
 ]);
 const CAUDAS = {
   repouso: CAUDA_EM_PE,
-  alta: CAUDA_EM_PE,
-  // correndo e pulando: mais baixa
-  baixa: cauda(12, [
-    ".DDD..",
-    "DLFFD.",
-    "DFDFD.",
-    ".DDFD.",
-    "..DFD.",
-    "..DSFD",
-    "...DSF",
-    "....DD"
-  ]),
-  // chutando e atirando: enroladinha embaixo
-  enrolada: cauda(14, [
-    ".DDD..",
-    "DLFFD.",
-    "DSDFD.",
-    ".DDSFD",
-    "...DSF",
-    "....DD"
+  baixa: CAUDA_ENROLADA,
+  alta: CAUDA_ENROLADA,
+  enrolada: cauda(15, [
+    ".DDD....",
+    "DLFFD...",
+    "DFDFDDDD",
+    "DSDFFFFF",
+    ".DDDDDDD"
   ])
 };
 

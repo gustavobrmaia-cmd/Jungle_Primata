@@ -21,8 +21,8 @@ const MOEDAS_REI = 300;
 let reiNoite = 0;              // 0 = dia, 1 = noite de lua cheia (2ª fase)
 let telaReiAberta = false;
 
-DEF_CHEFES.reiMacaco = { hp: 36, margem: [24, 20, 24, 0] };
-DEF_CHEFES.grandeMacaco = { hp: 60, margem: [26, 34, 26, 0] };
+DEF_CHEFES.reiMacaco = { hp: 30, margem: [24, 20, 24, 0] };
+DEF_CHEFES.grandeMacaco = { hp: 54, margem: [26, 34, 26, 0] };
 AURA_CHEFE.reiMacaco = { aura: "255,200,60", olho: "255,220,120", contorno: "#ffc83c" };
 AURA_CHEFE.grandeMacaco = { aura: "255,40,40", olho: "255,40,40", contorno: "#ff2a2a" };
 QUADROS_ATAQUE.reiMacaco = ["chute", "carrega", "rajada", "estocada", "corre0", "corre1"];
@@ -103,10 +103,6 @@ function gerarFaseRei() {
   const f = gerarFase(FASES_POR_MUNDO - 1);
   f.indice = FASE_REI;
   f.secreta = true;
-  // plataformas: ajudam a desviar e a pular na cabeça do gigante
-  fPlat(f, 150, 440, 160);
-  fPlat(f, 890, 440, 160);
-  fPlat(f, 520, 320, 160);
   return f;
 }
 
@@ -233,7 +229,7 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       }
       if (c.t === 12) {
         const atras = j.dir > 0 ? -1 : 1;
-        c.x = limitar(j.x + j.w / 2 + atras * 150 - c.w / 2, 0, LARGURA - c.w);
+        c.x = limitar(j.x + j.w / 2 + atras * 230 - c.w / 2, 0, LARGURA - c.w);
         olharProJogador(c);
         for (let i = 0; i < 10; i++) {
           particula({ tipo: "q", x: c.x + c.w / 2, y: c.y + c.h / 2, vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6, g: 0, vida: 18, max: 18, cor: "#a5d8ff", tam: 6 });
@@ -246,17 +242,21 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       if (c.t > 24) {
         c.alfa = 1;
         c.sumido = false;
-        c.vx = c.dir * (raiva ? 13 : 11);
+      }
+      // prepara a voadora (aparece um "!") e só depois avança
+      if (c.t === 25) { olharProJogador(c); som("negado"); }
+      if (c.t > 42) {
+        c.vx = c.dir * (raiva ? 8.5 : 7);
         if (tempo % 3 === 0) poeira(c.x + c.w / 2 - c.dir * 30, CHAO, 1);
       }
       fisicaChefe(c);
-      if (c.t > 26 && c.batidaX) {
+      if (c.t > 44 && c.batidaX) {
         irPara(c, "tonto");
         tremor = 14;
         som("pancada");
         c.vx = -c.dir * 3;
         c.vy = -6;
-      } else if (c.t > 50) irPara(c, "parado");
+      } else if (c.t > 100) irPara(c, "parado");
       break;
 
     // junta energia nas mãos e solta uma rajada que atravessa a arena (pule por cima)
@@ -285,10 +285,10 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
         const alcance = Math.min(1, f.t / 6) * LARGURA;
         f.x = c.dir > 0 ? f.x0 : f.x0 - alcance;
         f.w = alcance;
-        if (!j.morto && f.t > 2 && f.t < 34 && encosta(j, { x: f.x, y: f.y + 4, w: f.w, h: f.h - 8 })) machucar(c.x + c.w / 2);
-        if (f.t > 40) c.feixe = null;
+        if (!j.morto && f.t > 2 && f.t < 16 && encosta(j, { x: f.x, y: f.y + 4, w: f.w, h: f.h - 8 })) machucar(c.x + c.w / 2);
+        if (f.t > 22) c.feixe = null;
       }
-      if (c.t > carga + 40) irPara(c, "cansado");
+      if (c.t > carga + 26) irPara(c, "cansado");
       break;
     }
 
@@ -377,6 +377,13 @@ IA_CHEFES.reiMacaco = function(c, raiva) {
       }
       if (c.t > 110) {
         virarChefe(c, "grandeMacaco", tr("Saru Gigante"));
+        // plataformas aparecem para alcançar a cabeça do gigante
+        [[150, 440], [890, 440], [520, 320]].forEach(function(pp) {
+          fPlat(fase, pp[0], pp[1], 160);
+          for (let i = 0; i < 8; i++) {
+            particula({ tipo: "q", x: pp[0] + Math.random() * 160, y: pp[1], vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 3, g: 0.1, vida: 30, max: 30, cor: "#fff3bf", tam: 6 });
+          }
+        });
         c.y = CHAO - c.h - 120;
         c.vy = 0;
         c.cena = false;
@@ -412,7 +419,7 @@ QUADRO_CHEFE.reiMacaco = function(c, raiva) {
     case "parado":
       return c.noChao ? resp : "salto";
     case "teleporte":
-      return t > 24 ? "chute" : resp;
+      return t > 42 ? "chute" : t > 24 ? "carrega" : resp;
     case "rajada":
       return c.feixe ? "rajada" : "carrega";
     case "cansado":
@@ -453,7 +460,7 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
     case "sopro": {
       c.vx = 0;
       fisicaChefe(c);
-      if (c.t === 1) { olharProJogador(c); som("rugido"); }
+      if (c.t === 1) { c.rastro = null; olharProJogador(c); som("rugido"); }
       const carga = raiva ? 34 : 46;
       if (c.t === carga) {
         c.rastro = { x: c.x + c.w / 2 + c.dir * 120, dir: c.dir };
@@ -462,11 +469,11 @@ IA_CHEFES.grandeMacaco = function(c, raiva) {
       }
       if (c.rastro) {
         const r = c.rastro;
-        r.x += r.dir * (raiva ? 10 : 8.5);
+        r.x += r.dir * (raiva ? 8.5 : 7);
         if (tempo % 2 === 0) {
           particula({ tipo: "q", x: r.x + (Math.random() - 0.5) * 30, y: CHAO - Math.random() * 30, vx: (Math.random() - 0.5) * 4, vy: -3 - Math.random() * 4, g: 0.3, vida: 26, max: 26, cor: Math.random() < 0.5 ? "#ff6b6b" : "#ffd43b", tam: 9 });
         }
-        if (!j.morto && encosta(j, { x: r.x - 28, y: CHAO - 80, w: 56, h: 80 })) machucar(r.x);
+        if (!j.morto && encosta(j, { x: r.x - 20, y: CHAO - 46, w: 40, h: 46 })) machucar(r.x);
         if (r.x < -40 || r.x > LARGURA + 40) c.rastro = null;
       }
       if (c.t > carga && !c.rastro) irPara(c, "parado");
@@ -586,6 +593,22 @@ function desenharExtrasRei() {
     [[-16, -6, 12], [16, -3, 9]].forEach(function(n) { ctx.beginPath(); ctx.arc(cx + n[0], cy + n[1], n[2], 0, Math.PI * 2); ctx.fill(); });
   }
 
+  // aviso da voadora
+  if (c.estado === "teleporte" && c.t > 24 && c.t <= 42) {
+    ctx.font = "bold 40px " + FONTE;
+    ctx.textAlign = "center";
+    textoSombra("!", c.x + c.w / 2, c.y - 8 - (c.t % 10 < 5 ? 4 : 0), ["#fff3bf", "#ff6b00"], 3);
+  }
+
+  // linha de aviso: mostra a altura da rajada antes dela sair
+  if (c.estado === "rajada" && c.carga > 0.45) {
+    const m = maoDoSaru(c, "rajada");
+    const k = (c.carga - 0.45) / 0.55;
+    ctx.fillStyle = "rgba(165,216,255," + (0.15 + 0.35 * k * (tempo % 6 < 3 ? 1 : 0.6)) + ")";
+    const x0 = c.dir > 0 ? m.x : 0;
+    ctx.fillRect(Math.round(x0), Math.round(m.y - 2), Math.round(c.dir > 0 ? LARGURA - m.x : m.x), 4);
+  }
+
   // energia juntando nas mãos
   if (c.carga > 0) {
     const m = maoDoSaru(c, "carrega");
@@ -600,7 +623,7 @@ function desenharExtrasRei() {
   // rajada de energia
   if (c.feixe && c.feixe.w > 0) {
     const f = c.feixe;
-    const some = f.t > 30 ? 1 - (f.t - 30) / 10 : 1;
+    const some = f.t > 15 ? Math.max(0, 1 - (f.t - 15) / 7) : 1;
     const h = f.h * (0.8 + Math.sin(tempo * 0.8) * 0.12) * some;
     const yc = f.y + f.h / 2;
     luzAditiva(f.x + f.w / 2, yc, Math.max(120, f.w / 2), "90,170,255", 0.35 * some);
