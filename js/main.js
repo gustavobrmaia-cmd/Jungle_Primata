@@ -248,5 +248,11 @@ try {
     renderizarOpcoes();
   }
 } catch (e) { /* sem sessionStorage */ }
+// Primeira visita: a história do começo abre sozinha (sem menu) e emenda na fase 1.
+// O menu só aparece a partir da segunda visita.
+if (!save.viuIntro) {
+  telaAtual = "nenhuma";
+  iniciarIntro();
+}
 iniciarAnuncios();
 requestAnimationFrame(quadro);

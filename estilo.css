@@ -400,13 +400,13 @@ button:disabled {
 /* Botões do menu: Jogar grande em cima, o resto em grade 2x2 */
 #telaMenu .botoes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px 20px;
-  width: 440px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px 16px;
+  width: 580px;
   margin-top: 4px;
 }
 #telaMenu .botoes .grande { grid-column: 1 / -1; }
-#telaMenu .botoes button:not(.grande) { font-size: 20px; padding: 10px 6px; }
+#telaMenu .botoes button:not(.grande) { font-size: 20px; padding: 10px 6px; white-space: nowrap; }
 
 /* Caixa de controles do menu */
 .controles {

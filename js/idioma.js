@@ -397,7 +397,6 @@ const EN = {
   "Jogar (Enter)": "Play (Enter)",
   "Escolher fase": "Select stage",
   "Controles": "Controls",
-  "Ver história": "Watch story",
   "Escolha a fase": "Choose a stage",
   "Voltar": "Back",
   "Pausado": "Paused",

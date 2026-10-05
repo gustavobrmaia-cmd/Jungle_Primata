@@ -9,6 +9,10 @@ Cada fase libera um inimigo novo, um obstáculo novo e um cosmético de prêmio.
 As fases ficam mais difíceis conforme você avança: ficam mais longas, os buracos ficam
 maiores, aparecem mais inimigos e eles ficam mais rápidos.
 
+Na **primeira vez** que alguém abre o jogo, a história do começo (o vento levando a banana) já
+abre sozinha, sem menu, e emenda na fase 1 (dá para pular com qualquer tecla, clique ou toque).
+O **menu** só aparece a partir da segunda visita.
+
 ## Controles
 
 | Tecla | Ação |

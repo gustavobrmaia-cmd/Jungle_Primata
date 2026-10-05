@@ -666,7 +666,6 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
     else if (acao === "mapa") { telaAtual = "mapa"; atualizarTelas(); }
     else if (acao === "voltar") { telaAtual = "menu"; atualizarTelas(); }
     else if (acao === "loja") abrirLoja();
-    else if (acao === "historia") sairDoMenu(iniciarIntro);
     else if (acao === "controles") abrirControles();
     else if (acao === "fecharControles") fecharControles();
     else if (acao === "padraoControles") { save.teclas = copiaTeclasPadrao(); reconstruirMapaTeclas(); salvar(); renderizarControles(); atualizarTelas(); }
