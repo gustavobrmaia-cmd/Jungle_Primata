@@ -16,22 +16,27 @@ const anuncios = {
 
 let reviverAberto = false;   // tela "Assista para reviver"
 
+// Chamado no fim do main.js, quando o jogo terminou de carregar (sprites prontos, menu na tela).
+// O SDK vem do <script> no <head> do index.html; se faltar, carrega aqui.
 function iniciarAnuncios() {
   if (!USAR_POKI) return;
+  if (window.PokiSDK) { ligarSdkPoki(); return; }
   const s = document.createElement("script");
   s.src = "https://game-cdn.poki.com/scripts/v2/poki-sdk.js";
-  s.onload = function() {
-    const sdk = window.PokiSDK;
-    if (!sdk) return;
-    sdk.init()
-      .then(function() { anuncios.premiado = true; })
-      .catch(function() { anuncios.premiado = false; })   // bloqueador de anúncio: o jogo segue sem
-      .then(function() {
-        anuncios.sdk = sdk;
-        sdk.gameLoadingFinished();
-      });
-  };
+  s.onload = ligarSdkPoki;
   document.head.appendChild(s);
+}
+
+function ligarSdkPoki() {
+  const sdk = window.PokiSDK;
+  if (!sdk || anuncios.sdk) return;
+  sdk.init()
+    .then(function() { anuncios.premiado = true; })
+    .catch(function() { anuncios.premiado = false; })   // bloqueador de anúncio: o jogo segue sem
+    .then(function() {
+      anuncios.sdk = sdk;
+      sdk.gameLoadingFinished();   // o jogo terminou de carregar
+    });
 }
 
 // Chamado a cada passo: avisa o Poki quando a gameplay começa ou para (menu, pausa, cenas, fim de fase)
