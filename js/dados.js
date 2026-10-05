@@ -584,7 +584,6 @@ const MELHORIAS = [
   { id: "dash",      nome: "Dash",             desc: "Dispara pra frente e atravessa inimigos", preco: 600 },
   { id: "coracao1",  nome: "Coração Extra",    desc: "+1 coração de vida",                preco: 400 },
   { id: "coracao2",  nome: "Coração Extra II", desc: "+1 coração de vida",                preco: 800, requer: "coracao1" },
-  { id: "revolver",  nome: "Revólver Turbo",   desc: "8 balas, tiro e recarga mais rápidos", preco: 500 },
   { id: "cipoLongo", nome: "Cipó Longo",       desc: "O laço de cipó alcança mais longe", preco: 450 },
   // prêmio do chefe secreto (não dá para comprar)
   { id: "nuvem",     nome: "Nuvem Mágica",     desc: "Uma vez por fase, se cair num buraco, a nuvem te salva sem perder vida", preco: 0, especial: "rei" }
@@ -609,8 +608,6 @@ const ACOES = [
   { id: "direita",    nome: "Andar para a direita" },
   { id: "pulo",       nome: "Pular" },
   { id: "baixo",      nome: "Deslizar / soltar do cipó" },
-  { id: "tiro",       nome: "Revólver" },
-  { id: "recarregar", nome: "Recarregar" },
   { id: "laco",       nome: "Cipó-laço" },
   { id: "dash",       nome: "Dash" },
   { id: "poder1",     nome: "Poder: Super Velocidade" },
@@ -625,7 +622,7 @@ const ACOES = [
 
 const TECLAS_PADRAO = {
   esquerda: ["a", "arrowleft"], direita: ["d", "arrowright"], pulo: ["w", "arrowup", " "],
-  baixo: ["s", "arrowdown"], tiro: ["k"], recarregar: ["r"], laco: ["j"], dash: ["shift"],
+  baixo: ["s", "arrowdown"], laco: ["j", "k"], dash: ["shift"],
   poder1: ["1"], poder2: ["2"], poder3: ["3"], poder4: ["4"], poder5: ["5"],
   loja: ["l"], pausa: ["p"], som: ["m"]
 };

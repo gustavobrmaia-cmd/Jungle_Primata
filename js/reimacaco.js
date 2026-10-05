@@ -21,8 +21,8 @@ const MOEDAS_REI = 300;
 let reiNoite = 0;              // 0 = dia, 1 = noite de lua cheia (2ª fase)
 let telaReiAberta = false;
 
-DEF_CHEFES.reiMacaco = { hp: 40, margem: [24, 20, 24, 0] };
-DEF_CHEFES.grandeMacaco = { hp: 66, margem: [26, 34, 26, 0] };
+DEF_CHEFES.reiMacaco = { hp: 32, margem: [24, 20, 24, 0] };
+DEF_CHEFES.grandeMacaco = { hp: 50, margem: [26, 34, 26, 0] };
 AURA_CHEFE.reiMacaco = { aura: "255,200,60", olho: "255,220,120", contorno: "#ffc83c" };
 AURA_CHEFE.grandeMacaco = { aura: "255,40,40", olho: "255,40,40", contorno: "#ff2a2a" };
 QUADROS_ATAQUE.reiMacaco = ["chute", "carrega", "rajada", "estocada", "corre0", "corre1"];

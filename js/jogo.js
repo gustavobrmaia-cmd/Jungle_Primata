@@ -60,10 +60,6 @@ function vidasMax() {
   return 3 + (temMelhoria("coracao1") ? 1 : 0) + (temMelhoria("coracao2") ? 1 : 0);
 }
 
-function maxBalas() {
-  return temMelhoria("revolver") ? 8 : 6;
-}
-
 
 // =========================
 // COMEÇAR FASE
@@ -133,7 +129,7 @@ function criarJogador(x, y) {
     cipo: null, cipoR: 0, cipoTh: 0, cipoW: 0, soltouCipo: 0,
     dash: 0, recargaDash: 0, dashNoAr: true,
     laco: null, recargaLaco: 0, chute: 0,
-    balas: maxBalas(), recargaTiro: 0, recarregando: 0, poseTiro: 0,
+
     afundar: 0, sobreGeiser: false, brilho: 0,
     seguro: { x: x, y: y }
   };
@@ -208,10 +204,8 @@ function solidoNaCaixa(c) {
 function atualizarJogador() {
   const j = jogador;
   const apertouPulo = consumir("pulo");
-  const apertouTiro = consumir("tiro");
   const apertouLaco = consumir("laco");
   const apertouDash = consumir("dash");
-  const apertouRecarga = consumir("recarregar");
 
   if (j.morto) {
     j.morto++;
@@ -226,24 +220,16 @@ function atualizarJogador() {
   if (j.invencivel > 0) j.invencivel--;
   if (j.recargaDash > 0) j.recargaDash--;
   if (j.recargaLaco > 0) j.recargaLaco--;
-  if (j.poseTiro > 0) j.poseTiro--;
-  if (j.recargaTiro > 0) j.recargaTiro--;
   if (j.chute > 0) j.chute--;
   if (j.soltouCipo > 0) j.soltouCipo--;
   if (j.giro > 0) { j.giro += 0.26; if (j.giro >= Math.PI * 2) j.giro = 0; }
   j.esticar *= 0.82;
   if (Math.abs(j.esticar) < 0.02) j.esticar = 0;
-  if (j.recarregando > 0) {
-    j.recarregando--;
-    if (j.recarregando === 0) { j.balas = maxBalas(); som("recarga"); }
-  }
   if (j.bufferPulo > 0) j.bufferPulo--;
   if (apertouPulo) j.bufferPulo = 7;
 
   // Ações
   if (!j.comemorar) {
-    if (apertouTiro) atirar();
-    if (apertouRecarga) recarregar();
     if (apertouLaco) lancarLaco();
     if (apertouDash) iniciarDash();
   }
@@ -602,31 +588,6 @@ function iniciarDash() {
   som("dash");
 }
 
-// ----- Revólver -----
-
-function atirar() {
-  const j = jogador;
-  if (j.cipo || j.deslizando || j.recargaTiro > 0) return;
-  if (j.recarregando > 0) { som("vazio"); return; }
-  if (j.balas <= 0) { recarregar(); return; }
-  j.balas--;
-  j.recargaTiro = temMelhoria("revolver") ? 9 : 14;
-  j.poseTiro = 14;
-  const mx = j.x + j.w / 2 + j.dir * 54;
-  const my = j.y + j.h - 23;
-  projeteis.push({ tipo: "bala", x: mx - 7, y: my - 3, w: 14, h: 6, vx: j.dir * 15, vy: 0, vida: 50, doJogador: true });
-  particula({ tipo: "q", x: mx, y: my, vx: 0, vy: 0, g: 0, vida: 4, max: 4, cor: "#fff3bf", tam: 16 });
-  particula({ tipo: "q", x: j.x + j.w / 2 + j.dir * 30, y: my - 6, vx: -j.dir * 1.5, vy: -3, g: 0.3, vida: 30, max: 30, cor: "#fab005", tam: 4 });
-  som("tiro");
-  if (j.balas === 0) recarregar();
-}
-
-function recarregar() {
-  const j = jogador;
-  if (j.recarregando > 0 || j.balas === maxBalas()) return;
-  j.recarregando = temMelhoria("revolver") ? 40 : 70;
-}
-
 // ----- Cipó-laço: agarra o inimigo, puxa e chuta pro espaço -----
 
 function maoJogador() {
@@ -634,8 +595,24 @@ function maoJogador() {
   return { x: j.x + j.w / 2 + j.dir * 32, y: j.y + j.h - 22 };
 }
 
+// O cipó-laço é o prêmio do Gorila Rei (chefe da Selva). Depois de usar, recarrega por RECARGA_LACO passos.
+const RECARGA_LACO = 100;
+
+function temCipo() {
+  return !!save.chefes[0];
+}
+
 function lancarLaco() {
   const j = jogador;
+  if (!temCipo()) {
+    // ainda não tem: avisa de onde vem (sem encher a tela)
+    if (!j.avisouCipo) {
+      j.avisouCipo = true;
+      texto(j.x + j.w / 2, j.y - 20, tr("Vença o Gorila Rei para ganhar o cipó-laço!"), "#ffe066", 18);
+    }
+    return;
+  }
+  if (j.recargaLaco > 0 && !j.laco) { som("negado"); return; }
   if (j.laco || j.recargaLaco > 0 || j.cipo || j.deslizando || j.dash > 0) return;
   j.laco = { estado: "indo", comp: 0, alvo: null };
   som("laco");
@@ -687,13 +664,13 @@ function atualizarLaco() {
       j.chute = 22;
       chutarProEspaco(e);
       j.laco = null;
-      j.recargaLaco = 20;
+      j.recargaLaco = RECARGA_LACO;
     }
   } else {
     l.comp -= 36;
     if (l.comp <= 0) {
       j.laco = null;
-      j.recargaLaco = 12;
+      j.recargaLaco = RECARGA_LACO;
     }
   }
 }
@@ -3020,7 +2997,7 @@ function animJogadorAtualizar() {
   else if (solo) a.fase = 0;
 
   // Tempo parado (para piscar, olhar em volta, coçar a cabeça...)
-  const quieto = solo && vel < 0.5 && !j.deslizando && j.chute === 0 && j.poseTiro === 0 && !j.laco && j.dash === 0 && !j.comemorar && j.invencivel < 74;
+  const quieto = solo && vel < 0.5 && !j.deslizando && j.chute === 0 && !j.laco && j.dash === 0 && !j.comemorar && j.invencivel < 74;
   a.parado = quieto ? a.parado + dt : 0;
 
   // Aterrissagem: lembra a velocidade da queda para agachar na hora do pouso
@@ -3065,7 +3042,6 @@ function poseJogador() {
   if (j.deslizando) return "deslizar";
   if (j.chute > 0) return j.chute > 11 ? "chute" : "chute2";
   if (j.laco) return "laco";
-  if (j.poseTiro > 0) return j.poseTiro > 10 ? "tiro2" : "tiro";
   if (!j.noChao) {
     if (j.giro > 0) return "pulo";
     if (j.vy < -9 && a.noAr < 4) return "impulso";
@@ -3211,29 +3187,7 @@ function desenharJogador() {
   const sprY = -80;
   desenharSpr(-48, sprY);
 
-  // Revólver na mão (a mão fica em x 28..36 do centro, linhas 15-16 do sprite)
-  if ((pose === "tiro" || pose === "tiro2") && !j.laco) {
-    const r = SPR_REVOLVER;
-    const recuo = pose === "tiro2";
-    ctx.save();
-    ctx.scale(j.dir, 1);
-    if (recuo) {
-      ctx.translate(32, sprY + 56);
-      ctx.rotate(-0.35);
-      ctx.translate(-32, -(sprY + 56));
-    }
-    ctx.drawImage(r.d, 26, sprY + 52 - (recuo ? 8 : 0));
-    ctx.restore();
-    if (j.poseTiro > 10) {
-      ctx.fillStyle = "#fff3bf";
-      ctx.fillRect(j.dir > 0 ? 52 : -64, sprY + (recuo ? 40 : 50), 12, 10);
-    }
-  }
   ctx.restore();
-
-  if (j.poseTiro > 10 && (pose === "tiro" || pose === "tiro2") && !j.laco) {
-    luzAditiva(cx + j.dir * 58, base - 23, 36, "255,220,100", (j.poseTiro - 10) / 4 * 0.6);
-  }
 
   // Cipó-laço
   if (j.laco) {
@@ -3359,6 +3313,40 @@ function desenharProjeteis() {
   }
 }
 
+// Ícone do cipó-laço embaixo das moedas: aceso quando pronto, com a recarga enchendo
+function desenharCipoHud(j) {
+  if (!temCipo() || toqueAtivo) return;   // no celular a recarga aparece no próprio botão
+  const pronto = j.recargaLaco <= 0 && !j.laco;
+  painelPixel(140, 56, 40, 36);
+  ctx.save();
+  ctx.globalAlpha = pronto ? 1 : 0.4;
+  desenharIconeCipo(160, 74, 13);
+  ctx.restore();
+  if (!pronto && !j.laco) {
+    const k = 1 - j.recargaLaco / RECARGA_LACO;
+    ctx.fillStyle = "#0d0704";
+    ctx.fillRect(146, 86, 28, 4);
+    ctx.fillStyle = "#69db7c";
+    ctx.fillRect(146, 86, Math.round(28 * k), 4);
+  }
+}
+
+// Desenho simples de um laço de cipó (usado no HUD e no botão de toque)
+function desenharIconeCipo(x, y, r) {
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#1d3a12";
+  ctx.lineWidth = r * 0.5;
+  ctx.beginPath(); ctx.ellipse(x + r * 0.15, y - r * 0.2, r * 0.75, r * 0.55, -0.4, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - r * 0.45, y + r * 0.15); ctx.quadraticCurveTo(x - r * 0.9, y + r * 0.7, x - r * 0.3, y + r); ctx.stroke();
+  ctx.strokeStyle = "#69b34c";
+  ctx.lineWidth = r * 0.28;
+  ctx.beginPath(); ctx.ellipse(x + r * 0.15, y - r * 0.2, r * 0.75, r * 0.55, -0.4, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - r * 0.45, y + r * 0.15); ctx.quadraticCurveTo(x - r * 0.9, y + r * 0.7, x - r * 0.3, y + r); ctx.stroke();
+  ctx.fillStyle = "#3f8f2a";
+  ctx.beginPath(); ctx.ellipse(x + r * 0.75, y - r * 0.75, r * 0.32, r * 0.18, 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.lineCap = "butt";
+}
+
 function desenharHud() {
   const j = jogador;
   const mundoCor = MUNDOS[fase.mundo].cor;
@@ -3386,46 +3374,9 @@ function desenharHud() {
   desenharContorno(moedaFonte.img, 0, 0, moedaFonte.fw, moedaFonte.fh, 20 - pulso, 60 - pulso, 28 + pulso * 2, 28 + pulso * 2, "#3b2108", 2);
   textoSombra(txtMoedas, 56, 83);
 
-  // Balas do revólver
-  const mb = maxBalas();
-  const recarregando = j.recarregando > 0;
-  painelPixel(10, 96, 12 * mb + 20 + (recarregando ? 112 : 0), 26);
-  for (let i = 0; i < mb; i++) {
-    const x = 22 + i * 12;
-    const cheia = i < j.balas && !recarregando;
-    ctx.fillStyle = "#0d0704";
-    ctx.fillRect(x - 1, 100, 10, 18);
-    if (cheia) {
-      ctx.fillStyle = "#ffd43b";
-      ctx.fillRect(x + 1, 101, 6, 2);
-      ctx.fillRect(x, 103, 8, 8);
-      ctx.fillStyle = "#fff3a0";
-      ctx.fillRect(x + 1, 103, 2, 7);
-      ctx.fillStyle = "#b8740a";
-      ctx.fillRect(x, 111, 8, 6);
-      ctx.fillStyle = "#e8a317";
-      ctx.fillRect(x, 111, 8, 2);
-    } else {
-      ctx.fillStyle = "#3a3f45";
-      ctx.fillRect(x + 1, 101, 6, 2);
-      ctx.fillRect(x, 103, 8, 8);
-      ctx.fillStyle = "#23272b";
-      ctx.fillRect(x, 111, 8, 6);
-    }
-  }
-  if (recarregando) {
-    const total = temMelhoria("revolver") ? 40 : 70;
-    const k = 1 - j.recarregando / total;
-    ctx.font = "bold 14px " + FONTE;
-    ctx.textAlign = "left";
-    textoSombra(tr("recarregando"), 26 + mb * 12, 114, "#ffe066");
-    ctx.fillStyle = "#0d0704";
-    ctx.fillRect(22, 118, 12 * mb - 4, 4);
-    ctx.fillStyle = "#ffd43b";
-    ctx.fillRect(22, 118, Math.round((12 * mb - 4) * k), 4);
-  }
+  desenharCipoHud(j);
 
-  desenharBarraXp(20, 131, 110);
+  desenharBarraXp(20, 101, 110);
 
   // Nome da fase e progresso até a banana
   ctx.textAlign = "center";

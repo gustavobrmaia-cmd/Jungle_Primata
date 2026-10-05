@@ -84,6 +84,8 @@ let save = saveNovo();
     });
   }
   if (Array.isArray(s.melhorias)) {
+    // o revólver saiu do jogo: quem tinha comprado o Revólver Turbo recebe as 500 moedas de volta
+    if (s.melhorias.indexOf("revolver") >= 0) save.moedas += 500;
     save.melhorias = s.melhorias.filter(function(id) {
       return MELHORIAS.some(function(m) { return m.id === id; });
     });
@@ -95,6 +97,14 @@ let save = saveNovo();
       const lista = s.teclas[a.id];
       if (Array.isArray(lista)) save.teclas[a.id] = lista.filter(function(k) { return typeof k === "string"; }).slice(0, 3);
     });
+    // save antigo: a tecla do revólver (K) vira mais uma tecla do cipó-laço
+    if (Array.isArray(s.teclas.tiro)) {
+      const usadas = {};
+      ACOES.forEach(function(a) { (save.teclas[a.id] || []).forEach(function(k) { usadas[k] = true; }); });
+      s.teclas.tiro.forEach(function(k) {
+        if (typeof k === "string" && !usadas[k] && save.teclas.laco.length < 3) save.teclas.laco.push(k);
+      });
+    }
   }
   if (s.stats) {
     Object.keys(save.stats).forEach(function(k) {

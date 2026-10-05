@@ -16,8 +16,7 @@ maiores, aparecem mais inimigos e eles ficam mais rápidos.
 | A / D ou setas | andar |
 | W, ↑ ou Espaço | pular (segure para pular mais alto) |
 | S ou ↓ | deslizar |
-| K | revólver (R recarrega) |
-| J | cipó-laço: agarra o inimigo, puxa e chuta pro espaço |
+| J ou K | cipó-laço (prêmio do Gorila Rei): agarra o inimigo, puxa e chuta pro espaço |
 | Shift | dash (melhoria da loja) |
 | 1 a 5 | usar poderes |
 | L | loja · P / Esc pausa · M som |
@@ -25,15 +24,19 @@ maiores, aparecem mais inimigos e eles ficam mais rápidos.
 Todas as teclas podem ser trocadas em **Opções → Controles**. Em **Opções** também ficam o
 idioma e os adicionais (cronômetro e som).
 
-**Controle (Xbox / PlayStation):** analógico ou direcional anda, **A** pula, **X** atira,
-**Y** cipó-laço, **B** ou **RB** dash, **LB** recarrega, **LT** troca o poder escolhido e
+**Controle (Xbox / PlayStation):** analógico ou direcional anda, **A** pula,
+**X** ou **Y** cipó-laço, **B** ou **RB** dash, **LT** troca o poder escolhido e
 **RT** usa, **Start** pausa, **Back/Select** abre a loja. Nos menus o direcional escolhe,
 **A** confirma e **B** volta. Quando você usa o controle, as placas mostram os botões dele.
 
 **Celular / tablet (toque):** o analógico fica fixo no canto esquerdo: incline para andar e puxe
-um pouco para baixo para deslizar (na diagonal corre e desliza). Do lado direito ficam os botões **PULO** (segure para pular mais alto), **TIRO**,
-**LAÇO** e **DASH**. Toque num poder no canto de baixo para usar. Com o celular em pé, o jogo
-pede para girar.
+um pouco para baixo para deslizar (na diagonal corre e desliza). Do lado direito ficam os botões
+coloridos **PULO** (grande, segure para pular mais alto), **LAÇO** (depois do Gorila Rei, com anel de
+recarga) e **DASH** (se comprado). Na primeira fase, dicas piscando mostram onde arrastar e tocar.
+Toque num poder no canto de baixo para usar. Com o celular em pé, o jogo pede para girar.
+
+**Sem armas:** os inimigos se vencem pulando na cabeça (ou deslizando nos espinhosos). O
+**cipó-laço** é o prêmio do **Gorila Rei** (chefe da Selva) e recarrega em ~1,7 s.
 
 ## Idioma
 
@@ -64,7 +67,7 @@ quando e ativam na hora (duram menos que os da loja).
 - **Skins, chapéus, óculos e roupas** para equipar no macaco.
 - **Poderes** (temporários): você compra e usa um de cada vez; depois de usar, ele tem
   tempo de recarga. Super Velocidade, Pulo Duplo, Escudo, Ímã de Moedas e Nuke.
-- **Melhorias** (permanentes, mais caras): Dash, Coração Extra I e II, Revólver Turbo e Cipó Longo.
+- **Melhorias** (permanentes, mais caras): Dash, Coração Extra I e II e Cipó Longo.
 
 Moedas, compras e progresso ficam salvos no navegador.
 

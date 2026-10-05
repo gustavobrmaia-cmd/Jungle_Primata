@@ -4,11 +4,12 @@
 // CHEFES: um no fim de cada mundo, cada um com seus poderes
 // =========================
 
+// (vida pensada para vencer pulando na cabeça e, depois do Gorila Rei, com o cipó-laço)
 const DEF_CHEFES = {
-  gorila:       { hp: 40, margem: [12, 20, 12, 0] },
-  escorpiaoRei: { hp: 40, margem: [10, 54, 10, 0] },
-  yeti:         { hp: 50, margem: [12, 12, 12, 0] },
-  dragao:       { hp: 60, margem: [30, 50, 12, 12], voa: true }
+  gorila:       { hp: 24, margem: [12, 20, 12, 0] },
+  escorpiaoRei: { hp: 27, margem: [10, 54, 10, 0] },
+  yeti:         { hp: 30, margem: [12, 12, 12, 0] },
+  dragao:       { hp: 36, margem: [30, 50, 12, 12], voa: true }
 };
 
 function criarChefe(mundo) {
@@ -155,10 +156,19 @@ function atualizarChefe() {
         if (fase.secreta) {
           reiVencido();
         } else {
-          const premio = save.chefes[fase.mundo] ? 60 : RECOMPENSA_CHEFE[fase.mundo];
+          const primeira = !save.chefes[fase.mundo];
+          const premio = primeira ? RECOMPENSA_CHEFE[fase.mundo] : 60;
           ganharMoedas(premio, LARGURA / 2, 200);
           save.chefes[fase.mundo] = true;
-          mostrarMensagem(tr("Chefe derrotado!"), tr("+{0} moedas. Pegue a banana!", premio), 150, null, false);
+          if (primeira && fase.mundo === 0) {
+            // o Gorila Rei deixa cair o cipó-laço
+            salvar();
+            som("poder");
+            texto(c.x + c.w / 2, CHAO - 160, tr("Você ganhou o cipó-laço!"), "#69db7c", 30);
+            mostrarMensagem(tr("Você ganhou o cipó-laço!"), tr("{0}: puxa o inimigo e chuta pro espaço. Pegue a banana!", nomeComando("laco")), 220, null, false);
+          } else {
+            mostrarMensagem(tr("Chefe derrotado!"), tr("+{0} moedas. Pegue a banana!", premio), 150, null, false);
+          }
           soltarBananaDoCeu();
         }
       }
@@ -446,7 +456,7 @@ const IA_CHEFES = {
         c.x += (ax - c.x) * 0.03;
         c.y += (ay - c.y) * 0.05;
         olharProJogador(c);
-        if (c.t > (raiva ? 70 : 100)) proximoAtaque(c, ["sopro", "meteoros", "mergulho", "pousar"]);
+        if (c.t > (raiva ? 70 : 100)) proximoAtaque(c, ["sopro", "meteoros", "mergulho", "pousar", "pousar"]);
         break;
       }
 

@@ -433,14 +433,14 @@ const DICAS_OBSTACULO = {
 };
 
 const DICAS_INIMIGO = {
-  cobra: "Pule na cabeça ou atire!",
-  abelha: "Ela voa: use o revólver!",
+  cobra: "Pule na cabeça dela!",
+  abelha: "Ela voa: pule nela ou passe por baixo!",
   sapo: "Ele pula atrás de você!",
   macacoLadrao: "Ele joga cocos!",
   aranha: "Ela desce quando você passa!",
-  escorpiao: "Precisa de 2 tiros!",
+  escorpiao: "Pule na cabeça dele!",
   abutre: "Ele mergulha em você!",
-  cacto: "Espinhoso: não pise nele!",
+  cacto: "Espinhoso: não pise, deslize nele!",
   mumia: "Lenta mas resistente!",
   tatu: "Não pise quando ele rolar!",
   pinguim: "Ele escorrega na sua direção!",
@@ -448,10 +448,10 @@ const DICAS_INIMIGO = {
   boneco: "Joga bolas de neve!",
   foca: "Pula atrás de você!",
   lobo: "Corre muito rápido!",
-  slime: "Quente: não pise nele!",
+  slime: "Quente: não pise, deslize nele!",
   morcegoFogo: "Voa muito rápido!",
   diabinho: "Atira bolas de fogo!",
-  golem: "Muito forte: use o cipó-laço!",
+  golem: "Pule na cabeça ou use o cipó-laço!",
   fenix: "Mergulha soltando fogo!"
 };
 
@@ -491,7 +491,12 @@ function gerarFase(indice) {
     fPlaca(f, 440, tr("{esquerda}/{direita} andar   {pulo} pular\nSegure {pulo} para pular mais alto"));
     lista = ["plano", "buraco", "apresentaInimigo", "espinhos", "muro", "grupo", "plataformas", "espinhos", "escada"];
   } else {
-    if (f.etapa === 0) fPlaca(f, 440, tr("Bem-vindo: {0}!", mundo.nome));
+    if (f.etapa === 0) {
+      let boasVindas = tr("Bem-vindo: {0}!", mundo.nome);
+      // a primeira fase depois do Gorila Rei lembra do cipó-laço que ele deu
+      if (f.mundo === 1) boasVindas += "\n" + tr("Seu prêmio: cipó-laço! {laco}: puxa o inimigo");
+      fPlaca(f, 440, boasVindas);
+    }
     const total = 6 + Math.round(d * 7);
     lista = [novoObstaculo, "apresentaInimigo"];
     let ultimo = "apresentaInimigo";
@@ -518,7 +523,7 @@ function gerarFase(indice) {
     if (nome === "apresentaInimigo") {
       const tipo = mundo.inimigos[f.etapa];
       let texto = tr("Novo inimigo: {0}!", TIPOS_INIMIGO[tipo].nome) + "\n" + tr(DICAS_INIMIGO[tipo]);
-      if (indice === 0) texto = tr("Novo inimigo: Cobra! Pule nela\n{tiro}: revólver  {laco}: cipó-laço");
+      if (indice === 0) texto = tr("Novo inimigo: Cobra! Pule na cabeça dela!");
       fPlaca(f, x + 40, texto);
     } else if (DICAS_OBSTACULO[nome] && !mostradas[nome] && obstaculos.indexOf(nome) >= 0 &&
                (nome === novoObstaculo || indice === 0)) {
@@ -551,9 +556,10 @@ function gerarArena(f) {
   fBloco(f, -64, -2000, 64, 2000 + CHAO);
   fBloco(f, LARGURA, -2000, 64, 2000 + CHAO);
   if (f.mundo === 3) {
-    fPlat(f, 150, 440, 160);
-    fPlat(f, 890, 440, 160);
-    fPlat(f, 520, 320, 160);
+    // laterais a um pulo do chão; a do meio, a partir das laterais
+    fPlat(f, 130, CHAO - 110, 160);
+    fPlat(f, 910, CHAO - 110, 160);
+    fPlat(f, 430, CHAO - 225, 340);
   }
   f.decoracoes.push({ x: 40, spr: f.mundo });
   f.decoracoes.push({ x: 1080, spr: f.mundo });

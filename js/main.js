@@ -30,7 +30,7 @@ function definirTecla(acao, slot, k) {
 reconstruirMapaTeclas();
 
 const MOVIMENTO = { esquerda: true, direita: true, baixo: true, pulo: true };
-const ACOES_RAPIDAS = { tiro: true, laco: true, dash: true, recarregar: true };
+const ACOES_RAPIDAS = { laco: true, dash: true };
 
 document.addEventListener("keydown", function(e) {
   if (anuncios.aberto) { e.preventDefault(); return; }

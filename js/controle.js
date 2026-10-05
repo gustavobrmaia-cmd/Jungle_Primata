@@ -2,7 +2,7 @@
 
 // =========================
 // CONTROLE (gamepad de Xbox / PlayStation, layout "standard" do navegador)
-// Na fase: analógico ou direcional anda, A pula, X atira, Y laço, B/RB dash, LB recarrega,
+// Na fase: analógico ou direcional anda, A pula, X/Y laço, B/RB dash,
 // LT troca o poder escolhido, RT usa, Start pausa, Back/Select abre a loja.
 // Nos menus: direcional move a seleção, A confirma, B volta, Start joga/continua.
 // =========================
@@ -11,7 +11,7 @@ const PAD = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START
 
 // Nome do botão nas placas e no HUD quando a pessoa está jogando no controle
 const BOTAO_DO_PAD = {
-  pulo: "A", tiro: "X", laco: "Y", dash: "B", recarregar: "LB", baixo: "↓", esquerda: "←", direita: "→",
+  pulo: "A", laco: "Y", dash: "B", baixo: "↓", esquerda: "←", direita: "→",
   loja: "Back", pausa: "Start"
 };
 
@@ -98,10 +98,9 @@ function controleNaFase(b, apertou, esq, dir, baixo) {
   });
   if (mensagemTravada()) return;
   if (apertou(PAD.A)) apertos.add("pulo");
-  if (apertou(PAD.X)) apertos.add("tiro");
+  if (apertou(PAD.X)) apertos.add("laco");
   if (apertou(PAD.Y)) apertos.add("laco");
   if (apertou(PAD.B) || apertou(PAD.RB)) apertos.add("dash");
-  if (apertou(PAD.LB)) apertos.add("recarregar");
   if (apertou(PAD.LT)) {
     poderSelecionado = (poderSelecionado + 1) % PODERES.length;
     som("recarga");

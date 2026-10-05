@@ -155,20 +155,19 @@ function atualizarTelas() {
   el("btnSomOpcoes").textContent = save.mudo ? tr("Som: desligado ({0})", teclaDe("som")) : tr("Som: ligado ({0})", teclaDe("som"));
   if (controlesAbertos) renderizarOpcoes();
   el("btnSom").textContent = save.mudo ? tr("Som: desligado ({0})", teclaDe("som")) : tr("Som: ligado ({0})", teclaDe("som"));
+  // o cipó-laço só aparece na legenda depois que o Gorila Rei o entrega
+  const txtLaco = tr("cipó-laço (puxa o inimigo e chuta pro espaço!)");
   el("menuControles").innerHTML = toqueAtivo ? [
     comando(["←", "→"], tr("arraste do lado esquerdo: andar e deslizar")),
     comando([tr("PULO")], tr("pular (segure: mais alto)")),
-    comando([tr("TIRO")], tr("revólver")),
-    comando([tr("LAÇO")], tr("cipó-laço (puxa o inimigo e chuta pro espaço!)")),
+    temCipo() ? comando([tr("LAÇO")], txtLaco) : "",
     comando(["DASH"], tr("dash (melhoria)")),
     comando(["1-5"], tr("toque nos poderes para usar"))
   ].join("") : controleAtivo ? [
     comando(["←", "→"], tr("andar")),
     comando(["A"], tr("pular (segure: mais alto)")),
     comando(["↓"], tr("deslizar")),
-    comando(["X"], tr("revólver")),
-    comando(["LB"], tr("recarregar")),
-    comando(["Y"], tr("cipó-laço (puxa o inimigo e chuta pro espaço!)")),
+    temCipo() ? comando(["X", "Y"], txtLaco) : "",
     comando(["B"], tr("dash (melhoria)")),
     comando(["LT"], tr("trocar poder")),
     comando(["RT"], tr("usar poder")),
@@ -178,9 +177,7 @@ function atualizarTelas() {
     comando([teclaDe("esquerda"), teclaDe("direita")], tr("andar")),
     comando([teclaDe("pulo")], tr("pular (segure: mais alto)")),
     comando([teclaDe("baixo")], tr("deslizar")),
-    comando([teclaDe("tiro")], tr("revólver")),
-    comando([teclaDe("recarregar")], tr("recarregar")),
-    comando([teclaDe("laco")], tr("cipó-laço (puxa o inimigo e chuta pro espaço!)")),
+    temCipo() ? comando([teclaDe("laco")], txtLaco) : "",
     comando([teclaDe("dash")], tr("dash (melhoria)")),
     comando([teclaDe("poder1") + "-" + teclaDe("poder5")], tr("poderes")),
     comando([teclaDe("loja")], tr("loja")),
@@ -632,7 +629,6 @@ function comprarMelhoria(id) {
   salvar();
   if (jogador && estado === "jogo") {
     if (id === "coracao1" || id === "coracao2") jogador.vidas++;
-    if (id === "revolver") jogador.balas = maxBalas();
   }
   renderizarLoja();
 }

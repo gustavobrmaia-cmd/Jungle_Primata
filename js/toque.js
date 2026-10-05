@@ -3,18 +3,21 @@
 // =========================
 // TOQUE (celular e tablet)
 // Lado esquerdo da tela: analógico parado no lugar; incline para andar, um pouco para baixo desliza.
-// Lado direito: botões PULO, TIRO, LAÇO e DASH. Toque num poder do HUD para usar.
+// Lado direito: botões PULO, LAÇO (depois do Gorila Rei) e DASH (melhoria). Toque num poder do HUD para usar.
+// Na primeira fase de quem está começando, dicas piscando mostram o que fazer.
 // Os controles só aparecem depois do primeiro toque; o teclado ou o controle escondem de novo.
 // =========================
 
 let toqueAtivo = false;
 
 const BOTOES_TOQUE = [
-  { acao: "pulo", x: 1100, y: 590, r: 72, rotulo: "PULO" },
-  { acao: "tiro", x: 950,  y: 622, r: 48, rotulo: "TIRO" },
-  { acao: "laco", x: 990,  y: 488, r: 46, rotulo: "LAÇO" },
-  { acao: "dash", x: 1130, y: 432, r: 42, rotulo: "DASH", melhoria: "dash" }
+  { acao: "pulo", x: 1092, y: 588, r: 78, rotulo: "PULO", cores: ["#fff3a0", "#f2b705", "#a86a00", "#fff3bf"] },
+  { acao: "laco", x: 948,  y: 628, r: 52, rotulo: "LAÇO", cores: ["#b2f2bb", "#40a95a", "#1d5e2c", "#d3f9d8"], cipo: true },
+  { acao: "dash", x: 1112, y: 446, r: 46, rotulo: "DASH", cores: ["#d0ebff", "#4a9be8", "#1c4f8f", "#e7f5ff"], melhoria: "dash" }
 ];
+
+// Dicas da primeira fase (só para quem está começando): somem quando a pessoa anda e pula
+const dicaToque = { andar: 0, pulo: 0, iniciou: false };
 
 const STICK = { x: 190, y: 520, r: 74, morta: 16, baixo: 24 };
 
@@ -25,6 +28,7 @@ const toque = {
 };
 
 function botaoDisponivel(b) {
+  if (b.cipo) return temCipo();
   return !b.melhoria || temMelhoria(b.melhoria);
 }
 
@@ -168,7 +172,7 @@ function atualizarToque() {
 }
 
 function nomeDoToque(acao) {
-  const nomes = { esquerda: "←", direita: "→", baixo: "↓", pulo: tr("PULO"), tiro: tr("TIRO"), laco: tr("LAÇO"),
+  const nomes = { esquerda: "←", direita: "→", baixo: "↓", pulo: tr("PULO"), laco: tr("LAÇO"),
     dash: "DASH", loja: tr("LOJA"), pausa: tr("PAUSA") };
   return nomes[acao] || null;
 }
@@ -176,26 +180,132 @@ function nomeDoToque(acao) {
 
 // ---------- Desenho ----------
 
-function circuloToque(x, y, r, apertado, cor) {
+// Botão redondo "de verdade": sombra, degradê, borda clara e brilho; afunda quando apertado
+function botaoRedondo(x, y, r, cores, apertado, apagado) {
+  const yy = apertado ? y + 4 : y;
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fillStyle = apertado ? "rgba(255,255,255,0.32)" : "rgba(13,7,4,0.32)";
+  ctx.arc(x, y + 6, r, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.fill();
+  const g = ctx.createRadialGradient(x - r * 0.35, yy - r * 0.45, r * 0.1, x, yy, r);
+  g.addColorStop(0, apagado ? "#ced4da" : cores[0]);
+  g.addColorStop(0.65, apagado ? "#868e96" : cores[1]);
+  g.addColorStop(1, apagado ? "#495057" : cores[2]);
+  ctx.globalAlpha = apertado ? 0.95 : 0.8;
+  ctx.beginPath();
+  ctx.arc(x, yy, r, 0, Math.PI * 2);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.globalAlpha = 1;
   ctx.lineWidth = 4;
-  ctx.strokeStyle = apertado ? "rgba(255,255,255,0.9)" : cor || "rgba(255,243,191,0.55)";
+  ctx.strokeStyle = apertado ? "#ffffff" : (apagado ? "rgba(255,255,255,0.4)" : cores[3]);
   ctx.stroke();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(13,7,4,0.55)";
+  ctx.beginPath();
+  ctx.arc(x, yy, r + 3, 0, Math.PI * 2);
+  ctx.stroke();
+  // brilho em cima
+  ctx.fillStyle = "rgba(255,255,255," + (apertado ? 0.12 : 0.22) + ")";
+  ctx.beginPath();
+  ctx.ellipse(x - r * 0.15, yy - r * 0.45, r * 0.55, r * 0.25, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  return yy;
+}
+
+// Ícones desenhados dentro dos botões
+function iconeBotao(acao, x, y, r) {
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  if (acao === "pulo") {
+    // seta grossa para cima
+    ctx.strokeStyle = "#5c3a00";
+    ctx.lineWidth = r * 0.24;
+    ctx.beginPath(); ctx.moveTo(x - r * 0.32, y + r * 0.02); ctx.lineTo(x, y - r * 0.3); ctx.lineTo(x + r * 0.32, y + r * 0.02); ctx.stroke();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = r * 0.12;
+    ctx.beginPath(); ctx.moveTo(x - r * 0.32, y + r * 0.02); ctx.lineTo(x, y - r * 0.3); ctx.lineTo(x + r * 0.32, y + r * 0.02); ctx.stroke();
+  } else if (acao === "laco") {
+    desenharIconeCipo(x, y - r * 0.12, r * 0.42);
+  } else if (acao === "dash") {
+    // duas setas para a frente
+    [-0.2, 0.16].forEach(function(dx) {
+      ctx.strokeStyle = "#0b2a52";
+      ctx.lineWidth = r * 0.2;
+      ctx.beginPath(); ctx.moveTo(x + (dx - 0.14) * r * 1.6, y - r * 0.3); ctx.lineTo(x + dx * r * 1.6 + r * 0.06, y - r * 0.08); ctx.lineTo(x + (dx - 0.14) * r * 1.6, y + r * 0.14); ctx.stroke();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = r * 0.09;
+      ctx.beginPath(); ctx.moveTo(x + (dx - 0.14) * r * 1.6, y - r * 0.3); ctx.lineTo(x + dx * r * 1.6 + r * 0.06, y - r * 0.08); ctx.lineTo(x + (dx - 0.14) * r * 1.6, y + r * 0.14); ctx.stroke();
+    });
+  }
+  ctx.lineCap = "butt";
+  ctx.lineJoin = "miter";
+}
+
+// Setinha (chevron) do analógico
+function setaStick(x, y, ang, tam, acesa) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(ang);
+  ctx.strokeStyle = acesa ? "#ffffff" : "rgba(255,243,191,0.75)";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath(); ctx.moveTo(-tam * 0.5, -tam); ctx.lineTo(tam * 0.5, 0); ctx.lineTo(-tam * 0.5, tam); ctx.stroke();
+  ctx.restore();
+}
+
+// Texto de dica piscando, num balão escuro
+function dicaPiscando(txt, x, y) {
+  const a = 0.75 + Math.sin(tempo * 0.15) * 0.25;
+  ctx.font = "bold 20px " + FONTE;
+  const w = Math.ceil(ctx.measureText(txt).width) + 28;
+  ctx.globalAlpha = a;
+  ctx.fillStyle = "rgba(13,7,4,0.75)";
+  ctx.fillRect(Math.round(x - w / 2), Math.round(y - 22), w, 32);
+  ctx.strokeStyle = "#ffe066";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(Math.round(x - w / 2) + 0.5, Math.round(y - 22) + 0.5, w - 1, 31);
+  ctx.textAlign = "center";
+  textoSombra(txt, x, y, "#ffe066");
+  ctx.globalAlpha = 1;
+}
+
+// Primeira fase de quem está começando: pede para andar e pular até a pessoa fazer
+function atualizarDicasToque() {
+  if (!toqueAtivo || estado !== "jogo" || !fase || fase.indice !== 0 || save.desbloqueado > 0) {
+    dicaToque.andar = dicaToque.pulo = 0;
+    return;
+  }
+  if (!dicaToque.iniciou) { dicaToque.iniciou = true; dicaToque.andar = 1; dicaToque.pulo = 1; }
+  if (dicaToque.andar && (teclas.direita || teclas.esquerda)) dicaToque.andar = 0;
+  if (dicaToque.pulo && teclas.pulo) dicaToque.pulo = 0;
 }
 
 function desenharToque() {
   if (!toqueAtivo || !jogandoComToque()) return;
+  atualizarDicasToque();
   ctx.save();
 
-  // Analógico do lado esquerdo
+  // Analógico do lado esquerdo: base com setas e bolinha que acompanha o dedo
   const s = toque.stick;
-  const ox = s ? s.ox : STICK.x;
-  const oy = s ? s.oy : STICK.y;
-  ctx.globalAlpha = s ? 1 : 0.6;
-  circuloToque(ox, oy, STICK.r, false);
+  const ox = STICK.x;
+  const oy = STICK.y;
+  ctx.globalAlpha = s ? 1 : 0.85;
+  ctx.beginPath();
+  ctx.arc(ox, oy + 5, STICK.r, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(ox, oy, STICK.r, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(13,7,4,0.38)";
+  ctx.fill();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = s ? "rgba(255,255,255,0.85)" : "rgba(255,243,191,0.6)";
+  ctx.stroke();
+  setaStick(ox - STICK.r + 20, oy, Math.PI, 11, teclas.esquerda);
+  setaStick(ox + STICK.r - 20, oy, 0, 11, teclas.direita);
+  setaStick(ox, oy + STICK.r - 20, Math.PI / 2, 9, teclas.baixo);
   let kx = ox;
   let ky = oy;
   if (s) {
@@ -206,31 +316,34 @@ function desenharToque() {
     kx = ox + dx * k;
     ky = oy + dy * k;
   }
-  circuloToque(kx, ky, 32, !!s);
+  botaoRedondo(kx, ky, 34, ["#ffffff", "#e9dcc4", "#8a6d45", "#ffffff"], false, false);
   ctx.globalAlpha = 1;
 
   // Botões do lado direito
   const apertados = {};
   Object.keys(toque.botoes).forEach(function(id) { apertados[toque.botoes[id]] = true; });
-  ctx.textAlign = "center";
   BOTOES_TOQUE.forEach(function(b) {
     if (!botaoDisponivel(b)) return;
     const ap = !!apertados[b.acao];
-    circuloToque(b.x, b.y, b.r, ap, b.acao === "pulo" ? "rgba(255,212,59,0.75)" : null);
-    ctx.font = "bold " + (b.r > 60 ? 24 : 18) + "px " + FONTE;
-    textoSombra(tr(b.rotulo), b.x, b.y + 7, ap ? "#ffffff" : "#fff3bf");
+    const recarga = b.acao === "laco" && jogador && jogador.recargaLaco > 0 && !jogador.laco;
+    const yy = botaoRedondo(b.x, b.y, b.r, b.cores, ap, recarga);
+    iconeBotao(b.acao, b.x, yy, b.r);
+    ctx.font = "bold " + (b.r > 60 ? 20 : 15) + "px " + FONTE;
+    ctx.textAlign = "center";
+    textoSombra(tr(b.rotulo), b.x, yy + b.r * 0.55, "#ffffff");
+    // cipó recarregando: anel enchendo em volta do botão
+    if (recarga) {
+      ctx.beginPath();
+      ctx.arc(b.x, yy, b.r + 8, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - jogador.recargaLaco / RECARGA_LACO));
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = "#69db7c";
+      ctx.stroke();
+    }
   });
 
-  // Munição acabando: o botão de tiro mostra a recarga
-  if (jogador && jogador.recarregando > 0) {
-    const b = BOTOES_TOQUE[1];
-    const total = temMelhoria("revolver") ? 40 : 70;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - jogador.recarregando / total));
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = "#ffd43b";
-    ctx.stroke();
-  }
+  // Dicas da primeira fase
+  if (dicaToque.andar) dicaPiscando(tr("Arraste para andar"), STICK.x, STICK.y - STICK.r - 26);
+  if (dicaToque.pulo) dicaPiscando(tr("Toque para pular"), BOTOES_TOQUE[0].x - 30, BOTOES_TOQUE[0].y - BOTOES_TOQUE[0].r - 26);
   ctx.restore();
 }
 
