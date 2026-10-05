@@ -155,9 +155,25 @@ let ultimo = performance.now();
 let acumulado = 0;
 let contSalvar = 0;
 
+// Vigia: se o menu ficar escondido sem anúncio nem troca de cena (algo travou no caminho),
+// ele volta sozinho depois de 3 segundos
+let menuSumido = 0;
+function vigiarMenu() {
+  if (estado === "menu" && telaAtual === "nenhuma" && !anuncios.aberto && !transicao) {
+    if (++menuSumido > 180) {
+      menuSumido = 0;
+      telaAtual = "menu";
+      atualizarTelas();
+    }
+  } else {
+    menuSumido = 0;
+  }
+}
+
 function passo() {
   atualizarAnuncios();
   if (anuncios.aberto) return;   // anúncio na tela: tudo parado
+  vigiarMenu();
   atualizarControle();
   atualizarToque();
   let mundoClima = 0;

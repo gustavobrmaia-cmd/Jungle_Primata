@@ -66,28 +66,72 @@ function fecharAnuncio() {
   if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
 }
 
+// Quanto o jogo espera o anúncio COMEÇAR antes de seguir sozinho, e o limite total
+const ESPERA_ANUNCIO = 4000;
+const ESPERA_PREMIADO = 8000;
+const LIMITE_ANUNCIO = 60000;
+
 // Intervalo comercial (entre fases e ao recomeçar). Sem SDK, segue na hora.
+// Rede de segurança: se o Poki não começar o anúncio em poucos segundos (ou nunca responder),
+// o jogo segue sozinho; antes o menu sumia e o jogo ficava preso esperando.
 function intervaloComercial(depois) {
   if (!anuncios.sdk) { depois(); return; }
   abrirAnuncio();
-  anuncios.sdk.commercialBreak(function() { /* começou: o jogo já está mudo e parado */ })
-    .catch(function() {})
-    .then(function() {
-      fecharAnuncio();
-      depois();
+  let seguiu = false;
+  let comecou = false;
+  function seguir() {
+    if (seguiu) return;
+    seguiu = true;
+    clearTimeout(espera);
+    clearTimeout(limite);
+    fecharAnuncio();
+    depois();
+  }
+  const espera = setTimeout(function() { if (!comecou) seguir(); }, ESPERA_ANUNCIO);
+  const limite = setTimeout(seguir, LIMITE_ANUNCIO);
+  let pedido;
+  try {
+    pedido = anuncios.sdk.commercialBreak(function() {
+      comecou = true;
+      if (seguiu) abrirAnuncio();   // começou atrasado: congela e cala o jogo até acabar
     });
+  } catch (e) { seguir(); return; }
+  Promise.resolve(pedido).catch(function() {}).then(function() {
+    if (seguiu) { if (anuncios.aberto) fecharAnuncio(); return; }
+    seguir();
+  });
 }
 
 // Anúncio premiado: fim(true) só se a pessoa assistiu até o fim.
 // tamanho ("small", "medium", "large") diz ao Poki o valor do prêmio.
+// (mesma rede de segurança: se o anúncio não começar, conta como "não assistiu" e o jogo segue)
 function anuncioPremiado(tamanho, fim) {
   if (!premiadoDisponivel()) { fim(false); return; }
   abrirAnuncio();
-  anuncios.sdk.rewardedBreak({ size: tamanho, onStart: function() { /* começou: jogo já parado e mudo */ } })
+  let acabou = false;
+  let comecou = false;
+  function terminar(ok) {
+    if (acabou) return;
+    acabou = true;
+    clearTimeout(espera);
+    clearTimeout(limite);
+    fecharAnuncio();
+    fim(ok);
+  }
+  const espera = setTimeout(function() { if (!comecou) terminar(false); }, ESPERA_PREMIADO);
+  const limite = setTimeout(function() { terminar(false); }, LIMITE_ANUNCIO + 30000);
+  let pedido;
+  try {
+    pedido = anuncios.sdk.rewardedBreak({ size: tamanho, onStart: function() {
+      comecou = true;
+      if (acabou) abrirAnuncio();
+    } });
+  } catch (e) { terminar(false); return; }
+  Promise.resolve(pedido)
     .then(function(ok) { return !!ok; }, function() { return false; })
     .then(function(ok) {
-      fecharAnuncio();
-      fim(ok);
+      if (acabou) { if (anuncios.aberto) fecharAnuncio(); return; }
+      terminar(ok);
     });
 }
 
