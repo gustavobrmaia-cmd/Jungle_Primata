@@ -115,6 +115,7 @@ function iniciarFase(indice, doCheckpoint) {
   apertos.clear();
   if (!doCheckpoint) mostrarCartaoFase();
   cronInicioFase(indice, doCheckpoint);
+  medir("level", nomeNivel(), "start");   // cada tentativa (também ao voltar do checkpoint)
   if (typeof atualizarTelas === "function") atualizarTelas();
 }
 
@@ -731,6 +732,7 @@ function machucar(origemX, ignorarInvencivel) {
   if (j.invencivel > 0 && !ignorarInvencivel) return;
   j.vidas--;
   perdeuVida();
+  medir("damage", nomeNivel(), "hit");
   j.invencivel = 90;
   tremor = 10;
   flashDano = 20;
@@ -766,6 +768,7 @@ function caiuNoBuraco() {
   }
   j.vidas--;
   perdeuVida();
+  medir("damage", nomeNivel(), "hole");
   tremor = 10;
   som("dano");
   if (j.vidas <= 0) {
@@ -803,6 +806,7 @@ function perdeuTudo() {
 }
 
 function voltarDoCheckpoint() {
+  medir("level", nomeNivel(), "fail");
   pausado = false;
   atualizarTelas();
   mostrarMensagem(tr("Você perdeu!"), checkpointX !== null ? tr("Voltando do checkpoint...") : tr("Tentando de novo..."), 90, function() {
@@ -1364,6 +1368,7 @@ function atualizarMoedas() {
       c.ativo = true;
       c.sobe = 0;
       checkpointX = c.x;
+      medir("checkpoint", nomeNivel(), "reached");
       j.vidas = Math.max(j.vidas, Math.min(vidasMax(), j.vidas + 1));
       ganharXp(XP.checkpoint, c.x + 20, CHAO - 140);
       som("checkpoint");
@@ -1409,6 +1414,7 @@ function atualizarBanana() {
 }
 
 function fimDaFase() {
+  medir("level", nomeNivel(), "complete");
   if (fase.tutorial) { fimDoTutorial(); return; }
   cronFimFase();
   avaliarFase();

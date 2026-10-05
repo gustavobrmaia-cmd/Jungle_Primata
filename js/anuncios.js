@@ -36,7 +36,28 @@ function ligarSdkPoki() {
     .then(function() {
       anuncios.sdk = sdk;
       sdk.gameLoadingFinished();   // o jogo terminou de carregar
+      filaEventos.splice(0).forEach(function(ev) { medir(ev[0], ev[1], ev[2]); });
     });
+}
+
+// ---------- Game Events do Poki (só estatística no painel; o jogador não vê nada) ----------
+// Mostra até onde as pessoas chegam: tutorial, cada fase (start/complete/fail), checkpoints,
+// onde perdem vidas e o uso dos anúncios premiados. Antes do SDK ficar pronto, guarda numa fila.
+const filaEventos = [];
+function medir(categoria, oque, acao) {
+  if (!USAR_POKI) return;
+  if (!anuncios.sdk) { if (filaEventos.length < 50) filaEventos.push([categoria, oque, acao]); return; }
+  try {
+    if (typeof anuncios.sdk.measure === "function") anuncios.sdk.measure(categoria, String(oque), acao);
+  } catch (e) { /* estatística nunca pode travar o jogo */ }
+}
+
+// "tutorial", "saru" ou "1-1" ... "4-6" (mundo-etapa; a 6ª de cada mundo é o chefe)
+function nomeNivel() {
+  if (!fase) return "?";
+  if (fase.tutorial) return "tutorial";
+  if (fase.secreta) return "saru";
+  return (fase.mundo + 1) + "-" + (fase.etapa + 1);
 }
 
 // O Poki pede o gameplayStart só depois da primeira interação do jogador (nunca ao carregar):
@@ -157,6 +178,7 @@ function podeReviver() {
 }
 
 function abrirReviver() {
+  medir("reward", "revive", "visible");
   reviverAberto = true;
   pausado = true;
   soltarTeclas();
@@ -165,6 +187,7 @@ function abrirReviver() {
 
 function aceitarReviver() {
   if (!reviverAberto) return;
+  medir("reward", "revive", "interact");
   reviverAberto = false;
   atualizarTelas();
   anuncioPremiado("medium", function(ok) {
@@ -222,6 +245,7 @@ function avisoLoja(texto, cor) {
 
 function moedasComAnuncio() {
   const n = moedasDoAnuncio();
+  medir("reward", "coins", "interact");
   anuncioPremiado("medium", function(ok) {
     if (ok) {
       save.moedas += n;
@@ -238,6 +262,7 @@ function moedasComAnuncio() {
 function poderComAnuncio(id) {
   const p = PODERES.find(function(x) { return x.id === id; });
   if (!p) return;
+  medir("reward", "power", "interact");
   anuncioPremiado("small", function(ok) {
     if (ok) {
       save.poderes[id]++;

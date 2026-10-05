@@ -14,6 +14,7 @@ const TUTO_COBRA = 1280;
 const TUTO_FIM = 1960;       // banana
 
 let tuto = { passo: 0, ok: 0 };
+const PASSOS_TUTO = ["walk", "jump", "snake", "banana"];   // nomes nos Game Events do Poki
 
 function gerarTutorial() {
   const f = novaFase(0);
@@ -31,6 +32,7 @@ function gerarTutorial() {
   f.fimX = TUTO_FIM;
   f.largura = TUTO_FIM + 500;
   tuto = { passo: 0, ok: 0 };
+  medir("tutorial", PASSOS_TUTO[0], "start");
   return f;
 }
 
@@ -44,6 +46,10 @@ function atualizarTutorial() {
   if (j.x > TUTO_BLOCO + 64) passo = 2;
   if (passo === 2 && (!cobraViva || j.x > TUTO_COBRA + 220)) passo = 3;
   if (passo > tuto.passo) {
+    for (let p = tuto.passo; p < passo; p++) {
+      medir("tutorial", PASSOS_TUTO[p], "complete");
+      medir("tutorial", PASSOS_TUTO[p + 1], "start");
+    }
     tuto.passo = passo;
     tuto.ok = 40;
     som("moeda");
@@ -108,6 +114,7 @@ function desenharTutorial() {
 }
 
 function fimDoTutorial() {
+  medir("tutorial", PASSOS_TUTO[3], "complete");
   save.viuTutorial = true;
   salvar();
   sujo = false;

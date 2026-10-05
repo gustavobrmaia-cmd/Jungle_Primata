@@ -56,6 +56,7 @@ function balao(x, y, desenho) {
 const intro = { t: 0, x: -60, base: CHAO, vy: 0, pose: "andar1", bx: 700, by: CHAO - 40, brot: 0, voando: false };
 
 function iniciarIntro() {
+  medir("intro", "story", "start");
   estado = "intro";
   intro.t = 0;
   intro.x = -60;
@@ -75,6 +76,7 @@ function iniciarIntro() {
 function terminarIntro() {
   if (intro.acabou) return;
   intro.acabou = true;
+  medir("intro", "story", "complete");
   save.viuIntro = true;
   salvar();
   trocarCena(function() { iniciarFase(0); });

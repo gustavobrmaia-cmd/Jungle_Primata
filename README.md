@@ -134,6 +134,10 @@ Depois de zerar, **Jogar** começa uma run nova na Selva 1-1.
   e quando o macaco perde todas as vidas oferece "assista um anúncio para reviver" (volta no
   último chão seguro com as vidas cheias, uma vez por tentativa). Durante o anúncio o jogo fica
   parado e mudo. Com `false` nada disso carrega (use `false` no itch.io).
+  **Game Events** (painel do Poki, aba Game Events): o jogo manda `PokiSDK.measure` para o
+  tutorial (passos walk/jump/snake/banana), cada fase (`level` / `1-1`...`4-6`, `tutorial`,
+  `saru`: start, complete, fail), checkpoints, vidas perdidas (`damage`: hit ou hole), a
+  história e os anúncios premiados (`reward`: visible/interact). O jogador não vê nada disso.
   Na loja aparecem dois prêmios opcionais por anúncio: **moedas grátis** (cresce com o nível)
   e **um poder grátis**. Eles só aparecem quando o SDK do Poki carregou e não há bloqueador.
   Há também um intervalo comercial ao sair do menu para jogar (o Poki decide se mostra).

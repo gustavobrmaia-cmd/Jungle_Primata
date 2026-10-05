@@ -180,12 +180,14 @@ function virarChefe(c, tipo, nome) {
 }
 
 function reiPerdeu() {
+  medir("level", "saru", "fail");
   mostrarMensagem(tr("O Saru venceu!"), tr("Tentativas restantes: {0}", save.rei.tentativas), 110, function() {
     trocarCena(function() { voltarAoMenu(); abrirTelaRei(); });
   });
 }
 
 function reiVencido() {
+  medir("level", "saru", "complete");
   const primeira = !temCosmetico("reiMacaco");
   const n = chefe && chefe.nivelSaru || 0;
   const moedas = MOEDAS_REI + 100 * n;
@@ -208,6 +210,7 @@ function reiVencido() {
 
 function tentativasComAnuncio() {
   if (save.rei.anuncio) return;
+  medir("reward", "saru-tries", "interact");
   anuncioPremiado("medium", function(ok) {
     if (ok) {
       save.rei.anuncio = true;
