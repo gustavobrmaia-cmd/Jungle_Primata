@@ -973,3 +973,48 @@ button.anuncio {
 #telaRei { background: radial-gradient(ellipse at 50% 46%, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.7) 60%, rgba(12, 5, 0, 0.9) 100%); }
 #telaRei .botoes { gap: 16px; width: 420px; }
 #telaRei .botoes button { font-size: 20px; padding: 9px 8px; }
+
+
+/* ===== Celular em pé (body.retrato, ligado pelo ajustarTela) =====
+   O jogo fica no topo e o canvas cresce para baixo (painel de controles). As telas em HTML
+   foram desenhadas para 1200 de largura: em pé elas são ampliadas (zoom) e viram uma coluna. */
+
+body.retrato #botoesJogo { right: 26px; top: 100px; }
+body.retrato #botoesJogo button { font-size: 40px; padding: 14px 26px; margin-left: 26px; --d: 8px; }
+
+/* menu principal */
+body.retrato #telaMenu { justify-content: center; gap: 30px; }
+body.retrato #telaMenu > * { zoom: 1.85; }
+body.retrato #telaMenu .cabecalho { gap: 10px; }
+body.retrato #telaMenu h1 { font-size: 50px; }
+body.retrato #telaMenu .bananaDeco { width: 58px; height: 48px; }
+body.retrato #telaMenu .pilulas { flex-wrap: wrap; max-width: 600px; gap: 12px 14px; }
+body.retrato #telaMenu .botoes { width: 600px; }
+body.retrato #telaMenu .controles { display: none; }
+body.retrato #avisoRei { max-width: 600px; text-align: center; }
+
+/* mapa: os mundos um embaixo do outro */
+body.retrato #telaMapa > * { zoom: 1.9; }
+body.retrato #mundos { grid-template-columns: 520px; gap: 18px; }
+
+/* painéis do meio (pausa, reviver, Saru, opções) */
+body.retrato #telaPausa .painelCentral,
+body.retrato #telaReviver .painelCentral,
+body.retrato #telaRei .painelCentral { zoom: 2.1; }
+body.retrato #telaControles .painelCentral { zoom: 1.9; max-width: 600px; }
+body.retrato #listaControles { grid-template-columns: 540px; }
+body.retrato .abasOpcoes { flex-wrap: wrap; justify-content: center; }
+
+/* loja em uma coluna: topo, vitrine + abas lado a lado, itens embaixo */
+body.retrato #loja .painel {
+  zoom: 1.9;
+  width: 600px;
+  height: auto;
+  max-height: 1250px;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto 1fr;
+}
+body.retrato #loja .topo { flex-wrap: wrap; gap: 10px 14px; }
+body.retrato #loja .lado { display: flex; gap: 14px; align-items: flex-start; }
+body.retrato #loja .abas { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+body.retrato #loja .itens { grid-template-columns: repeat(3, 1fr); max-height: 760px; }

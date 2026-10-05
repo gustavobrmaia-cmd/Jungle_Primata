@@ -37,7 +37,12 @@ idioma e os adicionais (cronômetro e som).
 um pouco para baixo para deslizar (na diagonal corre e desliza). Do lado direito ficam os botões
 coloridos **PULO** (grande, segure para pular mais alto), **LAÇO** (depois do Gorila Rei, com anel de
 recarga) e **DASH** (se comprado). Na primeira fase, dicas piscando mostram onde arrastar e tocar.
-Toque num poder no canto de baixo para usar. Com o celular em pé, o jogo pede para girar.
+Toque num poder no canto de baixo para usar.
+
+**Celular em pé:** dá para jogar sem girar. O jogo fica no topo, na largura da tela e ampliado
+(o macaco aparece maior; nas lutas de chefe a arena inteira aparece), e embaixo vem um painel
+com os poderes, a placa mais próxima em letras grandes e os controles bem maiores. Menu, mapa,
+loja, opções e pausa também se ajustam em pé. Girar o celular no meio do jogo troca de modo na hora.
 
 **Sem armas:** os inimigos se vencem pulando na cabeça (ou deslizando nos espinhosos). O
 **cipó-laço** é o prêmio do **Gorila Rei** (chefe da Selva) e recarrega em ~1,7 s.

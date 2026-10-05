@@ -21,6 +21,42 @@ const dicaToque = { andar: 0, pulo: 0, iniciou: false };
 
 const STICK = { x: 190, y: 520, r: 74, morta: 16, baixo: 24 };
 
+// Posições "deitado" (guardadas para voltar quando o celular gira de novo)
+BOTOES_TOQUE.forEach(function(b) { b.x0 = b.x; b.y0 = b.y; b.r0 = b.r; });
+const STICK_DEITADO = { x: STICK.x, y: STICK.y, r: STICK.r };
+
+// Em pé: tudo vai para o painel embaixo do jogo, bem maior (feito para o polegar)
+let geoPoderes = { ox: 0, oy: 0, k: 1 };    // onde os quadradinhos dos poderes são desenhados
+let geoPlaca = null;                         // faixa do painel que mostra a placa perto do macaco
+
+function layoutToque() {
+  if (!modoRetrato) {
+    BOTOES_TOQUE.forEach(function(b) { b.x = b.x0; b.y = b.y0; b.r = b.r0; });
+    STICK.x = STICK_DEITADO.x; STICK.y = STICK_DEITADO.y; STICK.r = STICK_DEITADO.r;
+    geoPoderes = { ox: 0, oy: 0, k: 1 };
+    geoPlaca = null;
+  } else {
+    const py = topoPainel();
+    const ph = alturaTela - py;
+    const f = limitar(ph / 1500, 0.55, 1.1);
+    // poderes: faixa no topo do painel, ampliados
+    const k = 2.3 * f;
+    const larg = (PODERES.length + 1) * 66 * k;
+    geoPoderes = { ox: (LARGURA - larg) / 2 - 20 * k + 10, oy: py + 50 * f - (ALTURA - 74) * k, k: k };
+    // placa: logo abaixo dos poderes
+    const topoPlaca = py + 50 * f + 66 * k + 30 * f;
+    geoPlaca = { y: topoPlaca, h: 150 * f };
+    // controles: metade de baixo do painel, ao alcance dos polegares
+    const cy = Math.max(topoPlaca + geoPlaca.h + 260 * f, py + ph * 0.64);
+    STICK.x = 300; STICK.y = cy; STICK.r = 190 * f;
+    const lug = { pulo: [950, cy + 60 * f, 200 * f], laco: [790, cy - 300 * f, 125 * f], dash: [1055, cy - 270 * f, 110 * f] };
+    BOTOES_TOQUE.forEach(function(b) { b.x = lug[b.acao][0]; b.y = lug[b.acao][1]; b.r = lug[b.acao][2]; });
+  }
+  // zona morta e "puxar para baixo" acompanham o tamanho do analógico
+  STICK.morta = STICK.r * 0.22;
+  STICK.baixo = STICK.r * 0.32;
+}
+
 const toque = {
   stick: null,      // { id, ox, oy, x, y } dedo do lado esquerdo
   botoes: {},       // id do dedo -> ação do botão
@@ -35,7 +71,7 @@ function botaoDisponivel(b) {
 // Posição do dedo em "pixels de jogo" (1200x700), seja qual for o tamanho da tela
 function pontoDoJogo(t) {
   const r = canvas.getBoundingClientRect();
-  return { x: (t.clientX - r.left) * LARGURA / r.width, y: (t.clientY - r.top) * ALTURA / r.height };
+  return { x: (t.clientX - r.left) * canvas.width / r.width, y: (t.clientY - r.top) * canvas.height / r.height };
 }
 
 function botaoNoPonto(p) {
@@ -50,7 +86,9 @@ function botaoNoPonto(p) {
 }
 
 // Quadradinhos dos poderes no HUD (mesma posição do desenharHud)
-function poderNoPonto(p) {
+function poderNoPonto(q) {
+  // (no modo em pé os quadradinhos estão ampliados no painel: volta para a medida do HUD)
+  const p = { x: (q.x - geoPoderes.ox) / geoPoderes.k, y: (q.y - geoPoderes.oy) / geoPoderes.k };
   const y = ALTURA - 74;
   if (p.y < y - 6 || p.y > y + 64) return -1;
   for (let i = 0; i < PODERES.length; i++) {
@@ -97,7 +135,7 @@ canvas.addEventListener("touchstart", function(e) {
     if (b) {
       toque.botoes[t.identifier] = b.acao;
       if (!mensagemTravada()) apertos.add(b.acao);
-    } else if (p.x < LARGURA / 2 && !toque.stick) {
+    } else if (p.x < LARGURA / 2 && !toque.stick && (!modoRetrato || p.y > topoPainel())) {
       // a base fica sempre no mesmo lugar; a direção é medida a partir do centro dela
       toque.stick = { id: t.identifier, ox: STICK.x, oy: STICK.y, x: p.x, y: p.y };
     }
@@ -251,7 +289,7 @@ function setaStick(x, y, ang, tam, acesa) {
   ctx.translate(x, y);
   ctx.rotate(ang);
   ctx.strokeStyle = acesa ? "#ffffff" : "rgba(255,243,191,0.75)";
-  ctx.lineWidth = 6;
+  ctx.lineWidth = Math.max(6, tam * 0.55);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.beginPath(); ctx.moveTo(-tam * 0.5, -tam); ctx.lineTo(tam * 0.5, 0); ctx.lineTo(-tam * 0.5, tam); ctx.stroke();
@@ -261,14 +299,16 @@ function setaStick(x, y, ang, tam, acesa) {
 // Texto de dica piscando, num balão escuro
 function dicaPiscando(txt, x, y) {
   const a = 0.75 + Math.sin(tempo * 0.15) * 0.25;
-  ctx.font = "bold 20px " + FONTE;
-  const w = Math.ceil(ctx.measureText(txt).width) + 28;
+  const tam = modoRetrato ? 44 : 20;
+  ctx.font = "bold " + tam + "px " + FONTE;
+  const w = Math.ceil(ctx.measureText(txt).width) + tam * 1.4;
+  const h = tam * 1.6;
   ctx.globalAlpha = a;
   ctx.fillStyle = "rgba(13,7,4,0.75)";
-  ctx.fillRect(Math.round(x - w / 2), Math.round(y - 22), w, 32);
+  ctx.fillRect(Math.round(x - w / 2), Math.round(y - h * 0.7), Math.round(w), Math.round(h));
   ctx.strokeStyle = "#ffe066";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(Math.round(x - w / 2) + 0.5, Math.round(y - 22) + 0.5, w - 1, 31);
+  ctx.lineWidth = modoRetrato ? 4 : 2;
+  ctx.strokeRect(Math.round(x - w / 2) + 0.5, Math.round(y - h * 0.7) + 0.5, Math.round(w) - 1, Math.round(h) - 1);
   ctx.textAlign = "center";
   textoSombra(txt, x, y, "#ffe066");
   ctx.globalAlpha = 1;
@@ -306,9 +346,10 @@ function desenharToque() {
   ctx.lineWidth = 4;
   ctx.strokeStyle = s ? "rgba(255,255,255,0.85)" : "rgba(255,243,191,0.6)";
   ctx.stroke();
-  setaStick(ox - STICK.r + 20, oy, Math.PI, 11, teclas.esquerda);
-  setaStick(ox + STICK.r - 20, oy, 0, 11, teclas.direita);
-  setaStick(ox, oy + STICK.r - 20, Math.PI / 2, 9, teclas.baixo);
+  const sk = STICK.r / 74;
+  setaStick(ox - STICK.r + 20 * sk, oy, Math.PI, 11 * sk, teclas.esquerda);
+  setaStick(ox + STICK.r - 20 * sk, oy, 0, 11 * sk, teclas.direita);
+  setaStick(ox, oy + STICK.r - 20 * sk, Math.PI / 2, 9 * sk, teclas.baixo);
   let kx = ox;
   let ky = oy;
   if (s) {
@@ -319,7 +360,7 @@ function desenharToque() {
     kx = ox + dx * k;
     ky = oy + dy * k;
   }
-  botaoRedondo(kx, ky, 34, ["#ffffff", "#e9dcc4", "#8a6d45", "#ffffff"], false, false);
+  botaoRedondo(kx, ky, STICK.r * 0.46, ["#ffffff", "#e9dcc4", "#8a6d45", "#ffffff"], false, false);
   ctx.globalAlpha = 1;
 
   // Botões do lado direito
@@ -331,7 +372,7 @@ function desenharToque() {
     const recarga = b.acao === "laco" && jogador && jogador.recargaLaco > 0 && !jogador.laco;
     const yy = botaoRedondo(b.x, b.y, b.r, b.cores, ap, recarga);
     iconeBotao(b.acao, b.x, yy, b.r);
-    ctx.font = "bold " + (b.r > 60 ? 20 : 15) + "px " + FONTE;
+    ctx.font = "bold " + Math.max(15, Math.round(b.r * 0.26)) + "px " + FONTE;
     ctx.textAlign = "center";
     textoSombra(tr(b.rotulo), b.x, yy + b.r * 0.55, "#ffffff");
     // cipó recarregando: anel enchendo em volta do botão
@@ -345,17 +386,109 @@ function desenharToque() {
   });
 
   // Dicas da primeira fase
-  if (dicaToque.andar) dicaPiscando(tr("Arraste para andar"), STICK.x, STICK.y - STICK.r - 26);
-  if (dicaToque.pulo) dicaPiscando(tr("Toque para pular"), BOTOES_TOQUE[0].x - 30, BOTOES_TOQUE[0].y - BOTOES_TOQUE[0].r - 26);
+  const folgaDica = modoRetrato ? 60 : 26;
+  if (dicaToque.andar) dicaPiscando(tr("Arraste para andar"), STICK.x + (modoRetrato ? 40 : 0), STICK.y - STICK.r - folgaDica);
+  if (dicaToque.pulo) dicaPiscando(tr("Toque para pular"), BOTOES_TOQUE[0].x - (modoRetrato ? 80 : 30), BOTOES_TOQUE[0].y - BOTOES_TOQUE[0].r - folgaDica);
   ctx.restore();
 }
 
 
-// ---------- Celular em pé: pede para girar ----------
+// ---------- Painel do modo em pé (embaixo do jogo) ----------
 
+let texturaPainel = null;
+
+// Fundo: terra escura com pedrinhas, como se o chão do jogo continuasse para baixo
+function fundoPainel(py, ph) {
+  if (!texturaPainel) {
+    texturaPainel = document.createElement("canvas");
+    texturaPainel.width = 120;
+    texturaPainel.height = 120;
+    const g = texturaPainel.getContext("2d");
+    g.fillStyle = "#3d2614";
+    g.fillRect(0, 0, 120, 120);
+    let s = 7;
+    const r = function() { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+    for (let i = 0; i < 70; i++) {
+      g.fillStyle = i % 3 === 0 ? "#2a190c" : i % 3 === 1 ? "#4d3119" : "#57381d";
+      g.fillRect(Math.floor(r() * 20) * 6, Math.floor(r() * 20) * 6, 6 + (i % 2) * 6, 6);
+    }
+  }
+  ctx.fillStyle = ctx.createPattern(texturaPainel, "repeat");
+  ctx.fillRect(0, py, LARGURA, ph);
+  const g = ctx.createLinearGradient(0, py, 0, py + ph);
+  g.addColorStop(0, "rgba(0,0,0,0.1)");
+  g.addColorStop(1, "rgba(0,0,0,0.65)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, py, LARGURA, ph);
+  // borda de madeira separando o jogo do painel
+  if (py < topoPainel() - 1) {
+    // luta de chefe (sem ampliar): sobra um espaço entre o jogo e os controles
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillRect(0, topoPainel(), LARGURA, 8);
+  }
+  ctx.fillStyle = "#1a0f07";
+  ctx.fillRect(0, py, LARGURA, 14);
+  ctx.fillStyle = "#8a5a2b";
+  ctx.fillRect(0, py + 14, LARGURA, 5);
+  ctx.fillStyle = "#5c3a1e";
+  ctx.fillRect(0, py + 19, LARGURA, 6);
+}
+
+// Texto da placa perto do macaco (no jogo ela fica pequena demais com o celular em pé)
+function textoPlacaPerto() {
+  const j = jogador;
+  if (!j || !fase) return null;
+  for (let i = 0; i < fase.placas.length; i++) {
+    const p = fase.placas[i];
+    if (Math.abs(j.x + j.w / 2 - (p.x + 16)) < 260) {
+      return p.texto.replace(/\{(\w+)\}/g, function(m, a) { return nomeComando(a); });
+    }
+  }
+  return null;
+}
+
+function desenharPlacaPainel(txt) {
+  const linhas = txt.split("\n");
+  const f = geoPlaca.h / 150;
+  const tam = Math.round(40 * f);
+  const lh = Math.round(52 * f);
+  const h = Math.round(linhas.length * lh + 34 * f);
+  const y = Math.round(geoPlaca.y);
+  painelPixel(60, y, LARGURA - 120, h, "#8a5a2b", "rgba(255,248,231,0.97)");
+  ctx.font = "bold " + tam + "px " + FONTE;
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#3b2412";
+  linhas.forEach(function(l, k) { ctx.fillText(l, LARGURA / 2, y + 17 * f + lh * (k + 0.75)); });
+}
+
+function desenharPainelRetrato() {
+  if (!modoRetrato) return;
+  // começa logo abaixo do que foi desenhado do jogo (nas lutas de chefe o jogo não é ampliado)
+  const py = ALTURA * zoomJogo();
+  const ph = alturaTela - py;
+  ctx.save();
+  ctx.globalAlpha = 1;
+  fundoPainel(py, ph);
+  if (estado === "jogo" && jogador) {
+    // poderes ampliados (tocar neles usa o poder)
+    ctx.save();
+    ctx.translate(geoPoderes.ox, geoPoderes.oy);
+    ctx.scale(geoPoderes.k, geoPoderes.k);
+    desenharPoderesHud(jogador);
+    ctx.restore();
+    const txt = textoPlacaPerto();
+    if (txt) desenharPlacaPainel(txt);
+    desenharToque();
+  }
+  ctx.restore();
+}
+
+
+// ---------- Celular em pé ----------
+
+// (antes um aviso tampava a tela pedindo para girar; agora dá para jogar em pé, com o painel)
 function verificarOrientacao() {
-  const emPe = toqueAtivo && window.innerHeight > window.innerWidth;
-  el("girar").classList.toggle("aberta", emPe);
+  el("girar").classList.remove("aberta");
 }
 
 window.addEventListener("resize", verificarOrientacao);

@@ -8,6 +8,26 @@ const canvas = document.getElementById("tela");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
+// Celular em pé: o canvas fica mais alto (o jogo continua nos 700 de cima e embaixo vem o
+// painel com os controles grandes). Quem ajusta é o ajustarTela (main.js).
+let modoRetrato = false;
+let alturaTela = ALTURA;
+let zoomRetrato = 1;     // em pé, as fases aparecem ampliadas (o macaco fica maior); chefes não
+
+function zoomJogo() {
+  return modoRetrato && estado === "jogo" && fase && !fase.ehChefe ? zoomRetrato : 1;
+}
+
+// Largura do mundo que cabe na tela (menor quando ampliado)
+function larguraVista() {
+  return LARGURA / zoomJogo();
+}
+
+// Onde começa o painel de controles (modo em pé)
+function topoPainel() {
+  return ALTURA * zoomRetrato;
+}
+
 const GRAV = 0.7;
 const PULO = -14.5;
 const SUPER_PULO = -23;
@@ -89,7 +109,7 @@ function iniciarFase(indice, doCheckpoint) {
   chefe = fase.ehChefe ? (fase.secreta ? criarChefeRei() : criarChefe(fase.mundo)) : null;
   banana = fase.ehChefe ? null : { x: fase.fimX, y: CHAO - 44, base: CHAO - 44, estado: "parada", t: 0, rot: 0, vy: 0 };
 
-  cameraX = limitar(jogador.x - LARGURA * 0.4, 0, Math.max(0, fase.largura - LARGURA));
+  cameraX = limitar(jogador.x - larguraVista() * 0.4, 0, Math.max(0, fase.largura - larguraVista()));
   estado = "jogo";
   pausado = false;
   apertos.clear();
@@ -2274,9 +2294,9 @@ function atualizarJogo() {
 
   // Câmera segue o macaco olhando um pouco para frente
   const j = jogador;
-  const alvo = j.x + j.w / 2 - LARGURA * 0.4 + j.dir * 80;
+  const alvo = j.x + j.w / 2 - larguraVista() * 0.4 + j.dir * 80;
   cameraX += (alvo - cameraX) * 0.1;
-  cameraX = limitar(cameraX, 0, Math.max(0, fase.largura - LARGURA));
+  cameraX = limitar(cameraX, 0, Math.max(0, fase.largura - larguraVista()));
 }
 
 
@@ -3369,6 +3389,69 @@ function desenharIconeCipo(x, y, r) {
   ctx.lineCap = "butt";
 }
 
+// Quadradinhos dos poderes e do dash (canto de baixo do HUD; o modo em pé desenha ampliado no painel)
+function desenharPoderesHud(j) {
+  PODERES.forEach(function(p, i) {
+    const x = 20 + i * 66;
+    const y = ALTURA - 74;
+    const n = save.poderes[p.id];
+    const ativo = buffs[p.id] > 0;
+    slotPixel(x, y, ativo);
+    if (ativo) luzAditiva(x + 29, y + 29, 50, "105,219,124", 0.28 + Math.sin(tempo * 0.15) * 0.1);
+    ctx.globalAlpha = n > 0 || ativo ? 1 : 0.3;
+    desenharContorno(ICONES[p.id], 0, 0, 32, 32, x + 13, y + 12, 32, 32, "#0d0704", 2);
+    ctx.globalAlpha = 1;
+    if (recargas[p.id] > 0) {
+      const k = recargas[p.id] / p.recarga;
+      ctx.fillStyle = "rgba(0,0,0,0.62)";
+      ctx.fillRect(x + 6, y + 6, 46, Math.round(46 * k));
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.fillRect(x + 6, y + 6 + Math.round(46 * k) - 2, 46, 2);
+    }
+    if (ativo) {
+      ctx.fillStyle = "#0d0704";
+      ctx.fillRect(x + 5, y + 46, 48, 7);
+      ctx.fillStyle = "#69db7c";
+      ctx.fillRect(x + 6, y + 47, Math.round(46 * (buffs[p.id] / p.duracao)), 5);
+      ctx.fillStyle = "#d3f9d8";
+      ctx.fillRect(x + 6, y + 47, Math.round(46 * (buffs[p.id] / p.duracao)), 2);
+    }
+    // no controle: o poder escolhido (LT troca, RT usa) ganha moldura branca
+    const escolhido = controleAtivo && i === poderSelecionado;
+    if (escolhido) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x - 2, y - 2, 62, 3);
+      ctx.fillRect(x - 2, y + 57, 62, 3);
+      ctx.fillRect(x - 2, y - 2, 3, 62);
+      ctx.fillRect(x + 57, y - 2, 3, 62);
+    }
+    ctx.font = "bold 13px " + FONTE;
+    ctx.textAlign = "left";
+    textoSombra(controleAtivo ? (escolhido ? "RT" : "") : toqueAtivo ? "" : teclaDe("poder" + (i + 1)), x + 8, y + 19, "#ffe066");
+    ctx.textAlign = "right";
+    textoSombra("x" + n, x + 53, y + 51, n > 0 ? "#ffffff" : "#868e96");
+  });
+
+  if (temMelhoria("dash")) {
+    const x = 20 + PODERES.length * 66 + 10;
+    const y = ALTURA - 74;
+    slotPixel(x, y, j.dash > 0);
+    desenharContorno(ICONES.dash, 0, 0, 32, 32, x + 13, y + 12, 32, 32, "#0d0704", 2);
+    if (j.recargaDash > 0) {
+      const k = j.recargaDash / 45;
+      ctx.fillStyle = "rgba(0,0,0,0.62)";
+      ctx.fillRect(x + 6, y + 6, 46, Math.round(46 * k));
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.fillRect(x + 6, y + 6 + Math.round(46 * k) - 2, 46, 2);
+    } else {
+      luzAditiva(x + 29, y + 29, 36, "255,212,59", 0.12 + Math.sin(tempo * 0.1) * 0.04);
+    }
+    ctx.font = "bold 12px " + FONTE;
+    ctx.textAlign = "left";
+    textoSombra(nomeComando("dash"), x + 8, y + 19, "#ffe066");
+  }
+}
+
 function desenharHud() {
   const j = jogador;
   const mundoCor = MUNDOS[fase.mundo].cor;
@@ -3438,66 +3521,8 @@ function desenharHud() {
     desenharVidaChefe();
   }
 
-  // Poderes (teclas 1 a 5)
-  PODERES.forEach(function(p, i) {
-    const x = 20 + i * 66;
-    const y = ALTURA - 74;
-    const n = save.poderes[p.id];
-    const ativo = buffs[p.id] > 0;
-    slotPixel(x, y, ativo);
-    if (ativo) luzAditiva(x + 29, y + 29, 50, "105,219,124", 0.28 + Math.sin(tempo * 0.15) * 0.1);
-    ctx.globalAlpha = n > 0 || ativo ? 1 : 0.3;
-    desenharContorno(ICONES[p.id], 0, 0, 32, 32, x + 13, y + 12, 32, 32, "#0d0704", 2);
-    ctx.globalAlpha = 1;
-    if (recargas[p.id] > 0) {
-      const k = recargas[p.id] / p.recarga;
-      ctx.fillStyle = "rgba(0,0,0,0.62)";
-      ctx.fillRect(x + 6, y + 6, 46, Math.round(46 * k));
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
-      ctx.fillRect(x + 6, y + 6 + Math.round(46 * k) - 2, 46, 2);
-    }
-    if (ativo) {
-      ctx.fillStyle = "#0d0704";
-      ctx.fillRect(x + 5, y + 46, 48, 7);
-      ctx.fillStyle = "#69db7c";
-      ctx.fillRect(x + 6, y + 47, Math.round(46 * (buffs[p.id] / p.duracao)), 5);
-      ctx.fillStyle = "#d3f9d8";
-      ctx.fillRect(x + 6, y + 47, Math.round(46 * (buffs[p.id] / p.duracao)), 2);
-    }
-    // no controle: o poder escolhido (LT troca, RT usa) ganha moldura branca
-    const escolhido = controleAtivo && i === poderSelecionado;
-    if (escolhido) {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(x - 2, y - 2, 62, 3);
-      ctx.fillRect(x - 2, y + 57, 62, 3);
-      ctx.fillRect(x - 2, y - 2, 3, 62);
-      ctx.fillRect(x + 57, y - 2, 3, 62);
-    }
-    ctx.font = "bold 13px " + FONTE;
-    ctx.textAlign = "left";
-    textoSombra(controleAtivo ? (escolhido ? "RT" : "") : toqueAtivo ? "" : teclaDe("poder" + (i + 1)), x + 8, y + 19, "#ffe066");
-    ctx.textAlign = "right";
-    textoSombra("x" + n, x + 53, y + 51, n > 0 ? "#ffffff" : "#868e96");
-  });
-
-  if (temMelhoria("dash")) {
-    const x = 20 + PODERES.length * 66 + 10;
-    const y = ALTURA - 74;
-    slotPixel(x, y, j.dash > 0);
-    desenharContorno(ICONES.dash, 0, 0, 32, 32, x + 13, y + 12, 32, 32, "#0d0704", 2);
-    if (j.recargaDash > 0) {
-      const k = j.recargaDash / 45;
-      ctx.fillStyle = "rgba(0,0,0,0.62)";
-      ctx.fillRect(x + 6, y + 6, 46, Math.round(46 * k));
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
-      ctx.fillRect(x + 6, y + 6 + Math.round(46 * k) - 2, 46, 2);
-    } else {
-      luzAditiva(x + 29, y + 29, 36, "255,212,59", 0.12 + Math.sin(tempo * 0.1) * 0.04);
-    }
-    ctx.font = "bold 12px " + FONTE;
-    ctx.textAlign = "left";
-    textoSombra(nomeComando("dash"), x + 8, y + 19, "#ffe066");
-  }
+  // Poderes (teclas 1 a 5): no modo em pé ficam no painel de baixo, maiores
+  if (!modoRetrato) desenharPoderesHud(j);
 }
 
 // Faixa decorada da mensagem central: bordas douradas com rebites e pontas que somem (pré-renderizada)
@@ -3615,6 +3640,11 @@ function desenharJogo() {
   const tx = tremor > 0 ? Math.round((Math.random() - 0.5) * Math.min(tremor, 14)) : 0;
   const ty = tremor > 0 ? Math.round((Math.random() - 0.5) * Math.min(tremor, 14)) : 0;
 
+  // em pé o mundo é desenhado ampliado (o HUD não)
+  const zoom = zoomJogo();
+  ctx.save();
+  if (zoom !== 1) ctx.scale(zoom, zoom);
+
   desenharFundo(fase.mundo, cam);
   desenharLuaRei();
 
@@ -3661,10 +3691,12 @@ function desenharJogo() {
   }
 
   desenharNoiteRei();
+  ctx.restore();
+
   desenharHud();
   desenharExtrasHud();
   desenharMensagem();
   desenharResultadoFase();
   desenharCron();
-  desenharToque();
+  if (!modoRetrato) desenharToque();
 }
