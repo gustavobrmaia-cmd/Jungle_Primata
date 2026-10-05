@@ -71,11 +71,21 @@ const ESPERA_ANUNCIO = 4000;
 const ESPERA_PREMIADO = 8000;
 const LIMITE_ANUNCIO = 60000;
 
-// Intervalo comercial (entre fases e ao recomeçar). Sem SDK, segue na hora.
+// Nada de anúncio nos primeiros minutos jogados nesta visita: a pessoa precisa se envolver com o
+// jogo antes do primeiro intervalo (no Player Fit Test quase todo mundo saía entre 1 e 3 minutos,
+// bem na hora do intervalo depois da fase 1 / da oferta de reviver).
+const SEM_ANUNCIO_ANTES = 60 * 60 * 4;   // 4 minutos jogando (em passos de 1/60 s)
+let tempoJogadoSessao = 0;               // conta no main.js enquanto o jogo está rodando
+
+function cedoDemaisParaAnuncio() {
+  return tempoJogadoSessao < SEM_ANUNCIO_ANTES;
+}
+
+// Intervalo comercial (entre fases e ao recomeçar). Sem SDK ou nos primeiros minutos, segue na hora.
 // Rede de segurança: se o Poki não começar o anúncio em poucos segundos (ou nunca responder),
 // o jogo segue sozinho; antes o menu sumia e o jogo ficava preso esperando.
 function intervaloComercial(depois) {
-  if (!anuncios.sdk) { depois(); return; }
+  if (!anuncios.sdk || cedoDemaisParaAnuncio()) { depois(); return; }
   abrirAnuncio();
   let seguiu = false;
   let comecou = false;
@@ -144,7 +154,7 @@ function premiadoDisponivel() {
 // ---------- Assista para reviver ----------
 
 function podeReviver() {
-  return premiadoDisponivel() && !!fase && !fase.reviveu && !fase.secreta;
+  return premiadoDisponivel() && !!fase && !fase.reviveu && !fase.secreta && !cedoDemaisParaAnuncio();
 }
 
 function abrirReviver() {

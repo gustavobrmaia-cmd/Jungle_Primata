@@ -190,6 +190,7 @@ function passo() {
       if (!pausado) {
         atualizarJogo();
         save.stats.tempo++;
+        tempoJogadoSessao++;
       }
     } else if (estado === "intro") atualizarIntro();
     else if (estado === "final") atualizarFinal();
