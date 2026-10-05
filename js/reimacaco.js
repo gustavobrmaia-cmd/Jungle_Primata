@@ -181,9 +181,7 @@ function virarChefe(c, tipo, nome) {
 
 function reiPerdeu() {
   mostrarMensagem(tr("O Saru venceu!"), tr("Tentativas restantes: {0}", save.rei.tentativas), 110, function() {
-    intervaloComercial(function() {
-      trocarCena(function() { voltarAoMenu(); abrirTelaRei(); });
-    });
+    trocarCena(function() { voltarAoMenu(); abrirTelaRei(); });
   });
 }
 
@@ -204,7 +202,7 @@ function reiVencido() {
   salvar();
   som("vitoria");
   mostrarMensagem(tr("Saru derrotado!"), sub, 240, function() {
-    intervaloComercial(function() { trocarCena(voltarAoMenu); });
+    trocarCena(voltarAoMenu);
   });
 }
 

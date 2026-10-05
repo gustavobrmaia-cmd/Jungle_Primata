@@ -806,9 +806,8 @@ function voltarDoCheckpoint() {
   pausado = false;
   atualizarTelas();
   mostrarMensagem(tr("Você perdeu!"), checkpointX !== null ? tr("Voltando do checkpoint...") : tr("Tentando de novo..."), 90, function() {
-    const seguir = function() { trocarCena(function() { iniciarFase(fase.indice, true); }); };
-    if (fase.tutorial) seguir();   // no tutorial não tem anúncio
-    else intervaloComercial(seguir);
+    // sem intervalo comercial aqui: depois de morrer (ou de assistir/recusar o premiado) só volta
+    trocarCena(function() { iniciarFase(fase.indice, true); });
   });
 }
 

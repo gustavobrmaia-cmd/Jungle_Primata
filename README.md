@@ -129,7 +129,8 @@ Depois de zerar, **Jogar** começa uma run nova na Selva 1-1.
 - **Netlify Drop** (funciona com repositório privado): abra `app.netlify.com/drop` e arraste a
   pasta do jogo.
 - **Poki:** `USAR_POKI` em `js/dados.js` já está `true`. O jogo carrega o SDK do Poki, avisa
-  quando a gameplay começa e para, mostra um intervalo comercial entre as fases e ao recomeçar,
+  quando a gameplay começa e para, mostra um intervalo comercial só ao entrar numa fase (Jogar, escolher fase, próxima fase
+  ou recomeçar pela pausa; nunca depois de morrer ou do premiado),
   e quando o macaco perde todas as vidas oferece "assista um anúncio para reviver" (volta no
   último chão seguro com as vidas cheias, uma vez por tentativa). Durante o anúncio o jogo fica
   parado e mudo. Com `false` nada disso carrega (use `false` no itch.io).
