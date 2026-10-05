@@ -131,8 +131,33 @@ function criarJogador(x, y) {
     laco: null, recargaLaco: 0, chute: 0,
 
     afundar: 0, sobreGeiser: false, brilho: 0,
-    seguro: { x: x, y: y }
+    seguro: { x: x, y: y, chao: null },
+    travado: 0                      // depois de voltar de um buraco: segura o macaco parado um instante
   };
+}
+
+// Volta para o chão seguro LONGE da beirada (antes voltava a 2px dela: segurando pra frente,
+// caía de novo em meio segundo e perdia todas as vidas sem conseguir reagir).
+// Também segura o macaco parado por um instante, para dar tempo de soltar o direcional.
+const FOLGA_BEIRADA = 150;
+function voltarProSeguro(j) {
+  const s = j.seguro;
+  const indoPraDireita = j.x >= s.x;
+  let x = s.x;
+  const c = s.chao;
+  if (c && c.w !== undefined) {
+    const min = c.x + 12;
+    const max = c.x + c.w - j.w - 12;
+    if (max - min < FOLGA_BEIRADA * 2) x = (min + max) / 2;       // chão curto: volta no meio dele
+    else if (indoPraDireita) x = Math.min(x, max - FOLGA_BEIRADA);
+    else x = Math.max(x, min + FOLGA_BEIRADA);
+    x = limitar(x, min, Math.max(min, max));
+  }
+  j.x = x;
+  j.y = s.y;
+  j.vx = 0;
+  j.vy = 0;
+  j.travado = 40;
 }
 
 function caixaJogador() {
@@ -236,6 +261,7 @@ function atualizarJogador() {
   if (j.laco) atualizarLaco();
 
   let dir = (teclas.direita ? 1 : 0) - (teclas.esquerda ? 1 : 0);
+  if (j.travado > 0) { j.travado--; dir = 0; }
 
   // Comemorando no fim da fase: pulinhos de alegria
   if (j.comemorar > 0) {
@@ -458,6 +484,7 @@ function posMovimento() {
   if (j.noChao && j.chao && j.chao.tipo && !naAreia && j.invencivel === 0 && !j.deslizando) {
     j.seguro.x = j.x;
     j.seguro.y = j.y;
+    j.seguro.chao = j.chao;
   }
 
   if (j.y > ALTURA + 80) caiuNoBuraco();
@@ -707,9 +734,7 @@ function caiuNoBuraco() {
     cancelarLaco();
     j.cipo = null;
     if (j.deslizando) { j.deslizando = false; j.h = 72; }
-    j.x = j.seguro.x;
-    j.y = j.seguro.y;
-    j.vx = 0;
+    voltarProSeguro(j);
     j.vy = -6;
     j.invencivel = 60;
     som("poder");
@@ -731,10 +756,7 @@ function caiuNoBuraco() {
   cancelarLaco();
   j.cipo = null;
   if (j.deslizando) { j.deslizando = false; j.h = 72; }
-  j.x = j.seguro.x;
-  j.y = j.seguro.y;
-  j.vx = 0;
-  j.vy = 0;
+  voltarProSeguro(j);
   j.invencivel = 100;
   j.afundar = 0;
   texto(j.x + j.w / 2, j.y - 10, tr("-1 vida"), "#ff6b6b", 22);

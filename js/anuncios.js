@@ -174,10 +174,7 @@ function recusarReviver() {
 function reviverJogador() {
   const j = jogador;
   fase.reviveu = true;
-  j.x = j.seguro.x;
-  j.y = j.seguro.y;
-  j.vx = 0;
-  j.vy = 0;
+  voltarProSeguro(j);
   j.morto = 0;
   j.giro = 0;
   j.afundar = 0;

@@ -155,6 +155,9 @@ function atualizarToque() {
       agora.direita = dx > STICK.morta;
       // basta puxar um pouco para baixo; inclinado na diagonal também desliza correndo
       agora.baixo = dy > STICK.baixo && dy > Math.abs(dx) * 0.45;
+      // pendurado no cipó, "baixo" solta o cipó: aí só vale um puxão bem para baixo
+      // (antes, balançar com o dedo inclinado soltava sem querer e o macaco caía)
+      if (jogador && jogador.cipo) agora.baixo = dy > STICK.r * 0.7 && dy > Math.abs(dx) * 1.5;
     }
     Object.keys(toque.botoes).forEach(function(id) {
       if (toque.botoes[id] === "pulo") agora.pulo = true;
