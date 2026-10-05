@@ -203,13 +203,18 @@ function moedasDoAnuncio() {
   return Math.min(300, 40 + 10 * save.nivel);
 }
 
+// "L ou Esc para voltar", com a tecla da loja que estiver na aba Controles
+function dicaLoja() {
+  return toqueAtivo ? "" : tr("{0} ou Esc para voltar", nomeComando("loja"));
+}
+
 function avisoLoja(texto, cor) {
   const d = el("lojaDica");
   d.textContent = texto;
   d.style.color = cor || "";
   clearTimeout(avisoLoja.t);
   avisoLoja.t = setTimeout(function() {
-    d.textContent = tr("L ou Esc para voltar");
+    d.textContent = dicaLoja();
     d.style.color = "";
   }, 2500);
 }

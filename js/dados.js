@@ -621,7 +621,7 @@ const ACOES = [
 ];
 
 const TECLAS_PADRAO = {
-  esquerda: ["a", "arrowleft"], direita: ["d", "arrowright"], pulo: ["w", "arrowup", " "],
+  esquerda: ["a", "arrowleft"], direita: ["d", "arrowright"], pulo: [" ", "w", "arrowup"],
   baixo: ["s", "arrowdown"], laco: ["j", "k"], dash: ["shift"],
   poder1: ["1"], poder2: ["2"], poder3: ["3"], poder4: ["4"], poder5: ["5"],
   loja: ["l"], pausa: ["p"], som: ["m"]

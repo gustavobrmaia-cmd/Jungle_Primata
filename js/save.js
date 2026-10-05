@@ -99,6 +99,8 @@ let save = saveNovo();
       if (Array.isArray(lista)) save.teclas[a.id] = lista.filter(function(k) { return typeof k === "string"; }).slice(0, 3);
     });
     // save antigo: a tecla do revólver (K) vira mais uma tecla do cipó-laço
+    // pulo: o Espaço vem primeiro (é a tecla que aparece nas placas); só muda quem nunca mexeu nele
+    if ((save.teclas.pulo || []).join("|") === "w|arrowup| ") save.teclas.pulo = [" ", "w", "arrowup"];
     if (Array.isArray(s.teclas.tiro)) {
       const usadas = {};
       ACOES.forEach(function(a) { (save.teclas[a.id] || []).forEach(function(k) { usadas[k] = true; }); });

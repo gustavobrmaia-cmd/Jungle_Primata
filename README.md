@@ -19,7 +19,7 @@ Os anúncios só começam a partir daí.
 | Tecla | Ação |
 | --- | --- |
 | A / D ou setas | andar |
-| W, ↑ ou Espaço | pular (segure para pular mais alto) |
+| Espaço, W ou ↑ | pular (segure para pular mais alto) |
 | S ou ↓ | deslizar |
 | J ou K | cipó-laço (prêmio do Gorila Rei): agarra o inimigo, puxa e chuta pro espaço |
 | Shift | dash (melhoria da loja) |

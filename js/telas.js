@@ -139,8 +139,13 @@ function atualizarTelas() {
   atualizarAvisoRei();
   mostrar(el("botoesJogo"), estado === "jogo" && !pausado);
   if (typeof nomeComando === "function") {
-    el("botoesJogo").querySelector('[data-acao="pausar"]').textContent = tr("PAUSA") + (toqueAtivo ? "" : " (" + nomeComando("pausa") + ")");
-    el("botoesJogo").querySelector('[data-acao="loja"]').textContent = tr("LOJA") + (toqueAtivo ? "" : " (" + nomeComando("loja") + ")");
+    // nomes das teclas sempre de acordo com a aba Controles (no toque, sem tecla)
+    const tc = function(acao) { return toqueAtivo ? "" : " (" + nomeComando(acao) + ")"; };
+    el("botoesJogo").querySelector('[data-acao="pausar"]').textContent = tr("PAUSA") + tc("pausa");
+    el("botoesJogo").querySelector('[data-acao="loja"]').textContent = tr("LOJA") + tc("loja");
+    el("telaPausa").querySelector('[data-acao="continuar"]').textContent = tr("Continuar") + tc("pausa");
+    el("telaPausa").querySelector('[data-acao="loja"]').textContent = tr("Loja") + tc("loja");
+    if (!lojaAberta) el("lojaDica").textContent = dicaLoja();
   }
   mostrar(el("loja"), lojaAberta);
   el("menuMoedas").textContent = save.moedas;

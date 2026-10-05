@@ -423,7 +423,9 @@ const EN = {
   "volta.": "goes back.",
   "Restaurar padrão": "Restore defaults",
   "Loja do Primata": "Primate Shop",
-  "L ou Esc para voltar": "L or Esc to go back"
+  "L ou Esc para voltar": "L or Esc to go back",
+  "{0} ou Esc para voltar": "{0} or Esc to go back",
+  "Continuar": "Resume"
 };
 
 function tr(texto) {
