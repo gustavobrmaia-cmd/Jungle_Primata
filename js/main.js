@@ -192,7 +192,11 @@ function passo() {
         save.stats.tempo++;
         tempoJogadoSessao++;
       }
-    } else if (estado === "intro") atualizarIntro();
+    } else if (estado === "intro") {
+      // a história corre 1,5x mais rápido (~5 s): quem chega quer jogar logo
+      atualizarIntro();
+      if (tempo % 2 === 0 && estado === "intro") atualizarIntro();
+    }
     else if (estado === "final") atualizarFinal();
     else menuT++;
   }

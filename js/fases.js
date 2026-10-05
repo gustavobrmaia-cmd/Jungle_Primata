@@ -495,7 +495,7 @@ function gerarFase(indice) {
 
   if (indice === 0) {
     fPlaca(f, 440, tr("{esquerda}/{direita} andar   {pulo} pular\nSegure {pulo} para pular mais alto"));
-    lista = ["plano", "buraco", "apresentaInimigo", "espinhos", "muro", "grupo", "plataformas", "espinhos", "escada"];
+    lista = ["plano", "buraco", "apresentaInimigo", "espinhos", "muro", "plataformas", "escada"];
   } else {
     if (f.etapa === 0) {
       let boasVindas = tr("Bem-vindo: {0}!", mundo.nome);

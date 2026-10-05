@@ -120,7 +120,7 @@ function atualizarIntro() {
 
   if (tremor > 0) tremor--;
   atualizarParticulas();
-  if (c.t > 560) terminarIntro();
+  if (c.t > 470) terminarIntro();
 }
 
 function desenharIntro() {
@@ -178,14 +178,14 @@ function desenharIntro() {
       textoSombra(tr("O vento levou a banana!"), LARGURA / 2, 168, ["#fff9c4", "#ffc21a"], 3);
       ctx.globalAlpha = 1;
     }
-    if (c.t > 320) {
-      ctx.globalAlpha = Math.min(1, (c.t - 320) / 16);
+    if (c.t > 300) {
+      ctx.globalAlpha = Math.min(1, (c.t - 300) / 16);
       ctx.font = "bold 24px " + FONTE;
       textoSombra(tr("Atravesse a Selva, o Deserto, a Era do Gelo e o Vulcão para recuperá-la!"), LARGURA / 2, 214);
       ctx.globalAlpha = 1;
     }
-    if (c.t > 400) {
-      ctx.globalAlpha = Math.min(1, (c.t - 400) / 16);
+    if (c.t > 350) {
+      ctx.globalAlpha = Math.min(1, (c.t - 350) / 16);
       ctx.font = "bold 20px " + FONTE;
       textoSombra(tr("Dizem que ela foi parar nas garras do Dragão de Magma..."), LARGURA / 2, 250, "#ff922b");
       ctx.globalAlpha = 1;

@@ -764,6 +764,19 @@ function caiuNoBuraco() {
     }
     return;
   }
+  // primeira fase (a de aprender): cair no buraco só faz voltar, sem perder vida
+  if (fase.indice === 0 && !fase.secreta) {
+    tremor = 6;
+    som("dano");
+    cancelarLaco();
+    j.cipo = null;
+    if (j.deslizando) { j.deslizando = false; j.h = 72; }
+    voltarProSeguro(j);
+    j.invencivel = 60;
+    j.afundar = 0;
+    texto(j.x + j.w / 2, j.y - 10, tr("Ops! Tente de novo"), "#ffe066", 22);
+    return;
+  }
   j.vidas--;
   perdeuVida();
   tremor = 10;

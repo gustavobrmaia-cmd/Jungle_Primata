@@ -81,6 +81,7 @@ const EN = {
   "Vença o Gorila Rei para ganhar o cipó-laço!": "Beat the Gorilla King to get the vine lasso!",
   "Você ganhou o cipó-laço!": "You got the vine lasso!",
   "Arraste para andar": "Drag to move",
+  "Ops! Tente de novo": "Oops! Try again",
   "Toque para pular": "Tap to jump",
   "{0}: puxa o inimigo e chuta pro espaço. Pegue a banana!": "{0}: pull enemies in and kick them into space. Grab the banana!",
   "Novo: {0}!": "New: {0}!",
