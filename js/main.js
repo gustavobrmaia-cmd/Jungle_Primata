@@ -256,6 +256,7 @@ function ajustarTela() {
 }
 
 window.addEventListener("resize", ajustarTela);
+window.addEventListener("orientationchange", function() { setTimeout(ajustarTela, 150); });
 ajustarTela();
 
 traduzirDom();

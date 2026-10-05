@@ -899,37 +899,6 @@ kbd {
 }
 
 
-/* ===== Celular em pé: aviso para girar ===== */
-#girar {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 28px;
-  padding: 24px;
-  background: #1c0f05;
-  color: #fff3bf;
-  font-size: 22px;
-  font-weight: 700;
-  text-align: center;
-}
-#girar.aberta { display: flex; }
-#girar .celular {
-  width: 60px;
-  height: 100px;
-  border: 6px solid #ffd43b;
-  border-radius: 10px;
-  animation: girarCelular 1.6s ease-in-out infinite;
-}
-@keyframes girarCelular {
-  0%, 25% { transform: rotate(0deg); }
-  60%, 100% { transform: rotate(-90deg); }
-}
-
-
 /* ===== Estrelas das fases ===== */
 .estrelasFase { display: flex; gap: 2px; }
 .estrelasFase .apagada { filter: grayscale(1) brightness(0.45); opacity: 0.7; }

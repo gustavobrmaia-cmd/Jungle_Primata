@@ -308,7 +308,6 @@ const EN = {
   "toque nos poderes para usar": "tap a power to use it",
   "Toque na tela para começar": "Tap the screen to start",
   "Toque na tela para voltar ao menu": "Tap the screen to return to the menu",
-  "Gire o celular na horizontal para jogar": "Turn your phone sideways to play",
   "usar poder": "use power",
 
   // ---------- Menus ----------
