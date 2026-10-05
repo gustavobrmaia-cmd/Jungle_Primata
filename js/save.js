@@ -32,6 +32,7 @@ function saveNovo() {
     teclas: copiaTeclasPadrao(),
     stats: { inimigos: 0, chutes: 0, chefes: 0, mortes: 0, tempo: 0 },
     viuIntro: false,
+    viuTutorial: false,           // primeira visita: tutorial curtinho antes do menu
     zerou: false,
     mudo: false,
     idioma: "",                   // "pt", "en" ou vazio (segue o navegador)
@@ -112,6 +113,8 @@ let save = saveNovo();
     });
   }
   save.viuIntro = !!s.viuIntro;
+  // quem já jogava antes do tutorial existir não precisa dele
+  save.viuTutorial = !!s.viuTutorial || !!s.viuIntro || (s.desbloqueado || 0) > 0;
   save.zerou = !!s.zerou;
   save.mudo = !!s.mudo;
   save.cronometro = !!s.cronometro;

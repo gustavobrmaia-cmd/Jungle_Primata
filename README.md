@@ -9,9 +9,10 @@ Cada fase libera um inimigo novo, um obstáculo novo e um cosmético de prêmio.
 As fases ficam mais difíceis conforme você avança: ficam mais longas, os buracos ficam
 maiores, aparecem mais inimigos e eles ficam mais rápidos.
 
-Na **primeira vez** que alguém abre o jogo, a história do começo (o vento levando a banana) já
-abre sozinha, sem menu, e emenda na fase 1 (dá para pular com qualquer tecla, clique ou toque).
-O **menu** só aparece a partir da segunda visita.
+Na **primeira vez** que alguém abre o jogo, entra direto num **tutorial** bem curto (~20 s, sem
+anúncio): andar, pular um bloco, pisar na cobra e pegar a banana. No fim dele aparece o **menu**;
+o primeiro "Jogar" mostra a história do começo (o vento levando a banana) e começa a fase 1.
+Os anúncios só começam a partir daí.
 
 ## Controles
 
@@ -156,4 +157,5 @@ Depois de zerar, **Jogar** começa uma run nova na Selva 1-1.
 - `js/anuncios.js`: SDK do Poki (intervalo e anúncio premiado para reviver).
 - `js/controle.js`: suporte a controle (gamepad).
 - `js/toque.js`: controles de toque para celular e tablet.
+- `js/tutorial.js`: tutorial curtinho da primeira visita.
 - `fontes/`: fonte Pixelify Sans (licença SIL OFL em `fontes/OFL.txt`).

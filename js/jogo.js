@@ -88,7 +88,7 @@ function vidasMax() {
 function iniciarFase(indice, doCheckpoint) {
   if (!doCheckpoint) { checkpointX = null; danoNaTentativa = false; }
   resultadoFase = null;
-  fase = indice === FASE_REI ? gerarFaseRei() : gerarFase(indice);
+  fase = indice === FASE_REI ? gerarFaseRei() : indice === FASE_TUTORIAL ? gerarTutorial() : gerarFase(indice);
   inimigos = fase.inimigos.map(criarInimigo);
   projeteis = [];
   particulas = [];
@@ -764,19 +764,6 @@ function caiuNoBuraco() {
     }
     return;
   }
-  // primeira fase (a de aprender): cair no buraco só faz voltar, sem perder vida
-  if (fase.indice === 0 && !fase.secreta) {
-    tremor = 6;
-    som("dano");
-    cancelarLaco();
-    j.cipo = null;
-    if (j.deslizando) { j.deslizando = false; j.h = 72; }
-    voltarProSeguro(j);
-    j.invencivel = 60;
-    j.afundar = 0;
-    texto(j.x + j.w / 2, j.y - 10, tr("Ops! Tente de novo"), "#ffe066", 22);
-    return;
-  }
   j.vidas--;
   perdeuVida();
   tremor = 10;
@@ -819,9 +806,9 @@ function voltarDoCheckpoint() {
   pausado = false;
   atualizarTelas();
   mostrarMensagem(tr("Você perdeu!"), checkpointX !== null ? tr("Voltando do checkpoint...") : tr("Tentando de novo..."), 90, function() {
-    intervaloComercial(function() {
-      trocarCena(function() { iniciarFase(fase.indice, true); });
-    });
+    const seguir = function() { trocarCena(function() { iniciarFase(fase.indice, true); }); };
+    if (fase.tutorial) seguir();   // no tutorial não tem anúncio
+    else intervaloComercial(seguir);
   });
 }
 
@@ -1423,6 +1410,7 @@ function atualizarBanana() {
 }
 
 function fimDaFase() {
+  if (fase.tutorial) { fimDoTutorial(); return; }
   cronFimFase();
   avaliarFase();
   const i = fase.indice;
@@ -2284,6 +2272,7 @@ function desenharClima() {
 
 function atualizarJogo() {
   tempo++;
+  if (fase.tutorial) atualizarTutorial();
   if (tremor > 0) tremor--;
   atualizarExtrasHud();
 
@@ -3501,7 +3490,7 @@ function desenharHud() {
   if (!chefe) {
     painelPixel(LARGURA / 2 - 210, 6, 420, 58, mundoCor);
     ctx.font = "bold 20px " + FONTE;
-    textoSombra(nomeFase(fase.indice), LARGURA / 2, 31);
+    textoSombra(fase.tutorial ? tr("Tutorial") : nomeFase(fase.indice), LARGURA / 2, 31);
     const bx = LARGURA / 2 - 150;
     const k = limitar(j.x / fase.fimX, 0, 1);
     ctx.fillStyle = "#0d0704";

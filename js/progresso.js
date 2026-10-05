@@ -93,6 +93,7 @@ function darPremioDaFase(i) {
 // ---------- Cartão com o nome da fase ----------
 
 function mostrarCartaoFase() {
+  if (fase.tutorial) { cartao = null; return; }
   const m = MUNDOS[fase.mundo];
   if (fase.secreta) {
     const linhas = [tr("O macaco lendário! Tentativas restantes: {0}", save.rei.tentativas)];

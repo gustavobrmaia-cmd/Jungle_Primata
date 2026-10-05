@@ -205,6 +205,8 @@ function jogar() {
 }
 
 function voltarAoMenu() {
+  // saiu do tutorial pelo menu de pausa: não mostra de novo
+  if (estado === "jogo" && fase && fase.tutorial && !save.viuTutorial) save.viuTutorial = true;
   cronCancelarRun();
   estado = "menu";
   telaAtual = "menu";
@@ -678,7 +680,9 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
     else if (acao === "reiniciar") {
       pausado = false;
       atualizarTelas();
-      intervaloComercial(function() { trocarCena(function() { iniciarFase(fase.indice); }); });
+      const recomecar = function() { trocarCena(function() { iniciarFase(fase.indice); }); };
+      if (fase.tutorial) recomecar();   // no tutorial não tem anúncio
+      else intervaloComercial(recomecar);
     }
     else if (acao === "reviver") aceitarReviver();
     else if (acao === "naoReviver") recusarReviver();

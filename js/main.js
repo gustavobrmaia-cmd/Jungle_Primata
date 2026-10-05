@@ -190,7 +190,6 @@ function passo() {
       if (!pausado) {
         atualizarJogo();
         save.stats.tempo++;
-        tempoJogadoSessao++;
       }
     } else if (estado === "intro") {
       // a história corre 1,5x mais rápido (~5 s): quem chega quer jogar logo
@@ -215,6 +214,8 @@ function desenharTudo() {
   else desenharMenuFundo();
   desenharTransicao();
   desenharPainelRetrato();
+  // depois do painel: em pé a faixa do tutorial fica no painel embaixo do cenário
+  if (estado === "jogo" && fase && fase.tutorial && !transicao) desenharTutorial();
 }
 
 function quadro(agora) {
@@ -275,11 +276,11 @@ try {
     renderizarOpcoes();
   }
 } catch (e) { /* sem sessionStorage */ }
-// Primeira visita: a história do começo abre sozinha (sem menu) e emenda na fase 1.
-// O menu só aparece a partir da segunda visita.
-if (!save.viuIntro) {
+// Primeira visita: tutorial curtinho jogando (sem menu); no fim dele aparece o menu.
+// Depois, o primeiro "Jogar" mostra a história e começa a fase 1.
+if (!save.viuTutorial) {
   telaAtual = "nenhuma";
-  iniciarIntro();
+  iniciarFase(FASE_TUTORIAL);
 }
 iniciarAnuncios();
 requestAnimationFrame(quadro);

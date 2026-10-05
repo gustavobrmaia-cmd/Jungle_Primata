@@ -322,7 +322,7 @@ function dicaPiscando(txt, x, y) {
 
 // Primeira fase de quem está começando: pede para andar e pular até a pessoa fazer
 function atualizarDicasToque() {
-  if (!toqueAtivo || estado !== "jogo" || !fase || fase.indice !== 0 || save.desbloqueado > 0) {
+  if (!toqueAtivo || estado !== "jogo" || !fase || (fase.indice !== 0 && !fase.tutorial) || save.desbloqueado > 0) {
     dicaToque.andar = dicaToque.pulo = 0;
     return;
   }

@@ -35,6 +35,7 @@ function formatarDelta(frames) {
 }
 
 function cronInicioFase(indice, doCheckpoint) {
+  if (indice === FASE_TUTORIAL) { cron.faseRodando = false; return; }
   if (doCheckpoint) return;   // voltou do checkpoint: o tempo da fase continua
   cron.fase = 0;
   cron.faseRodando = true;

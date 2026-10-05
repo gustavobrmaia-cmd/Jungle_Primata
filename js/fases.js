@@ -124,12 +124,8 @@ const CHUNKS = {
 
   plataformas: function(f, x, d, r) {
     const n = d > 0.5 ? 3 : 2;
-    // primeiras fases da Selva: plataformas mais largas e vãos menores (é onde o novato mais cai)
-    const facil = f.mundo === 0 && f.etapa <= 2;
-    const larg = facil ? 140 : 96;
-    const vao = facil ? 90 : 120;
     fChao(f, x, 160);
-    let px = x + 160 + (facil ? 90 : 110);
+    let px = x + 160 + 110;
     for (let i = 0; i < n; i++) {
       const y = CHAO - 70 - (i % 2) * 50;
       let mov = null;
@@ -137,11 +133,11 @@ const CHUNKS = {
         mov = r() < 0.5 ? { ax: 40, periodo: Math.round(220 - d * 60), fase: r() * 6 }
                         : { ay: 40, periodo: 200, fase: r() * 6 };
       }
-      fPlat(f, px, y, larg, mov);
-      fLinhaMoedas(f, px + 16 + (larg - 96) / 2, y - 44, 2, 40);
-      px += larg + vao;
+      fPlat(f, px, y, 96, mov);
+      fLinhaMoedas(f, px + 16, y - 44, 2, 40);
+      px += 96 + 120;
     }
-    const fim = px - vao + (facil ? 90 : 110);
+    const fim = px - 120 + 110;
     if (f.mundo === 3) f.lavas.push({ x: x + 160, w: fim - x - 160 });
     fChao(f, fim, 200);
     return fim + 200;
@@ -195,18 +191,16 @@ const CHUNKS = {
     const dois = (f.etapa > 1 || d > 0.45) && r() < 0.6;
     fChao(f, x, 200);
     const x0 = x + 200;
-    // primeiras fases da Selva: buraco menor e cipó mais comprido (mais fácil de agarrar)
-    const facil = f.mundo === 0 && f.etapa <= 2;
-    const a1 = x0 + (facil ? 100 : 120);
-    f.cipos.push({ x: a1, y: 150, comp: facil ? 330 : 300, fase: r() * 6 });
-    let fim = a1 + (facil ? 230 : 320);
+    const a1 = x0 + 120;
+    f.cipos.push({ x: a1, y: 150, comp: 300, fase: r() * 6 });
+    let fim = a1 + 320;
     if (dois) {
       const a2 = a1 + 330;
       f.cipos.push({ x: a2, y: 150, comp: 300, fase: r() * 6 });
       fArcoMoedas(f, a1, a2, 380, 50, 4);
       fim = a2 + 320;
     }
-    fArcoMoedas(f, fim - (facil ? 220 : 300), fim - 40, 420, 90, 4);
+    fArcoMoedas(f, fim - 300, fim - 40, 420, 90, 4);
     fChao(f, fim, 240);
     if (r() < d) fColocar(f, inimigoDe(f, r, "terrestre"), fim + 140);
     return fim + 240;
@@ -495,7 +489,7 @@ function gerarFase(indice) {
 
   if (indice === 0) {
     fPlaca(f, 440, tr("{esquerda}/{direita} andar   {pulo} pular\nSegure {pulo} para pular mais alto"));
-    lista = ["plano", "buraco", "apresentaInimigo", "espinhos", "muro", "plataformas", "escada"];
+    lista = ["plano", "buraco", "apresentaInimigo", "espinhos", "muro", "grupo", "plataformas", "espinhos", "escada"];
   } else {
     if (f.etapa === 0) {
       let boasVindas = tr("Bem-vindo: {0}!", mundo.nome);
@@ -520,15 +514,7 @@ function gerarFase(indice) {
 
   let x = 640;
   const mostradas = {};
-  let checkpointCipo = false;
   lista.forEach(function(nome, i) {
-    // primeiras fases: checkpoint logo antes do primeiro buraco de cipó (cair ali não manda de volta ao começo)
-    if (nome === "cipo" && !checkpointCipo && f.mundo === 0 && f.etapa <= 2 && i > 0) {
-      checkpointCipo = true;
-      fChao(f, x, 280);
-      f.checkpoints.push({ x: x + 120, ativo: false, sobe: 0 });
-      x += 280;
-    }
     if (i === Math.floor(lista.length / 2)) {
       fChao(f, x, 280);
       f.checkpoints.push({ x: x + 120, ativo: false, sobe: 0 });
