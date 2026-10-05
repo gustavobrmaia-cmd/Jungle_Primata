@@ -39,10 +39,18 @@ function ligarSdkPoki() {
     });
 }
 
+// O Poki pede o gameplayStart só depois da primeira interação do jogador (nunca ao carregar):
+// o tutorial da primeira visita abre sozinho, então espera a primeira tecla, clique ou toque.
+let jogadorInteragiu = false;
+["keydown", "pointerdown", "touchstart", "mousedown"].forEach(function(ev) {
+  window.addEventListener(ev, function() { jogadorInteragiu = true; }, { capture: true, passive: true });
+});
+
 // Chamado a cada passo: avisa o Poki quando a gameplay começa ou para (menu, pausa, cenas, fim de fase)
 function atualizarAnuncios() {
   if (!anuncios.sdk) return;
-  const jogando = estado === "jogo" && !pausado && !reviverAberto && !anuncios.aberto && !(mensagem && mensagem.congela);
+  if (controleAtivo) jogadorInteragiu = true;
+  const jogando = jogadorInteragiu && estado === "jogo" && !pausado && !reviverAberto && !anuncios.aberto && !(mensagem && mensagem.congela);
   if (jogando === anuncios.jogando) return;
   anuncios.jogando = jogando;
   if (jogando) anuncios.sdk.gameplayStart();
