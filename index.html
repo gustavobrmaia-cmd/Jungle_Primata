@@ -1,192 +1,74 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Jogo do Primata</title>
-  <!-- SDK do Poki no <head>, como pede a documentação (a versão local tira esta linha) -->
+  <title>Jogo</title>
+  <!-- SDK do Poki no <head>, como pede a documentação (sem ele o jogo funciona igual, só sem anúncios) -->
   <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
   <link rel="stylesheet" href="estilo.css">
 </head>
-
 <body>
+  <div id="tela">
+    <canvas id="canvas" width="1280" height="720"></canvas>
 
-  <div id="jogo">
-
-    <canvas id="tela" width="1200" height="700"></canvas>
-
-    <div id="botoesJogo">
-      <button class="sec" data-acao="pausar">PAUSA (P)</button>
-      <button class="sec" data-acao="loja">LOJA (L)</button>
+    <!-- HUD por cima do jogo -->
+    <div id="hud" class="escondido">
+      <button id="btnPausa" class="hudBotao" data-acao="pausar" aria-label="pause">II</button>
     </div>
 
-    <!-- Menu inicial -->
+    <!-- Menu principal -->
     <div id="telaMenu" class="tela">
-      <div class="cabecalho">
-        <canvas class="bananaDeco"></canvas>
-        <div class="titulos">
-          <h1>Jogo do Primata</h1>
-          <p class="sub"><span>A grande caçada à banana</span></p>
-        </div>
-        <canvas class="bananaDeco espelho"></canvas>
-      </div>
-      <div class="pilulas">
-        <span class="pilula moedas"><span class="ic-moeda"></span><span id="menuMoedas">0</span><span class="rot">moedas</span></span>
-        <span class="pilula estrelas"><span id="menuEstrelaIc"></span><span id="menuEstrelas">0</span></span>
-        <span class="pilula progresso"><span class="rot">Fase</span><span id="menuProgresso"></span></span>
-        <span class="pilula nivel">
-          <span class="rot">Nível</span><span id="menuNivel" class="valor">1</span>
-          <span class="barraXp"><span id="menuXp"></span></span>
-          <span id="menuXpTexto" class="xpTexto"></span>
-        </span>
-      </div>
-      <div id="avisoRei"></div>
+      <h1 data-t="titulo"></h1>
       <div class="botoes">
-        <button class="grande" data-acao="jogar">Jogar (Enter)</button>
-        <button class="sec" data-acao="mapa">Escolher fase</button>
-        <button class="sec" data-acao="loja">Loja</button>
-        <button class="sec" data-acao="controles">Opções</button>
+        <button class="grande" data-acao="jogar" data-t="jogar"></button>
+        <button data-acao="idiomas" data-t="idioma"></button>
+        <button data-acao="som" id="btnSom"></button>
       </div>
-      <div class="controles" id="menuControles"></div>
+      <p class="recorde" id="menuRecorde"></p>
     </div>
 
-    <!-- Mapa de fases -->
-    <div id="telaMapa" class="tela">
-      <h2>Escolha a fase</h2>
-      <div id="mundos"></div>
-      <button class="sec" data-acao="voltar">Voltar</button>
+    <!-- Escolha do idioma (cada idioma com o nome na própria língua) -->
+    <div id="telaIdiomas" class="tela">
+      <h2 data-t="idioma"></h2>
+      <div id="listaIdiomas"></div>
+      <button data-acao="voltar" data-t="voltar"></button>
     </div>
 
     <!-- Pausa -->
     <div id="telaPausa" class="tela">
-      <div class="painelCentral">
-        <h2>Pausado</h2>
-        <div class="botoes">
-          <button class="grande" data-acao="continuar">Continuar (P)</button>
-          <button class="sec" data-acao="loja">Loja (L)</button>
-          <button class="sec" data-acao="reiniciar">Recomeçar fase</button>
-          <button class="sec" data-acao="controles">Opções</button>
-          <button class="sec" id="btnSom" data-acao="som">Som</button>
-          <button class="perigo" data-acao="menu">Menu principal</button>
-        </div>
+      <h2 data-t="pausado"></h2>
+      <div class="botoes">
+        <button class="grande" data-acao="continuar" data-t="continuar"></button>
+        <button data-acao="som" id="btnSomPausa"></button>
+        <button data-acao="menu" data-t="menu"></button>
       </div>
     </div>
 
-    <!-- Assista para reviver (só aparece com o SDK do Poki) -->
-    <div id="telaReviver" class="tela">
-      <div class="painelCentral">
-        <h2>Você perdeu!</h2>
-        <p class="info">Assista um anúncio para continuar daqui com todas as vidas.</p>
-        <div class="botoes">
-          <button class="grande" data-acao="reviver">Assistir e reviver (Enter)</button>
-          <button class="sec" data-acao="naoReviver">Voltar do checkpoint (Esc)</button>
-        </div>
+    <!-- Fim de jogo, com a oferta opcional de continuar assistindo um anúncio -->
+    <div id="telaFim" class="tela">
+      <h2 data-t="fim"></h2>
+      <p class="info" id="fimPontos"></p>
+      <p class="info" id="fimRecorde"></p>
+      <div class="botoes">
+        <button class="premiado" data-acao="reviver" id="btnReviver" data-t="reviver"></button>
+        <button class="grande" data-acao="denovo" data-t="denovo"></button>
+        <button data-acao="menu" data-t="menu"></button>
       </div>
+      <p class="aviso" id="fimAviso"></p>
     </div>
-
-    <!-- Saru (chefe secreto): depois de perder -->
-    <div id="telaRei" class="tela">
-      <div class="painelCentral">
-        <h2>O Saru venceu!</h2>
-        <p class="info" id="reiTentativas"></p>
-        <p class="info" id="reiAmanha">Volte amanhã: ele pode aparecer de novo.</p>
-        <div class="botoes">
-          <button class="grande" id="btnReiDeNovo" data-acao-rei="deNovo">Tentar de novo (Enter)</button>
-          <button class="anuncio" id="btnReiAnuncio" data-acao-rei="anuncio">Assistir anúncio: +3 tentativas</button>
-          <button class="sec" data-acao-rei="fechar">Voltar ao menu (Esc)</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Controles: trocar as teclas -->
-    <div id="telaControles" class="tela">
-      <div class="painelCentral largo">
-        <h2>Opções</h2>
-        <div class="abasOpcoes">
-          <button data-aba-opcoes="controles">Controles</button>
-          <button data-aba-opcoes="idioma">Idioma</button>
-          <button data-aba-opcoes="adicionais">Adicionais</button>
-        </div>
-        <div class="secaoOpcoes" id="opcControles">
-          <p class="info">Clique numa tecla e aperte a nova. <b>Delete</b> apaga. <b>Esc</b> volta.</p>
-          <div id="listaControles"></div>
-        </div>
-        <div class="secaoOpcoes" id="opcIdioma">
-          <p class="info">Escolha o idioma do jogo.</p>
-          <div class="botoesOpcoes" id="listaIdiomas"></div>
-        </div>
-        <div class="secaoOpcoes" id="opcAdicionais">
-          <div class="botoesOpcoes">
-            <button class="sec" id="btnCronControles" data-acao="cronometro">Cronômetro</button>
-            <button class="sec" id="btnSomOpcoes" data-acao="som">Som</button>
-          </div>
-          <p class="info">O cronômetro mostra o tempo da run e de cada fase, com os seus recordes.</p>
-        </div>
-        <div class="linhaBotoes">
-          <button class="sec" id="btnPadraoControles" data-acao="padraoControles">Restaurar padrão</button>
-          <button data-acao="fecharControles">Voltar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Loja -->
-    <div id="loja">
-      <div class="painel">
-        <div class="topo">
-          <h2>Loja do Primata</h2>
-          <span class="saldo"><span class="ic-moeda"></span><span id="lojaMoedas">0</span></span>
-          <button class="anuncio" id="btnMoedasAnuncio" data-acao="moedasAnuncio">Moedas grátis</button>
-          <span class="dica" id="lojaDica">L ou Esc para voltar</span>
-          <button class="perigo" id="fecharLoja" tabindex="-1">X</button>
-        </div>
-
-        <div class="lado">
-          <div class="vitrine"><canvas id="previa" width="168" height="168"></canvas></div>
-          <div class="abas" id="abas"></div>
-        </div>
-
-        <div class="itens" id="itens"></div>
-      </div>
-    </div>
-
   </div>
 
-
-  <!-- A ordem importa: cada arquivo usa coisas dos anteriores -->
+  <script src="js/config.js"></script>
   <script src="js/util.js"></script>
-  <script src="js/idioma.js"></script>
-  <script src="js/idiomas/es.js"></script>
-  <script src="js/idiomas/fr.js"></script>
-  <script src="js/idiomas/de.js"></script>
-  <script src="js/idiomas/it.js"></script>
-  <script src="js/idiomas/nl.js"></script>
-  <script src="js/idiomas/pl.js"></script>
-  <script src="js/idiomas/tr.js"></script>
-  <script src="js/dados.js"></script>
+  <script src="js/idiomas.js"></script>
   <script src="js/save.js"></script>
-  <script src="js/pixelarte.js"></script>
-  <script src="js/arte_chefes.js"></script>
-  <script src="js/arte_objetos.js"></script>
-  <script src="js/arte.js"></script>
-  <script src="js/arte_rei.js"></script>
-  <script src="js/som.js"></script>
-  <script src="js/fases.js"></script>
+  <script src="js/poki.js"></script>
+  <script src="js/eventos.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/entrada.js"></script>
   <script src="js/jogo.js"></script>
-  <script src="js/obstaculos.js"></script>
-  <script src="js/progresso.js"></script>
-  <script src="js/chefes.js"></script>
-  <script src="js/cenas.js"></script>
-  <script src="js/cronometro.js"></script>
-  <script src="js/anuncios.js"></script>
   <script src="js/telas.js"></script>
-  <script src="js/estrelas.js"></script>
-  <script src="js/reimacaco.js"></script>
-  <script src="js/controle.js"></script>
-  <script src="js/toque.js"></script>
-  <script src="js/tutorial.js"></script>
   <script src="js/main.js"></script>
-
 </body>
-
 </html>
