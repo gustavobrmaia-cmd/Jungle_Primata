@@ -196,8 +196,7 @@ function soltarTeclas() {
   apertos.clear();
 }
 
-// Intervalo comercial ao entrar numa fase, MENOS na 1-1 (e na história que vem antes dela):
-// o primeiro anúncio só aparece a partir da 2ª fase.
+// Intervalo comercial ao entrar numa fase (menos para quem nunca passou da 1-1: semIntervaloAgora)
 function sairDoMenu(fn, semIntervalo) {
   telaAtual = "nenhuma";
   atualizarTelas();
@@ -206,9 +205,9 @@ function sairDoMenu(fn, semIntervalo) {
 }
 
 function jogar() {
-  if (!save.viuIntro) sairDoMenu(iniciarIntro, true);
-  else if (save.zerou) sairDoMenu(function() { iniciarFase(0); }, true);   // depois de zerar: nova run desde o começo
-  else sairDoMenu(function() { iniciarFase(save.desbloqueado); }, save.desbloqueado === 0);
+  if (!save.viuIntro) sairDoMenu(iniciarIntro, semIntervaloAgora(0));
+  else if (save.zerou) sairDoMenu(function() { iniciarFase(0); }, semIntervaloAgora(0));   // depois de zerar: nova run desde o começo
+  else sairDoMenu(function() { iniciarFase(save.desbloqueado); }, semIntervaloAgora(save.desbloqueado));
 }
 
 function voltarAoMenu() {
@@ -453,7 +452,7 @@ el("mundos").addEventListener("click", function(e) {
   const b = e.target.closest("button");
   if (!b || b.disabled) return;
   const i = +b.dataset.fase;
-  sairDoMenu(function() { iniciarFase(i); }, i === 0);
+  sairDoMenu(function() { iniciarFase(i); }, semIntervaloAgora(i));
 });
 
 
@@ -699,7 +698,7 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
       pausado = false;
       atualizarTelas();
       const recomecar = function() { trocarCena(function() { iniciarFase(fase.indice); }); };
-      if (fase.tutorial || fase.indice === 0) recomecar();   // no tutorial e na 1-1 não tem anúncio
+      if (fase.tutorial || semIntervaloAgora(fase.indice)) recomecar();
       else intervaloComercial(recomecar);
     }
     else if (acao === "reviver") aceitarReviver();

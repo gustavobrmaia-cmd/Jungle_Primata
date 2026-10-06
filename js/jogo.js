@@ -810,8 +810,9 @@ function voltarDoCheckpoint() {
   pausado = false;
   atualizarTelas();
   mostrarMensagem(tr("Você perdeu!"), checkpointX !== null ? tr("Voltando do checkpoint...") : tr("Tentando de novo..."), 90, function() {
-    // sem intervalo comercial aqui: depois de morrer (ou de assistir/recusar o premiado) só volta
-    trocarCena(function() { iniciarFase(fase.indice, true); });
+    const seguir = function() { trocarCena(function() { iniciarFase(fase.indice, true); }); };
+    if (semIntervaloAgora(fase.indice)) seguir();
+    else intervaloComercial(seguir);
   });
 }
 
@@ -1434,10 +1435,9 @@ function fimDaFase() {
   sujo = false;
   som("vitoria");
   mostrarMensagem(titulo, sub, 115, function() {
-    const seguir = function() { trocarCena(function() { iniciarFase(i + 1); }); };
-    // intervalo comercial em 65% dos fins de fase (não em todos)
-    if (Math.random() < CHANCE_ANUNCIO_FIM_FASE) intervaloComercial(seguir);
-    else seguir();
+    intervaloComercial(function() {
+      trocarCena(function() { iniciarFase(i + 1); });
+    });
   });
 }
 

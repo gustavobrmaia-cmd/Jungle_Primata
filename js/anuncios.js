@@ -100,14 +100,19 @@ const ESPERA_ANUNCIO = 4000;
 const ESPERA_PREMIADO = 8000;
 const LIMITE_ANUNCIO = 60000;
 
-// Chance de intervalo comercial ao passar de fase (os outros 35% seguem direto)
-const CHANCE_ANUNCIO_FIM_FASE = 0.65;
-
-// Intervalo comercial: só ao ENTRAR numa fase a partir da 2ª (Jogar/escolher fase, próxima fase,
-// recomeçar fase); nunca no tutorial, na história nem na 1-1.
-// Nunca depois de morrer nem depois do premiado. Sem SDK, segue na hora.
+// Intervalo comercial: como o Poki pede, antes de TODA volta ao jogo em que o jogador quer continuar
+// (entrar numa fase, próxima fase, recomeçar, voltar do checkpoint). Nem todo pedido vira anúncio:
+// o sistema do Poki decide a frequência (e zera o tempo depois de um premiado), então o jogo não
+// tem timer nem sorteio próprio. Única exceção: o começo de quem nunca passou da 1-1 (tutorial,
+// história e a própria 1-1) fica sem pedido. Sem SDK, segue na hora.
 // Rede de segurança: se o Poki não começar o anúncio em poucos segundos (ou nunca responder),
 // o jogo segue sozinho; antes o menu sumia e o jogo ficava preso esperando.
+// Quem ainda está aprendendo (tutorial, ou na 1-1 sem nunca ter passado dela) não recebe pedido
+function semIntervaloAgora(indiceDestino) {
+  if (fase && fase.tutorial && estado === "jogo") return true;
+  return indiceDestino === 0 && save.desbloqueado === 0;
+}
+
 function intervaloComercial(depois) {
   if (!anuncios.sdk) { depois(); return; }
   abrirAnuncio();
