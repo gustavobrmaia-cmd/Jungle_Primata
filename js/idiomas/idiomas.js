@@ -3,7 +3,7 @@
 // =========================
 // IDIOMAS
 // Português + inglês + os 10 idiomas mais fortes no público do Poki.
-// Cada idioma fica em js/idiomas/xx.js (TEXTOS.xx = { chave: "texto" }) e só é baixado quem for usar:
+// Cada idioma fica em js/idiomas/textos/xx.js (TEXTOS.xx = { chave: "texto" }) e só é baixado quem for usar:
 // o idioma escolhido + o inglês (reserva para qualquer texto que faltar).
 // No código: t("jogar"), t("pontos", 120) -> "Pontos: 120" ({0}, {1}... são trocados pelos valores).
 // No HTML: <button data-t="jogar"></button> é preenchido por traduzirDom().
@@ -24,7 +24,7 @@ const IDIOMAS = [
   { id: "id", nome: "Bahasa Indonesia" }
 ];
 
-const TEXTOS = {};      // preenchido por js/idiomas/xx.js
+const TEXTOS = {};      // preenchido por js/idiomas/textos/xx.js
 let IDIOMA = "en";
 
 function idiomaValido(id) {
@@ -44,8 +44,8 @@ function detectarIdioma(salvo) {
 
 // Baixa o idioma (e o inglês de reserva). Se falhar, o jogo segue em inglês.
 function carregarIdioma(id) {
-  const pedidos = [carregarScript("js/idiomas/en.js")];
-  if (id !== "en") pedidos.push(carregarScript("js/idiomas/" + id + ".js"));
+  const pedidos = [carregarScript("js/idiomas/textos/en.js")];
+  if (id !== "en") pedidos.push(carregarScript("js/idiomas/textos/" + id + ".js"));
   return Promise.all(pedidos).then(function() {
     IDIOMA = TEXTOS[id] ? id : "en";
   }, function() {

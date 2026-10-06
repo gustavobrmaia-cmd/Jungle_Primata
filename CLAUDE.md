@@ -4,7 +4,7 @@ Combinado com o dono do jogo. Qualquer versão nova TEM que manter isto:
 
 ## 1. Idiomas: 12
 - pt + en + os 10 mais fortes no Poki: es, fr, de, it, nl, pl, tr, ru, ro, id.
-- Um arquivo por idioma em `js/idiomas/xx.js` (`TEXTOS.xx = { chave: "texto" }`). Só baixa o escolhido + inglês (reserva).
+- Um arquivo por idioma em `js/idiomas/textos/xx.js` (`TEXTOS.xx = { chave: "texto" }`). Só baixa o escolhido + inglês (reserva).
 - Ordem: escolha salva > idioma do navegador > inglês. Troca na hora, sem recarregar.
 - Nunca escrever texto direto no código: `t("chave", valores)` no JS e `data-t="chave"` no HTML.
 - Texto novo = adicionar a chave nos 12 arquivos.
@@ -42,11 +42,21 @@ Combinado com o dono do jogo. Qualquer versão nova TEM que manter isto:
 - Save em localStorage dentro de try/catch.
 - Meta: abrir em ~1 s.
 
-## Arquivos
-`index.html`, `estilo.css`, `js/`. Ordem dos scripts: config, util, idiomas, save, poki, eventos, audio, entrada, jogo, telas, main.
-O jogo em si fica em `js/jogo.js` (ou em mais arquivos carregados antes de telas.js). Ele usa:
-- `novaPartida()`, `atualizarJogo(dt)`, `desenharJogo(ctx)`, `reviver()`;
-- e chama `abrirFim()` quando acaba.
+## Pastas (manter organizado: cada arquivo na pasta do que ele faz)
+```
+index.html, estilo.css
+js/
+  nucleo/     config.js (ajustes), util.js (ferramentas), save.js (localStorage), main.js (tela e loop; carrega por último)
+  poki/       poki.js (SDK e anúncios), eventos.js (Game Events)
+  idiomas/    idiomas.js (t(), detecção, troca)  +  textos/xx.js (os 12 idiomas)
+  sistemas/   audio.js (som), entrada.js (teclado, toque, controle)
+  interface/  telas.js (menu, idiomas, pausa, fim)
+  jogo/       o jogo em si (jogo.js; arquivos novos do jogo entram aqui: fases, inimigos, arte...)
+```
+Ordem dos scripts no index.html: nucleo/config, nucleo/util, idiomas/idiomas, nucleo/save, poki/poki, poki/eventos,
+sistemas/audio, sistemas/entrada, jogo/*, interface/telas, nucleo/main.
+O jogo usa `novaPartida()`, `atualizarJogo(dt)`, `desenharJogo(ctx)` e `reviver()`, e chama `abrirFim()` quando acaba.
+Arquivo novo: colocar na pasta certa (criar subpasta em `js/jogo/` se crescer, ex.: `js/jogo/arte/`).
 
 ## Entrega para o Poki
 - Zip com número de versão (ex.: `jogo-v1.zip`):
