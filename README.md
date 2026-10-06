@@ -134,7 +134,8 @@ Depois de zerar, **Jogar** começa uma run nova na Selva 1-1.
   pasta do jogo.
 - **Poki:** `USAR_POKI` em `js/dados.js` já está `true`. O jogo carrega o SDK do Poki, avisa
   quando a gameplay começa e para, mostra um intervalo comercial só ao entrar numa fase a partir da 2ª (Jogar, escolher fase,
-  próxima fase ou recomeçar pela pausa; nunca na 1-1, depois de morrer ou do premiado),
+  recomeçar pela pausa, e em 65% das vezes ao passar de fase; nunca na 1-1, depois de morrer
+  ou do premiado),
   e quando o macaco perde todas as vidas oferece "assista um anúncio para reviver" (volta no
   último chão seguro com as vidas cheias, uma vez por tentativa). Durante o anúncio o jogo fica
   parado e mudo. Com `false` nada disso carrega (use `false` no itch.io).
@@ -167,4 +168,7 @@ Depois de zerar, **Jogar** começa uma run nova na Selva 1-1.
 - `js/controle.js`: suporte a controle (gamepad).
 - `js/toque.js`: controles de toque para celular e tablet.
 - `js/tutorial.js`: tutorial curtinho da primeira visita.
+- `js/idioma.js` + `js/idiomas/*.js`: textos em português (chave), inglês, espanhol, francês,
+  alemão, italiano, holandês, polonês e turco. O idioma segue o navegador e pode ser trocado em
+  Opções > Idioma; texto que faltar num idioma aparece em inglês.
 - `fontes/`: fonte Pixelify Sans (licença SIL OFL em `fontes/OFL.txt`).

@@ -1399,17 +1399,18 @@ function atualizarBanana() {
     if (!j.morto && Math.abs(j.x + j.w / 2 - (b.x + 24)) < 110 && j.y + j.h > CHAO - 160) {
       b.estado = "voando";
       b.t = 0;
-      j.comemorar = 70;
+      j.comemorar = 45;
       j.vx = 0;
       cancelarLaco();
       som("vento");
     }
   } else if (b.estado === "voando") {
-    b.x += 8 + b.t * 0.1;
-    b.y -= 5 - b.t * 0.05;
-    b.rot += 0.25;
+    // a banana sai voando rápido (antes ~1,3 s + 2,8 s de mensagem; agora ~0,7 s + 1,9 s)
+    b.x += 11 + b.t * 0.25;
+    b.y -= 6.5 - b.t * 0.08;
+    b.rot += 0.35;
     if (tempo % 2 === 0) vento();
-    if (b.t === 75) fimDaFase();
+    if (b.t === 42) fimDaFase();
   }
 }
 
@@ -1432,10 +1433,11 @@ function fimDaFase() {
   salvar();
   sujo = false;
   som("vitoria");
-  mostrarMensagem(titulo, sub, 170, function() {
-    intervaloComercial(function() {
-      trocarCena(function() { iniciarFase(i + 1); });
-    });
+  mostrarMensagem(titulo, sub, 115, function() {
+    const seguir = function() { trocarCena(function() { iniciarFase(i + 1); }); };
+    // intervalo comercial em 65% dos fins de fase (não em todos)
+    if (Math.random() < CHANCE_ANUNCIO_FIM_FASE) intervaloComercial(seguir);
+    else seguir();
   });
 }
 

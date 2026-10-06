@@ -100,6 +100,9 @@ const ESPERA_ANUNCIO = 4000;
 const ESPERA_PREMIADO = 8000;
 const LIMITE_ANUNCIO = 60000;
 
+// Chance de intervalo comercial ao passar de fase (os outros 35% seguem direto)
+const CHANCE_ANUNCIO_FIM_FASE = 0.65;
+
 // Intervalo comercial: só ao ENTRAR numa fase a partir da 2ª (Jogar/escolher fase, próxima fase,
 // recomeçar fase); nunca no tutorial, na história nem na 1-1.
 // Nunca depois de morrer nem depois do premiado. Sem SDK, segue na hora.

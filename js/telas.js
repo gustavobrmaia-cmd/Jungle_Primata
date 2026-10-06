@@ -289,9 +289,20 @@ function renderizarOpcoes() {
     b.className = b.dataset.abaOpcoes === abaOpcoes ? "ativa" : "sec";
   });
   el("btnPadraoControles").style.display = abaOpcoes === "controles" ? "" : "none";
-  el("btnIdiomaPt").className = IDIOMA === "pt" ? "ativa" : "sec";
-  el("btnIdiomaEn").className = IDIOMA === "en" ? "ativa" : "sec";
+  el("listaIdiomas").querySelectorAll("button").forEach(function(b) {
+    b.className = b.dataset.idioma === IDIOMA ? "ativa" : "sec";
+  });
 }
+
+// Um botão por idioma (cada um com o nome no próprio idioma)
+IDIOMAS.forEach(function(i) {
+  const b = document.createElement("button");
+  b.textContent = i.nome;
+  b.dataset.idioma = i.id;
+  b.tabIndex = -1;
+  b.addEventListener("click", function() { iniciarAudio(); trocarIdioma(i.id); });
+  el("listaIdiomas").appendChild(b);
+});
 
 document.querySelectorAll("[data-aba-opcoes]").forEach(function(b) {
   b.tabIndex = -1;
@@ -696,8 +707,6 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
     else if (acao === "menu") voltarAoMenu();
     else if (acao === "som") { save.mudo = !save.mudo; salvar(); atualizarTelas(); }
     else if (acao === "cronometro") { save.cronometro = !save.cronometro; salvar(); atualizarTelas(); }
-    else if (acao === "idiomaPt") { if (IDIOMA !== "pt") trocarIdioma(); }
-    else if (acao === "idiomaEn") { if (IDIOMA !== "en") trocarIdioma(); }
     else if (acao === "moedasAnuncio") moedasComAnuncio();
   });
 });

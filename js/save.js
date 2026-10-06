@@ -35,7 +35,7 @@ function saveNovo() {
     viuTutorial: false,           // primeira visita: tutorial curtinho antes do menu
     zerou: false,
     mudo: false,
-    idioma: "",                   // "pt", "en" ou vazio (segue o navegador)
+    idioma: "",                   // "pt", "en", "es"... (IDIOMAS em idioma.js) ou vazio (segue o navegador)
     cronometro: false,            // cronômetro de speedrun na tela
     recordes: { fases: [], run: 0 },
     estrelas: [],
@@ -138,7 +138,7 @@ let save = saveNovo();
       save.estrelas[i] = feita ? 1 : 0;
     }
   }
-  if (s.idioma === "pt" || s.idioma === "en") save.idioma = s.idioma;
+  if (idiomaValido(s.idioma)) save.idioma = s.idioma;
   if (s.recordes && typeof s.recordes === "object") {
     if (Array.isArray(s.recordes.fases)) {
       save.recordes.fases = s.recordes.fases.slice(0, TOTAL_FASES).map(function(v) {

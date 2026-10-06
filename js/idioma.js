@@ -1,20 +1,45 @@
 "use strict";
 
 // =========================
-// IDIOMA: português ou inglês
+// IDIOMAS
 // O próprio texto em português é a chave: tr("Fase completa!") vira "Stage complete!" em inglês.
 // {0}, {1}... são trocados pelos valores: tr("Próximo: {0}", nome).
-// Sem escolha salva, segue o navegador: português para "pt", inglês para o resto.
+// O inglês fica aqui (EN); os outros idiomas ficam em js/idiomas/*.js (TRADUCOES.xx).
+// Texto que faltar num idioma cai no inglês.
+// Sem escolha salva, segue o navegador (pt-BR -> português, fr-FR -> francês...); se o idioma do
+// navegador não estiver na lista, inglês.
 // =========================
+
+const IDIOMAS = [
+  { id: "pt", nome: "Português" },
+  { id: "en", nome: "English" },
+  { id: "es", nome: "Español" },
+  { id: "fr", nome: "Français" },
+  { id: "de", nome: "Deutsch" },
+  { id: "it", nome: "Italiano" },
+  { id: "nl", nome: "Nederlands" },
+  { id: "pl", nome: "Polski" },
+  { id: "tr", nome: "Türkçe" }
+];
+
+function idiomaValido(id) {
+  return IDIOMAS.some(function(i) { return i.id === id; });
+}
 
 const IDIOMA = (function() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (s && (s.idioma === "pt" || s.idioma === "en")) return s.idioma;
+    if (s && idiomaValido(s.idioma)) return s.idioma;
   } catch (e) { /* sem save */ }
-  const nav = (navigator.languages && navigator.languages[0]) || navigator.language || "pt";
-  return /^pt/i.test(nav) ? "pt" : "en";
+  const lista = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"]);
+  for (let i = 0; i < lista.length; i++) {
+    const id = String(lista[i] || "").slice(0, 2).toLowerCase();
+    if (idiomaValido(id)) return id;
+  }
+  return "en";
 })();
+
+const TRADUCOES = {};   // preenchido por js/idiomas/*.js (e o EN logo abaixo)
 
 const EN = {
   // ---------- Mundos, chefes e fases ----------
@@ -429,8 +454,19 @@ const EN = {
   "Continuar": "Resume"
 };
 
+TRADUCOES.en = EN;
+
+// Texto já traduzido (sem trocar {0}...): o do idioma, senão o inglês, senão o próprio português
+function traduzido(texto) {
+  if (IDIOMA === "pt") return texto;
+  const d = TRADUCOES[IDIOMA];
+  if (d && Object.prototype.hasOwnProperty.call(d, texto)) return d[texto];
+  if (Object.prototype.hasOwnProperty.call(EN, texto)) return EN[texto];
+  return texto;
+}
+
 function tr(texto) {
-  let t = IDIOMA === "en" && Object.prototype.hasOwnProperty.call(EN, texto) ? EN[texto] : texto;
+  let t = traduzido(texto);
   for (let i = 1; i < arguments.length; i++) t = t.split("{" + (i - 1) + "}").join(arguments[i]);
   return t;
 }
@@ -457,19 +493,22 @@ function traduzirDados() {
 
 // Textos fixos do index.html (botões, títulos das telas)
 function traduzirDom() {
+  document.documentElement.lang = IDIOMA === "pt" ? "pt-BR" : IDIOMA;
   if (IDIOMA === "pt") return;
-  document.documentElement.lang = "en";
   const andar = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const nos = [];
   while (andar.nextNode()) nos.push(andar.currentNode);
   nos.forEach(function(n) {
     const t = n.nodeValue.trim();
-    if (t && Object.prototype.hasOwnProperty.call(EN, t)) n.nodeValue = n.nodeValue.replace(t, EN[t]);
+    if (!t) return;
+    const novo = traduzido(t);
+    if (novo !== t) n.nodeValue = n.nodeValue.replace(t, novo);
   });
 }
 
-function trocarIdioma() {
-  save.idioma = IDIOMA === "en" ? "pt" : "en";
+function trocarIdioma(id) {
+  if (!idiomaValido(id) || id === IDIOMA) return;
+  save.idioma = id;
   salvar();
   try { sessionStorage.setItem("primata-abrir-idioma", "1"); } catch (e) { /* sem sessionStorage */ }
   location.reload();
