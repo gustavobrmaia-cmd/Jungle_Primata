@@ -32,7 +32,7 @@ function saveNovo() {
     teclas: copiaTeclasPadrao(),
     stats: { inimigos: 0, chutes: 0, chefes: 0, mortes: 0, tempo: 0 },
     viuIntro: false,
-    viuTutorial: false,           // primeira visita: tutorial curtinho antes do menu
+    viuTutorial: false,           // já fez a primeira visita (história -> 1-1 sem menu)
     zerou: false,
     mudo: false,
     idioma: "",                   // "pt", "en", "es"... (IDIOMAS em idioma.js) ou vazio (segue o navegador)

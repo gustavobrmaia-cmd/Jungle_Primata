@@ -125,7 +125,8 @@ function atualizarChefe() {
         poeira(c.x + 20, CHAO, 6, -1);
         poeira(c.x + c.w - 20, CHAO, 6, 1);
       }
-      if (c.pousou && c.t > 90) irPara(c, "parado");
+      // só começa a luta depois de pegar a banana no ar
+      if (c.pousou && c.t > 90 && !(banana && banana.estado === "chegando")) irPara(c, "parado");
     }
     atualizarCaixa(c);
     return;
@@ -173,11 +174,10 @@ function atualizarChefe() {
             salvar();
             som("poder");
             texto(c.x + c.w / 2, CHAO - 160, tr("Você ganhou o cipó-laço!"), "#69db7c", 30);
-            mostrarMensagem(tr("Você ganhou o cipó-laço!"), tr("{0}: puxa o inimigo e chuta pro espaço. Pegue a banana!", nomeComando("laco")), 220, null, false);
+            mostrarMensagem(tr("Você ganhou o cipó-laço!"), tr("{0}: puxa o inimigo e chuta pro espaço. Atrás da banana!", nomeComando("laco")), 200, iniciarSaida, false);
           } else {
-            mostrarMensagem(tr("Chefe derrotado!"), tr("+{0} moedas. Pegue a banana!", premio), 150, null, false);
+            mostrarMensagem(tr("Chefe derrotado!"), tr("+{0} moedas. Atrás da banana!", premio), 110, iniciarSaida, false);
           }
-          soltarBananaDoCeu();
         }
       }
     }

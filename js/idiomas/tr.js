@@ -1,6 +1,8 @@
 "use strict";
 // Türkçe. Chave: o texto em português (igual ao EN de idioma.js). Faltou alguma? Cai no inglês.
 TRADUCOES.tr = {
+  "{0}: puxa o inimigo e chuta pro espaço. Atrás da banana!": "{0}: düşmanı çek ve uzaya tekmele. Muzun peşine düş!",
+  "+{0} moedas. Atrás da banana!": "+{0} para. Muzun peşine düş!",
   "Selva": "Orman",
   "Deserto": "Çöl",
   "Era do Gelo": "Buzul Çağı",

@@ -276,11 +276,15 @@ try {
     renderizarOpcoes();
   }
 } catch (e) { /* sem sessionStorage */ }
-// Primeira visita: tutorial curtinho jogando (sem menu); no fim dele aparece o menu.
-// Depois, o primeiro "Jogar" mostra a história e começa a fase 1.
+// Primeira visita: a história (o vento leva a banana) emenda direto na fase 1-1, sem menu e sem
+// tutorial (a 1-1 ensina com as placas). O menu aparece a partir da segunda visita.
+// (O tutorial jogável continua em js/tutorial.js, mas não é mais usado.)
 if (!save.viuTutorial) {
   telaAtual = "nenhuma";
-  iniciarFase(FASE_TUTORIAL);
+  save.viuTutorial = true;
+  salvar();
+  if (!save.viuIntro) iniciarIntro();
+  else iniciarFase(0);
 }
 iniciarAnuncios();
 requestAnimationFrame(quadro);

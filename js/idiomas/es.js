@@ -1,6 +1,8 @@
 "use strict";
 // Español. Chave: o texto em português (igual ao EN de idioma.js). Faltou alguma? Cai no inglês.
 TRADUCOES.es = {
+  "{0}: puxa o inimigo e chuta pro espaço. Atrás da banana!": "{0}: atrae al enemigo y patéalo al espacio. ¡Persigue el plátano!",
+  "+{0} moedas. Atrás da banana!": "+{0} monedas. ¡Persigue el plátano!",
   "Selva": "Selva",
   "Deserto": "Desierto",
   "Era do Gelo": "Era de Hielo",

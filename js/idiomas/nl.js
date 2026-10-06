@@ -1,6 +1,8 @@
 "use strict";
 // Nederlands. Chave: o texto em português (igual ao EN de idioma.js). Faltou alguma? Cai no inglês.
 TRADUCOES.nl = {
+  "{0}: puxa o inimigo e chuta pro espaço. Atrás da banana!": "{0}: trek vijanden naar je toe en schop ze de ruimte in. Achter de banaan aan!",
+  "+{0} moedas. Atrás da banana!": "+{0} munten. Achter de banaan aan!",
   "Selva": "Jungle",
   "Deserto": "Woestijn",
   "Era do Gelo": "IJstijd",

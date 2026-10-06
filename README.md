@@ -9,10 +9,15 @@ Cada fase libera um inimigo novo, um obstáculo novo e um cosmético de prêmio.
 As fases ficam mais difíceis conforme você avança: ficam mais longas, os buracos ficam
 maiores, aparecem mais inimigos e eles ficam mais rápidos.
 
-Na **primeira vez** que alguém abre o jogo, entra direto num **tutorial** bem curto (sem
-anúncio): andar, pular um bloco, pisar na cobra e pegar a banana. No fim dele emenda na história
-do começo (o vento levando a banana) e na fase 1-1, sem menu. O **menu** aparece a partir da
-segunda visita. Quem ainda não passou da 1-1 não recebe intervalo comercial.
+Na **primeira vez** que alguém abre o jogo, a história do começo (o vento levando a banana)
+emenda direto na fase 1-1, sem menu e sem tutorial (a 1-1 ensina com as placas). O **menu**
+aparece a partir da segunda visita. Quem ainda não passou da 1-1 não recebe intervalo comercial.
+
+**A banana foge na frente do macaco** a fase inteira, levada pelo vento: às vezes chega pertinho,
+às vezes dispara (se o macaco chegar perto demais, uma rajada leva ela). Na reta final ela escapa
+e o macaco sai correndo da tela atrás dela: é assim que se passa de fase. Os chefes (Gorila,
+Escorpião e Yeti) pegam a banana no ar quando ela chega e seguram a luta inteira; derrotados, eles
+soltam, ela foge de novo e o macaco vai atrás. O Dragão já está com ela desde o começo.
 
 As três primeiras fases da Selva são de aprendizado: plataformas mais largas, buracos de cipó
 menores e checkpoint antes do primeiro cipó, ficando um pouco mais difíceis a cada fase até a

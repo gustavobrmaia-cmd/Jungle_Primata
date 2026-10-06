@@ -1,6 +1,8 @@
 "use strict";
 // Polski. Chave: o texto em português (igual ao EN de idioma.js). Faltou alguma? Cai no inglês.
 TRADUCOES.pl = {
+  "{0}: puxa o inimigo e chuta pro espaço. Atrás da banana!": "{0}: przyciągnij wroga i kopnij go w kosmos. Goń banana!",
+  "+{0} moedas. Atrás da banana!": "+{0} monet. Goń banana!",
   "Selva": "Dżungla",
   "Deserto": "Pustynia",
   "Era do Gelo": "Epoka Lodowcowa",

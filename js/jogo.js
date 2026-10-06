@@ -107,7 +107,7 @@ function iniciarFase(indice, doCheckpoint) {
   jogador = criarJogador(x0, CHAO - 72);
 
   chefe = fase.ehChefe ? (fase.secreta ? criarChefeRei() : criarChefe(fase.mundo)) : null;
-  banana = fase.ehChefe ? null : { x: fase.fimX, y: CHAO - 44, base: CHAO - 44, estado: "parada", t: 0, rot: 0, vy: 0 };
+  banana = criarBananaDaFase();
 
   cameraX = limitar(jogador.x - larguraVista() * 0.4, 0, Math.max(0, fase.largura - larguraVista()));
   estado = "jogo";
@@ -261,6 +261,7 @@ function atualizarJogador() {
     if (j.morto === 110) perdeuTudo();
     return;
   }
+  if (j.saindo) { correrSaindo(j); return; }
 
   // Temporizadores
   if (j.invencivel > 0) j.invencivel--;
@@ -727,7 +728,7 @@ function atualizarLaco() {
 
 function machucar(origemX, ignorarInvencivel) {
   const j = jogador;
-  if (j.morto) return;
+  if (j.morto || j.saindo) return;
   if (j.dash > 0 || buffs.escudo > 0) return;
   if (j.invencivel > 0 && !ignorarInvencivel) return;
   j.vidas--;
@@ -1381,8 +1382,37 @@ function atualizarMoedas() {
   }
 }
 
-function soltarBananaDoCeu() {
-  banana = { x: LARGURA / 2 - 24, y: -60, base: CHAO - 44, estado: "caindo", t: 0, rot: 0, vy: 0 };
+// =========================
+// A BANANA FUGINDO
+// O vento leva a banana na frente do macaco a fase inteira: às vezes ela chega pertinho, às vezes
+// dispara para longe (e se o macaco chegar perto demais, uma rajada leva ela). Na reta final ela
+// escapa de vez e o macaco sai correndo da tela atrás dela -> próxima fase.
+// Nos chefes (menos o Dragão, que já entra com ela nas garras, e o Saru): a banana chega voando,
+// o chefe pega no ar e segura a luta inteira; derrotado, ele solta, ela foge e o macaco vai atrás.
+// =========================
+
+const BANANA_ALTURA = CHAO - 300;
+
+function criarBananaDaFase() {
+  if (fase.secreta) return null;
+  if (fase.tutorial) return { x: fase.fimX, y: CHAO - 44, base: CHAO - 44, estado: "parada", t: 0, rot: 0, vy: 0 };
+  if (fase.ehChefe) {
+    if (fase.mundo === MUNDOS.length - 1) return null;   // o Dragão já está com ela
+    return { estado: "chegando", x: -90, y: 150, t: 0, rot: 0, vy: 0 };
+  }
+  return { estado: "fugindo", x: jogador.x + 420, y: BANANA_ALTURA, t: 0, rot: 0, vy: 0, rajada: 0 };
+}
+
+// Onde o chefe segura a banana (na mão da frente)
+function maoDoChefe(c) {
+  return { x: c.x + c.w / 2 + c.dir * c.w * 0.3, y: c.y + c.h * 0.42 };
+}
+
+function brilhoBanana(b) {
+  if (tempo % 5 === 0) {
+    particula({ tipo: "q", x: b.x + 24 + (Math.random() - 0.5) * 30, y: b.y + 20 + (Math.random() - 0.5) * 24,
+      vx: -1.5 - Math.random() * 2, vy: (Math.random() - 0.5) * 0.8, g: 0, vida: 26, max: 26, cor: Math.random() < 0.5 ? "#fff3bf" : "#ffd43b", tam: 5 });
+  }
 }
 
 function atualizarBanana() {
@@ -1390,12 +1420,82 @@ function atualizarBanana() {
   if (!b) return;
   const j = jogador;
   b.t++;
-  if (b.estado === "caindo") {
+  if (b.estado === "fugindo") {
+    const frente = j.x + j.w / 2;
+    // a distância "respira": chega perto e se afasta
+    let dist = 330 + Math.sin(b.t * 0.011) * 150 + Math.sin(b.t * 0.027 + 1.3) * 70;
+    if (b.rajada > 0) {
+      b.rajada--;
+      dist += 280 * Math.min(1, b.rajada / 30);
+    }
+    dist = limitar(dist, 140, larguraVista() * 0.58);
+    // chegou pertinho: uma rajada de vento leva a banana para longe
+    if (!b.rajada && !j.morto && Math.abs(b.x + 24 - frente) < 130 && Math.abs(b.y + 20 - (j.y + j.h / 2)) < 230) {
+      b.rajada = 90;
+      som("vento");
+      for (let k = 0; k < 5; k++) vento();
+    }
+    const alvoX = frente + dist - 24;
+    b.x += (alvoX - b.x) * (alvoX > b.x ? 0.05 : 0.02);
+    const alvoY = BANANA_ALTURA + Math.sin(b.t * 0.045) * 45 + Math.sin(b.t * 0.017) * 25;
+    b.y += (alvoY - b.y) * 0.05;
+    b.rot = Math.sin(b.t * 0.06) * 0.35;
+    brilhoBanana(b);
+    // reta final: ela escapa de vez e o macaco corre atrás
+    if (!j.morto && j.x > fase.fimX - 200) {
+      b.estado = "escapando";
+      b.t = 0;
+      iniciarSaida();
+    }
+  } else if (b.estado === "escapando" || b.estado === "solta") {
+    b.x += 5 + b.t * 0.3;
+    b.y -= b.estado === "solta" ? 6 - b.t * 0.06 : 2 - b.t * 0.02;
+    b.rot += 0.3;
+    if (tempo % 3 === 0) vento();
+    brilhoBanana(b);
+  } else if (b.estado === "chegando") {
+    // chefe: a banana vem voando com o vento e ele pega no ar
+    const c = chefe;
+    if (!c || !c.pousou) { b.x = -90; return; }
+    const p = maoDoChefe(c);
+    const dx = p.x - 24 - b.x;
+    const dy = p.y - 20 - b.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const v = Math.min(d, 10 + b.t * 0.08);
+    b.x += (dx / d) * v;
+    b.y += (dy / d) * v + Math.sin(b.t * 0.2) * 1.5;
+    b.rot += 0.25;
+    if (tempo % 3 === 0) vento();
+    brilhoBanana(b);
+    if (d < 16) {
+      b.estado = "presa";
+      b.t = 0;
+      som("poder");
+      tremor = 8;
+      for (let k = 0; k < 14; k++) {
+        particula({ tipo: "q", x: p.x, y: p.y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, g: 0.1, vida: 26, max: 26, cor: k % 2 ? "#ffd43b" : "#fff3bf", tam: 6 });
+      }
+    }
+  } else if (b.estado === "presa") {
+    const c = chefe;
+    if (!c) return;
+    const p = maoDoChefe(c);
+    b.x = p.x - 24;
+    b.y = p.y - 20 + Math.sin(tempo * 0.1) * 3;
+    b.rot = c.dir * 0.3;
+    // derrotado: o chefe solta e ela foge de novo
+    if (!c.vivo) {
+      b.estado = "solta";
+      b.t = 0;
+      som("vento");
+    }
+  } else if (b.estado === "caindo") {
     b.vy = Math.min(b.vy + 0.3, 9);
     b.y += b.vy;
     b.rot += 0.1;
     if (b.y >= b.base) { b.y = b.base; b.estado = "parada"; b.rot = 0; b.t = 0; }
   } else if (b.estado === "parada") {
+    // (só o tutorial ainda usa a banana parada no fim)
     b.y = b.base + Math.sin(b.t * 0.08) * 4;
     if (!j.morto && Math.abs(j.x + j.w / 2 - (b.x + 24)) < 110 && j.y + j.h > CHAO - 160) {
       b.estado = "voando";
@@ -1406,12 +1506,41 @@ function atualizarBanana() {
       som("vento");
     }
   } else if (b.estado === "voando") {
-    // a banana sai voando rápido (antes ~1,3 s + 2,8 s de mensagem; agora ~0,7 s + 1,9 s)
     b.x += 11 + b.t * 0.25;
     b.y -= 6.5 - b.t * 0.08;
     b.rot += 0.35;
     if (tempo % 2 === 0) vento();
     if (b.t === 42) fimDaFase();
+  }
+}
+
+// Fim da fase: o macaco sai correndo da tela atrás da banana (sem controle, sem levar dano)
+function iniciarSaida() {
+  const j = jogador;
+  if (!j || j.saindo || j.morto) return;
+  j.saindo = true;
+  j.cipo = null;
+  cancelarLaco();
+  if (j.deslizando) { j.deslizando = false; j.y -= 36; j.h = 72; }
+  j.comemorar = 0;
+  j.dir = 1;
+}
+
+function correrSaindo(j) {
+  j.dir = 1;
+  j.vx = 7.5;
+  j.x += j.vx;
+  // se estava no ar, cai até o chão
+  if (j.y + j.h < CHAO) {
+    j.vy = Math.min(j.vy + GRAV, MAX_QUEDA);
+    j.y = Math.min(j.y + j.vy, CHAO - j.h);
+  }
+  j.noChao = j.y + j.h >= CHAO;
+  if (j.noChao) { j.vy = 0; j.passos++; }
+  if (j.noChao && j.passos % 4 === 0) poeiraPes(j.x + j.w / 2 - 14, j.y + j.h);
+  if (!j.saiu && j.x > cameraX + larguraVista() + 30) {
+    j.saiu = true;
+    fimDaFase();
   }
 }
 
@@ -2304,7 +2433,7 @@ function atualizarJogo() {
   // Câmera segue o macaco olhando um pouco para frente
   const j = jogador;
   const alvo = j.x + j.w / 2 - larguraVista() * 0.4 + j.dir * 80;
-  cameraX += (alvo - cameraX) * 0.1;
+  if (!j.saindo) cameraX += (alvo - cameraX) * 0.1;   // saindo: a câmera para e o macaco sai da tela
   cameraX = limitar(cameraX, 0, Math.max(0, fase.largura - larguraVista()));
 }
 
@@ -2814,13 +2943,14 @@ function desenharMoedas(cam) {
   }
 }
 
-function desenharBanana() {
+function desenharBanana(naMao) {
   const b = banana;
   if (!b) return;
+  if ((b.estado === "presa") !== !!naMao) return;   // na mão do chefe: desenhada por cima dele
   const cx = Math.round(b.x + 24);
   const cy = Math.round(b.y + 20);
-  if (b.estado === "parada") {
-    sombraSprite(cx, b.base + 44, 44, 0.3);
+  if (b.estado === "parada" || b.estado === "fugindo") {
+    if (b.estado === "parada") sombraSprite(cx, b.base + 44, 44, 0.3);
     luzAditiva(cx, cy, 78, "255,215,70", 0.5 + Math.sin(tempo * 0.1) * 0.15);
     for (let k = 0; k < 3; k++) {
       const a = tempo * 0.04 + k * 2.1;
@@ -3678,7 +3808,7 @@ function desenharJogo() {
   desenharAvisos();
   desenharPlantas(cam);
   desenharInimigos(cam);
-  if (chefe) { if (chefeVisivel()) desenharChefe(); desenharExtrasRei(); }
+  if (chefe) { if (chefeVisivel()) { desenharChefe(); desenharBanana(true); } desenharExtrasRei(); }
   desenharAura();
   desenharJogador();
   desenharProjeteis();
