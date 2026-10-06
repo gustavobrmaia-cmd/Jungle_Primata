@@ -33,20 +33,14 @@ function atualizarTransicao() {
 
 function desenharTransicao() {
   if (!transicao) return;
-  const k = transicao.fase === "fechando" ? 1 - transicao.t / 28 : transicao.t / 28;
+  // escurece e clareia a tela inteira (antes era um círculo fechando no macaco, que no fim da fase
+  // já saiu correndo da tela)
+  const k = transicao.fase === "fechando" ? transicao.t / 28 : 1 - transicao.t / 28;
   const z = zoomJogo();
-  let cx = LARGURA / 2;
-  let cy = ALTURA * z / 2;
-  if (estado === "jogo" && jogador) {
-    cx = (jogador.x + jogador.w / 2 - cameraX) * z;
-    cy = (jogador.y + jogador.h / 2) * z;
-  }
-  const r = Math.max(1, k * k * 1400 * z);
+  ctx.globalAlpha = limitar(k, 0, 1);
   ctx.fillStyle = "#000000";
-  ctx.beginPath();
-  ctx.rect(0, 0, LARGURA, ALTURA * z);
-  ctx.arc(cx, cy, r, 0, Math.PI * 2, true);
-  ctx.fill("evenodd");
+  ctx.fillRect(0, 0, LARGURA, ALTURA * z);
+  ctx.globalAlpha = 1;
 }
 
 

@@ -5,6 +5,60 @@
 // e vira vários quadros de animação. Tudo olhando para a direita.
 // =========================
 
+// ---------- Banana segurada pelos chefes (desenhada ANTES da mão, que fica por cima) ----------
+const COR_BANANA_CHEFE = ["#b07800", "#ffcf1f", "#ffe766", "#fffbd6"];   // bem amarela (o ouro dos chefes é mais alaranjado)
+
+// Em pé, curvada como um "C", com o meio em (x, y): a mão fecha no meio e as pontas aparecem
+function pxBananaEmPe(b, x, y) {
+  const C = COR_BANANA_CHEFE;
+  const P = [[x - 1.5, y - 10], [x + 1.5, y - 5.5], [x + 2.5, y], [x + 1, y + 5], [x - 1.5, y + 8.5]];
+  for (let i = 0; i < P.length - 1; i++) {
+    const r = i === 0 || i === P.length - 2 ? [1.4, 2.5] : [2.5, 2.5];
+    pxMembro(b, P[i][0], P[i][1], P[i + 1][0], P[i + 1][1], i === 0 ? r[0] : r[1], i === P.length - 2 ? r[0] : r[1], C, { rim: "#5c3a06" });
+  }
+  // brilho na curva de fora e as pontinhas escuras
+  pxLinha(b, x + 2.5, y - 5, x + 3.2, y + 1, C[3]);
+  pxPonto(b, x - 1.5, y - 10.5, "#3d2405");
+  pxPonto(b, x - 1, y - 11, "#3d2405");
+  pxPonto(b, x - 2, y + 9, "#3d2405");
+}
+
+// Deitada (para a pinça do Escorpião), com o meio em (x, y)
+function pxBananaDeitada(b, x, y) {
+  const C = COR_BANANA_CHEFE;
+  const P = [[x - 5.5, y - 2.5], [x - 2, y + 0.8], [x + 2.5, y + 0.8], [x + 6, y - 2.5]];
+  for (let i = 0; i < P.length - 1; i++) {
+    pxMembro(b, P[i][0], P[i][1], P[i + 1][0], P[i + 1][1], i === 0 ? 1.4 : 2.3, i === P.length - 2 ? 1.4 : 2.3, C, { rim: "#5c3a06" });
+  }
+  pxLinha(b, x - 2, y - 1, x + 2.5, y - 1, C[3]);
+  pxPonto(b, x - 6, y - 3, "#3d2405");
+  pxPonto(b, x + 6.5, y - 3, "#3d2405");
+}
+
+// Gera os quadros do chefe. As versões "_b" (banana na mão da frente) só são desenhadas quando a
+// fase do chefe começa (prepararBananaChefe), para não deixar o carregamento do jogo mais lento.
+function quadrosComBanana(def, gerar) {
+  const q = {};
+  function fazer(k, comBanana) {
+    const r = gerar(Object.assign({}, def[k], { banana: comBanana }));
+    const s = pxSprite(pxCanvas(r.b, 3));
+    s.olhos = r.olhos;
+    if (r.ferr) s.ferr = r.ferr;
+    return s;
+  }
+  Object.keys(def).forEach(function(k) { q[k] = fazer(k, false); });
+  Object.defineProperty(q, "comBanana", { enumerable: false, value: function() {
+    if (q.parado0_b) return;
+    Object.keys(def).forEach(function(k) { q[k + "_b"] = fazer(k, true); });
+  } });
+  return q;
+}
+
+function prepararBananaChefe(tipo) {
+  const s = SPR_CHEFE[tipo];
+  if (s && s.q && s.q.comBanana) s.q.comBanana();
+}
+
 // ---------- Gorila Rei (grade 48x44, escala 3 = 144x132) ----------
 
 const COR_GORILA = {
@@ -61,6 +115,7 @@ function gorilaQuadro(p) {
     pxElipse(b, sx, sy, 7, 6.2, C.pelo, { tex: pxTexPelo(esq ? 21 : 22) });
     pxMembro(b, sx, sy + 1, a[0], a[1], 5.6, 5.1, C.pelo, { tex: pxTexPelo(esq ? 23 : 24, 0.2) });
     pxMembro(b, a[0], a[1], a[2], a[3], 5.1, 4.6, C.pelo, { tex: pxTexPelo(esq ? 25 : 26, 0.2) });
+    if (p.banana && !esq) pxBananaEmPe(b, a[2] - 0.5, a[3] - 3);   // em pé, saindo de dentro do punho
     // punho grande com nós dos dedos
     pxElipse(b, a[2], a[3] + 1.5, 5.6, 5, C.palma, { rim: "#2a1812" });
     pxPonto(b, a[2] - 2, a[3] + 4, "#2a1812");
@@ -176,13 +231,7 @@ function gorilaQuadros() {
     tonto: { bob: 3, cab: [-1, 3], olhos: "tonto", br: { e: [3, 30, 6, 38], d: [45, 30, 41, 38] }, pe: [1, 0] },
     dano: { bob: 1, cab: [-1, 1], olhos: "fechado", boca: 1, br: { e: [4, 26, 8, 30], d: [44, 26, 40, 30] } }
   };
-  Object.keys(def).forEach(function(k) {
-    const r = gorilaQuadro(def[k]);
-    const s = pxSprite(pxCanvas(r.b, 3));
-    s.olhos = r.olhos;
-    q[k] = s;
-  });
-  return q;
+  return Object.assign(q, quadrosComBanana(def, gorilaQuadro));
 }
 
 // ---------- Escorpião Faraó (grade 54x36, escala 3 = 162x108) ----------
@@ -205,7 +254,7 @@ function escorpiaoQuadro(p) {
   const bob = (p.bob || 0) - 2.5;
   const leg = p.legs || 0;
   const garra = p.garra || [0, 0];
-  const pinca = p.pinca === undefined ? 0.3 : p.pinca;
+  const pinca = Math.max(p.pinca === undefined ? 0.3 : p.pinca, p.banana ? 0.55 : 0);
   const RIM = "#3d2208";
   const listras = function(x, y, k) { return (x + y * 2) % 7 === 0 ? k - 1 : k; };
 
@@ -265,6 +314,7 @@ function escorpiaoQuadro(p) {
   pxMembro(b, 36, 29 + bob, 41 + gx * 0.5, 31 + bob + gy * 0.3, 2.6, 2.4, C.garra, { rim: RIM });
   pxMembro(b, 41 + gx * 0.5, 31 + bob + gy * 0.3, ax, ay, 2.4, 3.2, C.garra, { rim: RIM });
   const ab = pinca;
+  if (p.banana) pxBananaEmPe(b, ax + 4.5, ay - 4);   // em pé na pinça (os dedos fecham por cima)
   // dedo de baixo (abre para baixo) e de cima (fixo, curvado)
   pxMembro(b, ax + 1, ay + 2, ax + 5.5, ay + 3.6 + ab * 3, 2.4, 1.3, C.garra, { rim: RIM });
   pxMembro(b, ax + 5.5, ay + 3.6 + ab * 3, ax + 8.2, ay + 2.2 + ab * 1.2, 1.4, 0.4, C.garra, { rim: RIM });
@@ -338,14 +388,7 @@ function escorpiaoQuadros() {
     tonto: { cauda: TW, ferr: [34.5, 15], olhos: "tonto", bob: 1, pinca: 0.1, garra: [-1, 2] },
     dano: { cauda: T0, ferr: T0F, olhos: "fechado", bob: 0.6, pinca: 0.9, garra: [0, -1] }
   };
-  Object.keys(def).forEach(function(k) {
-    const r = escorpiaoQuadro(def[k]);
-    const s = pxSprite(pxCanvas(r.b, 3));
-    s.olhos = r.olhos;
-    s.ferr = r.ferr;
-    q[k] = s;
-  });
-  return q;
+  return Object.assign(q, quadrosComBanana(def, escorpiaoQuadro));
 }
 
 // ---------- Yeti Ancestral (grade 44x48, escala 3 = 132x144) ----------
@@ -402,6 +445,7 @@ function yetiQuadro(p) {
     pxElipse(b, sx, sy, 7.4, 6.6, C.pelo, { tex: tex(esq ? 51 : 52) });
     pxMembro(b, sx, sy + 1, a[0], a[1], 6, 5.4, C.pelo, { tex: tex(esq ? 53 : 54) });
     pxMembro(b, a[0], a[1], a[2], a[3], 5.4, 4.8, C.pelo, { tex: tex(esq ? 55 : 56) });
+    if (p.banana && !esq) pxBananaEmPe(b, a[2], a[3] - 3);
     // mão peluda com garras
     pxElipse(b, a[2], a[3] + 1.5, 5.4, 5, C.pelo, { tex: tex(esq ? 57 : 58) });
     for (let k = 0; k < 3; k++) {
@@ -501,13 +545,7 @@ function yetiQuadros() {
     tonto: { bob: 3, cab: [-1, 3], olhos: "tonto", br: { e: [3, 31, 6, 39], d: [41, 31, 38, 39] }, pe: [1, 0] },
     dano: { bob: 1, cab: [-1, 1], olhos: "fechado", boca: 1, br: { e: [4, 27, 9, 31], d: [40, 27, 35, 31] } }
   };
-  Object.keys(def).forEach(function(k) {
-    const r = yetiQuadro(def[k]);
-    const s = pxSprite(pxCanvas(r.b, 3));
-    s.olhos = r.olhos;
-    q[k] = s;
-  });
-  return q;
+  return Object.assign(q, quadrosComBanana(def, yetiQuadro));
 }
 
 // ---------- Dragão de Magma (corpo 64x36, escala 3 = 192x108; asas em outro sprite) ----------

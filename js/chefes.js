@@ -734,6 +734,8 @@ function desenharChefe() {
   let nome = QUADRO_CHEFE[c.tipo](c, raiva);
   if (c.estado === "derrotado") nome = "dano";
   else if (c.flash > 0 && c.flash <= 3 && c.estado !== "enterrar") nome = "dano";
+  // segurando a banana: o mesmo quadro com a banana na mão da frente (desenhada no sprite)
+  if (banana && banana.estado === "presa" && spr.q[nome + "_b"]) nome += "_b";
   const fr = spr.q[nome] || spr;
   const img = c.flash > 3 || (c.estado === "derrotado" && c.t % 8 < 4) ? (c.dir > 0 ? fr.flashD : fr.flashE) : (c.dir > 0 ? fr.d : fr.e);
 

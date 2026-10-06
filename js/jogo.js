@@ -1391,21 +1391,31 @@ function atualizarMoedas() {
 // o chefe pega no ar e segura a luta inteira; derrotado, ele solta, ela foge e o macaco vai atrás.
 // =========================
 
-const BANANA_ALTURA = CHAO - 230;   // na faixa do meio da tela (y ~ 390)
+const BANANA_ALTURA = CHAO - 185;   // um pouco abaixo do meio da tela (y ~ 435)
 
 function criarBananaDaFase() {
   if (fase.secreta) return null;
   if (fase.tutorial) return { x: fase.fimX, y: CHAO - 44, base: CHAO - 44, estado: "parada", t: 0, rot: 0, vy: 0 };
   if (fase.ehChefe) {
     if (fase.mundo === MUNDOS.length - 1) return null;   // o Dragão já está com ela
+    if (chefe) prepararBananaChefe(chefe.tipo);
     return { estado: "chegando", x: -90, y: 150, t: 0, rot: 0, vy: 0 };
   }
   return { estado: "fugindo", x: jogador.x + 420, y: BANANA_ALTURA, t: 0, rot: 0, vy: 0, rajada: 0 };
 }
 
-// Onde o chefe segura a banana (na mão da frente)
+// Onde o chefe segura a banana (na mão da frente, em pixels da grade x3 do sprite olhando para a direita)
+const MAO_CHEFE = { gorila: [41.5, 30], yeti: [36.5, 32], escorpiaoRei: [49.5, 19] };
 function maoDoChefe(c) {
-  return { x: c.x + c.w / 2 + c.dir * c.w * 0.3, y: c.y + c.h * 0.42 };
+  const m = MAO_CHEFE[c.tipo];
+  if (!m) return { x: c.x + c.w / 2 + c.dir * c.w * 0.3, y: c.y + c.h * 0.42 };
+  return { x: c.dir > 0 ? c.x + m[0] * 3 : c.x + c.w - m[0] * 3, y: c.y + m[1] * 3 };
+}
+
+// O chefe tem o desenho dele segurando a banana? (aí não precisa desenhar a banana solta por cima)
+function chefeDesenhaBanana(c) {
+  const s = c && SPR_CHEFE[c.tipo];
+  return !!(s && s.q && s.q.comBanana);
 }
 
 function brilhoBanana(b) {
@@ -2947,6 +2957,7 @@ function desenharBanana(naMao) {
   const b = banana;
   if (!b) return;
   if ((b.estado === "presa") !== !!naMao) return;   // na mão do chefe: desenhada por cima dele
+  if (naMao && chefeDesenhaBanana(chefe)) return;    // ...ou já faz parte do desenho do chefe
   const cx = Math.round(b.x + 24);
   const cy = Math.round(b.y + 20);
   if (b.estado === "parada" || b.estado === "fugindo") {
