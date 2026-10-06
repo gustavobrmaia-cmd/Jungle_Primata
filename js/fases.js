@@ -24,6 +24,18 @@ function novaFase(indice) {
   };
 }
 
+// Fases de aprendizado: na Selva 1-1, 1-2 e 1-3 os buracos de cipó e as plataformas começam
+// bem fáceis e vão endurecendo até a dificuldade normal, que vale a partir da 1-4.
+// 1 = mais fácil, 0 = normal. (No Player Fit Test metade saía na 1-1 e 22% no meio da 1-2.)
+function facilidade(f) {
+  return f.mundo === 0 && f.etapa <= 2 ? [1, 0.6, 0.3][f.etapa] : 0;
+}
+
+// valor normal -> valor da versão fácil, conforme a facilidade da fase
+function aliviar(f, normal, facil) {
+  return Math.round(normal + (facil - normal) * facilidade(f));
+}
+
 // ---------- peças ----------
 
 function fChao(f, x, w, gelo) {
@@ -124,8 +136,11 @@ const CHUNKS = {
 
   plataformas: function(f, x, d, r) {
     const n = d > 0.5 ? 3 : 2;
+    const larg = aliviar(f, 96, 150);   // plataformas mais largas
+    const vao = aliviar(f, 120, 80);    // e mais perto uma da outra
+    const borda = aliviar(f, 110, 80);
     fChao(f, x, 160);
-    let px = x + 160 + 110;
+    let px = x + 160 + borda;
     for (let i = 0; i < n; i++) {
       const y = CHAO - 70 - (i % 2) * 50;
       let mov = null;
@@ -133,11 +148,11 @@ const CHUNKS = {
         mov = r() < 0.5 ? { ax: 40, periodo: Math.round(220 - d * 60), fase: r() * 6 }
                         : { ay: 40, periodo: 200, fase: r() * 6 };
       }
-      fPlat(f, px, y, 96, mov);
-      fLinhaMoedas(f, px + 16, y - 44, 2, 40);
-      px += 96 + 120;
+      fPlat(f, px, y, larg, mov);
+      fLinhaMoedas(f, px + 16 + (larg - 96) / 2, y - 44, 2, 40);
+      px += larg + vao;
     }
-    const fim = px - 120 + 110;
+    const fim = px - vao + borda;
     if (f.mundo === 3) f.lavas.push({ x: x + 160, w: fim - x - 160 });
     fChao(f, fim, 200);
     return fim + 200;
@@ -191,16 +206,17 @@ const CHUNKS = {
     const dois = (f.etapa > 1 || d > 0.45) && r() < 0.6;
     fChao(f, x, 200);
     const x0 = x + 200;
-    const a1 = x0 + 120;
-    f.cipos.push({ x: a1, y: 150, comp: 300, fase: r() * 6 });
-    let fim = a1 + 320;
+    // fases de aprendizado: cipó mais perto da beirada, mais comprido e buraco menor
+    const a1 = x0 + aliviar(f, 120, 95);
+    f.cipos.push({ x: a1, y: 150, comp: aliviar(f, 300, 335), fase: r() * 6 });
+    let fim = a1 + aliviar(f, 320, 220);
     if (dois) {
       const a2 = a1 + 330;
       f.cipos.push({ x: a2, y: 150, comp: 300, fase: r() * 6 });
       fArcoMoedas(f, a1, a2, 380, 50, 4);
       fim = a2 + 320;
     }
-    fArcoMoedas(f, fim - 300, fim - 40, 420, 90, 4);
+    fArcoMoedas(f, fim - aliviar(f, 300, 210), fim - 40, 420, 90, 4);
     fChao(f, fim, 240);
     if (r() < d) fColocar(f, inimigoDe(f, r, "terrestre"), fim + 140);
     return fim + 240;
@@ -489,7 +505,8 @@ function gerarFase(indice) {
 
   if (indice === 0) {
     fPlaca(f, 440, tr("{esquerda}/{direita} andar   {pulo} pular\nSegure {pulo} para pular mais alto"));
-    lista = ["plano", "buraco", "apresentaInimigo", "espinhos", "muro", "grupo", "plataformas", "espinhos", "escada"];
+    // curta: a primeira vitória (e o primeiro prêmio) chega logo
+    lista = ["plano", "buraco", "apresentaInimigo", "espinhos", "muro", "plataformas", "escada"];
   } else {
     if (f.etapa === 0) {
       let boasVindas = tr("Bem-vindo: {0}!", mundo.nome);
@@ -514,7 +531,15 @@ function gerarFase(indice) {
 
   let x = 640;
   const mostradas = {};
+  let checkpointCipo = false;
   lista.forEach(function(nome, i) {
+    // fases de aprendizado: checkpoint logo antes do primeiro buraco de cipó
+    if (nome === "cipo" && !checkpointCipo && facilidade(f) > 0 && i > 0) {
+      checkpointCipo = true;
+      fChao(f, x, 280);
+      f.checkpoints.push({ x: x + 120, ativo: false, sobe: 0 });
+      x += 280;
+    }
     if (i === Math.floor(lista.length / 2)) {
       fChao(f, x, 280);
       f.checkpoints.push({ x: x + 120, ativo: false, sobe: 0 });

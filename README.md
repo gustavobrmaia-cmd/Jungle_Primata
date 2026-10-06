@@ -9,10 +9,14 @@ Cada fase libera um inimigo novo, um obstáculo novo e um cosmético de prêmio.
 As fases ficam mais difíceis conforme você avança: ficam mais longas, os buracos ficam
 maiores, aparecem mais inimigos e eles ficam mais rápidos.
 
-Na **primeira vez** que alguém abre o jogo, entra direto num **tutorial** bem curto (~20 s, sem
-anúncio): andar, pular um bloco, pisar na cobra e pegar a banana. No fim dele aparece o **menu**;
-o primeiro "Jogar" mostra a história do começo (o vento levando a banana) e começa a fase 1.
-Os anúncios só começam a partir daí.
+Na **primeira vez** que alguém abre o jogo, entra direto num **tutorial** bem curto (sem
+anúncio): andar, pular um bloco, pisar na cobra e pegar a banana. No fim dele emenda na história
+do começo (o vento levando a banana) e na fase 1-1, sem menu. O **menu** aparece a partir da
+segunda visita. O primeiro intervalo comercial só aparece ao entrar na 2ª fase.
+
+As três primeiras fases da Selva são de aprendizado: plataformas mais largas, buracos de cipó
+menores e checkpoint antes do primeiro cipó, ficando um pouco mais difíceis a cada fase até a
+dificuldade normal, que vale a partir da 1-4.
 
 ## Controles
 
@@ -129,8 +133,8 @@ Depois de zerar, **Jogar** começa uma run nova na Selva 1-1.
 - **Netlify Drop** (funciona com repositório privado): abra `app.netlify.com/drop` e arraste a
   pasta do jogo.
 - **Poki:** `USAR_POKI` em `js/dados.js` já está `true`. O jogo carrega o SDK do Poki, avisa
-  quando a gameplay começa e para, mostra um intervalo comercial só ao entrar numa fase (Jogar, escolher fase, próxima fase
-  ou recomeçar pela pausa; nunca depois de morrer ou do premiado),
+  quando a gameplay começa e para, mostra um intervalo comercial só ao entrar numa fase a partir da 2ª (Jogar, escolher fase,
+  próxima fase ou recomeçar pela pausa; nunca na 1-1, depois de morrer ou do premiado),
   e quando o macaco perde todas as vidas oferece "assista um anúncio para reviver" (volta no
   último chão seguro com as vidas cheias, uma vez por tentativa). Durante o anúncio o jogo fica
   parado e mudo. Com `false` nada disso carrega (use `false` no itch.io).

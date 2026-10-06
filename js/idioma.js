@@ -90,6 +90,7 @@ const EN = {
   "Pule na cabeça da cobra!": "Jump on the snake's head!",
   "Pegue a banana!": "Grab the banana!",
   "Tutorial completo!": "Tutorial complete!",
+  "ou": "or",
   "Agora é pra valer: atravesse os 4 mundos!": "Now for real: cross all 4 worlds!",
   "Toque para pular": "Tap to jump",
   "{0}: puxa o inimigo e chuta pro espaço. Pegue a banana!": "{0}: pull enemies in and kick them into space. Grab the banana!",

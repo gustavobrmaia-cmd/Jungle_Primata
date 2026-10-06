@@ -100,7 +100,8 @@ const ESPERA_ANUNCIO = 4000;
 const ESPERA_PREMIADO = 8000;
 const LIMITE_ANUNCIO = 60000;
 
-// Intervalo comercial: só ao ENTRAR numa fase (Jogar/escolher fase, próxima fase, recomeçar fase).
+// Intervalo comercial: só ao ENTRAR numa fase a partir da 2ª (Jogar/escolher fase, próxima fase,
+// recomeçar fase); nunca no tutorial, na história nem na 1-1.
 // Nunca depois de morrer nem depois do premiado. Sem SDK, segue na hora.
 // Rede de segurança: se o Poki não começar o anúncio em poucos segundos (ou nunca responder),
 // o jogo segue sozinho; antes o menu sumia e o jogo ficava preso esperando.

@@ -89,6 +89,8 @@ function desenharTutorial() {
   ctx.font = "bold " + tam + "px " + FONTE;
   textoSombra(txt, LARGURA / 2, y + h * 0.78, "#ffffff");
 
+  if (tuto.passo === 0) desenharTeclasAndar();
+
   // seta pulando em cima do que tem que fazer
   let alvo = null;
   if (tuto.passo === 1) alvo = TUTO_BLOCO + 32;
@@ -113,13 +115,72 @@ function desenharTutorial() {
   }
 }
 
+// Primeiro passo: as teclas de andar desenhadas grandes no meio da tela, piscando, com uma seta
+// apontando para a direita (16% dos jogadores do teste nunca chegaram a andar).
+function desenharTeclasAndar() {
+  if (toqueAtivo || controleAtivo) return;   // no toque já tem a dica no analógico
+  const nomes = (save.teclas.direita || []).filter(function(k) { return k; }).map(nomeDaTecla);
+  if (!nomes.length) return;
+  const lado = 96;
+  const esp = 60;
+  const total = nomes.length * lado + (nomes.length - 1) * esp;
+  const cy = modoRetrato ? Math.round(ALTURA * zoomJogo() * 0.42) : 300;
+  const pisca = Math.floor(tempo / 20) % 2 === 0;
+  let x = Math.round(LARGURA / 2 - total / 2 - 50);
+  nomes.forEach(function(n, i) {
+    if (i > 0) {
+      ctx.font = "bold 26px " + FONTE;
+      ctx.textAlign = "center";
+      textoSombra(tr("ou"), x - esp / 2, cy + 8, "#ffe066");
+    }
+    teclaGrande(x, cy - lado / 2, lado, n, pisca);
+    x += lado + esp;
+  });
+  // seta grande para a direita, balançando
+  const sx = x + 10 + Math.sin(tempo / 6) * 8;
+  ctx.fillStyle = "#0d0704";
+  ctx.beginPath();
+  ctx.moveTo(sx - 4, cy - 22); ctx.lineTo(sx + 44, cy - 22); ctx.lineTo(sx + 44, cy - 42);
+  ctx.lineTo(sx + 84, cy); ctx.lineTo(sx + 44, cy + 42); ctx.lineTo(sx + 44, cy + 22); ctx.lineTo(sx - 4, cy + 22);
+  ctx.fill();
+  ctx.fillStyle = "#ffe066";
+  ctx.beginPath();
+  ctx.moveTo(sx + 2, cy - 15); ctx.lineTo(sx + 50, cy - 15); ctx.lineTo(sx + 50, cy - 30);
+  ctx.lineTo(sx + 75, cy); ctx.lineTo(sx + 50, cy + 30); ctx.lineTo(sx + 50, cy + 15); ctx.lineTo(sx + 2, cy + 15);
+  ctx.fill();
+}
+
+// Tecla de teclado "de verdade": base escura, tampa clara que afunda quando pisca
+function teclaGrande(x, y, lado, nome, apertada) {
+  const desce = apertada ? 6 : 0;
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(x + 4, y + 10, lado, lado);
+  ctx.fillStyle = "#0d0704";
+  ctx.fillRect(x - 3, y + desce - 3, lado + 6, lado + 6 - desce);
+  ctx.fillStyle = "#8a7a63";
+  ctx.fillRect(x, y + 12, lado, lado - 12);
+  ctx.fillStyle = apertada ? "#ffe066" : "#fff3d6";
+  ctx.fillRect(x, y + desce, lado, lado - 14);
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.fillRect(x + 6, y + desce + 6, lado - 12, 6);
+  ctx.fillStyle = "#3b2412";
+  ctx.font = "bold " + (nome.length > 2 ? 22 : 44) + "px " + FONTE;
+  ctx.textAlign = "center";
+  ctx.fillText(nome, x + lado / 2, y + desce + (lado - 14) / 2 + (nome.length > 2 ? 8 : 15));
+}
+
 function fimDoTutorial() {
   medir("tutorial", PASSOS_TUTO[3], "complete");
   save.viuTutorial = true;
   salvar();
   sujo = false;
   som("vitoria");
-  mostrarMensagem(tr("Tutorial completo!"), tr("Agora é pra valer: atravesse os 4 mundos!"), 150, function() {
-    trocarCena(voltarAoMenu);
+  // emenda direto na história e na fase 1-1 (sem menu e sem anúncio): no Player Fit Test 1 em cada 5
+  // jogadores sumia entre o fim do tutorial, o menu e o comercial. O menu aparece a partir da 2ª visita.
+  mostrarMensagem(tr("Tutorial completo!"), tr("Agora é pra valer: atravesse os 4 mundos!"), 120, function() {
+    trocarCena(function() {
+      if (!save.viuIntro) iniciarIntro();
+      else iniciarFase(0);
+    });
   });
 }

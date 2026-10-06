@@ -196,17 +196,19 @@ function soltarTeclas() {
   apertos.clear();
 }
 
-function sairDoMenu(fn) {
+// Intervalo comercial ao entrar numa fase, MENOS na 1-1 (e na história que vem antes dela):
+// o primeiro anúncio só aparece a partir da 2ª fase.
+function sairDoMenu(fn, semIntervalo) {
   telaAtual = "nenhuma";
   atualizarTelas();
-  // o Poki pede um intervalo antes de cada começo de gameplay (ele decide se mostra)
-  intervaloComercial(function() { trocarCena(fn); });
+  if (semIntervalo) trocarCena(fn);
+  else intervaloComercial(function() { trocarCena(fn); });
 }
 
 function jogar() {
-  if (!save.viuIntro) sairDoMenu(iniciarIntro);
-  else if (save.zerou) sairDoMenu(function() { iniciarFase(0); });   // depois de zerar: nova run desde o começo
-  else sairDoMenu(function() { iniciarFase(save.desbloqueado); });
+  if (!save.viuIntro) sairDoMenu(iniciarIntro, true);
+  else if (save.zerou) sairDoMenu(function() { iniciarFase(0); }, true);   // depois de zerar: nova run desde o começo
+  else sairDoMenu(function() { iniciarFase(save.desbloqueado); }, save.desbloqueado === 0);
 }
 
 function voltarAoMenu() {
@@ -440,7 +442,7 @@ el("mundos").addEventListener("click", function(e) {
   const b = e.target.closest("button");
   if (!b || b.disabled) return;
   const i = +b.dataset.fase;
-  sairDoMenu(function() { iniciarFase(i); });
+  sairDoMenu(function() { iniciarFase(i); }, i === 0);
 });
 
 
@@ -686,7 +688,7 @@ document.querySelectorAll("[data-acao]").forEach(function(b) {
       pausado = false;
       atualizarTelas();
       const recomecar = function() { trocarCena(function() { iniciarFase(fase.indice); }); };
-      if (fase.tutorial) recomecar();   // no tutorial não tem anúncio
+      if (fase.tutorial || fase.indice === 0) recomecar();   // no tutorial e na 1-1 não tem anúncio
       else intervaloComercial(recomecar);
     }
     else if (acao === "reviver") aceitarReviver();
