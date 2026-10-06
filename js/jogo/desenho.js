@@ -100,6 +100,9 @@ function desenharJogo(ctx) {
 
   // 10. HUD e textos
   if (j.demo) { if (j.fase === "queda") desenharQueda(ctx, j, H); return; }   // fundo dos menus: só a luta
+  // na queda de braço o botão de pausa sai da frente da barra de força
+  const naQueda = j.fase === "queda";
+  if (naQueda !== desenharJogo.naQueda) { desenharJogo.naQueda = naQueda; el("btnPausa").classList.toggle("escondido", naQueda); }
   if (j.fase === "queda") desenharQueda(ctx, j, H);
   else desenharHud(ctx, j, M, dy);
   if (!j.demo) desenharControlesToque(ctx, j, H);

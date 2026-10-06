@@ -1,619 +1,607 @@
 "use strict";
 
 // =========================
-// QUEDA DE BRAÇO: cena própria que cobre a tela.
-// Fundo (arena, plateia, bandeirinhas, palco, mesa) em cache; por quadro só desenha
-// as 2 bolinhas, os braços, a barra de força, os números e os efeitos de esforço.
+// QUEDA DE BRAÇO (v2): cena própria que cobre a tela.
+// Arena pré-renderizada (parede, plateia, luzes, mesa, almofadas) em 1 canvas por tamanho + cores.
+// Por quadro: sombras, braços (sprites rotacionados/esticados), mãos entrelaçadas (1 sprite), as 2 bolinhas com
+// faixa na cabeça (ArteBolinha), barra de força e textos (sprites em cache). Sem gradiente/blur por quadro.
 // Depende de ArteBolinha (carregar bolinhas.js antes).
 // =========================
 
 const ArteQueda = (function() {
-  var CONTORNO = "#1b1030";
-  var PI2 = Math.PI * 2;
-  var FONTE = "'Arial Rounded MT Bold','Trebuchet MS',system-ui,Arial,sans-serif";
+  var PI = Math.PI, PI2 = Math.PI * 2, SS = 1, SSM = 2;   // SS: sprites dos braços (1:1); SSM: molde das mãos (2x, depois assado em ângulos)
+  var TINTA = "#15123c";
 
   // geometria do mundo 1280x720
-  var CX = 640;
-  var BOLA_R = 84, BOLA1_X = 300, BOLA2_X = 980, BOLA_Y = 408;
-  var MESA_TOPO = 498, MESA_FRENTE = 550, MESA_FIM = 612;
-  var COTOVELO_Y = 524, COT1_X = 500, COT2_X = 780;
+  var BOLA_R = 80, CX1 = 552, CX2 = 728, CY = 360;      // rostos quase encostando
+  var ELB1 = 440, ELB2 = 840, ELB_Y = 548;               // cotovelos na mesa
+  var MAO_X = 640, MAO_Y = 496, HS = 1.5;                          // centro das mãos entrelaçadas
+  var L_ANTE = 128, L_BRACO = 150;                       // comprimentos de referência (antebraço e braço)
+  var MESA_FUNDO = 456, MESA_FRENTE = 612;
 
-  // ---------- utilidades de cor ----------
+  function criarCanvas(w, h) { var c = document.createElement("canvas"); c.width = Math.ceil(w); c.height = Math.ceil(h); return c; }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function hexRgb(h) {
     if (h.charAt(0) === "#") h = h.slice(1);
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
     var n = parseInt(h, 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
-  function mist(rgb, alvo, q) {
-    return "rgb(" + Math.round(rgb[0] + (alvo[0] - rgb[0]) * q) + "," + Math.round(rgb[1] + (alvo[1] - rgb[1]) * q) +
-      "," + Math.round(rgb[2] + (alvo[2] - rgb[2]) * q) + ")";
+  function mix(a, b, q) {
+    return "rgb(" + Math.round(a[0] + (b[0] - a[0]) * q) + "," + Math.round(a[1] + (b[1] - a[1]) * q) + "," + Math.round(a[2] + (b[2] - a[2]) * q) + ")";
   }
-  var BR = [255, 255, 255], PR = [27, 16, 48];
-  function criarCanvas(w, h) { var c = document.createElement("canvas"); c.width = Math.ceil(w); c.height = Math.ceil(h); return c; }
+  function lumin(cor) { var c = hexRgb(cor); return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255; }
+  function pal(cor) { return ArteBolinha.paleta(cor); }
   function retArred(g, x, y, w, h, r) {
-    g.beginPath();
-    g.moveTo(x + r, y);
-    g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
-    g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r);
+    g.beginPath(); g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r);
     g.closePath();
   }
-  // gerador pseudo-aleatório com semente (a plateia é sempre a mesma)
+  function capsula(g, x1, y1, x2, y2, w) {
+    var a = Math.atan2(y2 - y1, x2 - x1);
+    g.beginPath(); g.arc(x2, y2, w / 2, a - PI / 2, a + PI / 2); g.arc(x1, y1, w / 2, a + PI / 2, a + PI * 1.5); g.closePath();
+  }
+  // pintura cel-shading: sombra de fundo, base deslocada para cima/esquerda, contorno fino da própria cor
+  function cel(g, trace, p, dx, dy, lw) {
+    g.save(); trace(); g.fillStyle = p.sombra; g.fill(); g.clip();
+    g.translate(dx, dy); trace(); g.fillStyle = p.base; g.fill(); g.restore();
+    trace(); g.strokeStyle = p.contorno; g.lineWidth = lw; g.lineJoin = "round"; g.stroke();
+  }
   function semente(s) { return function() { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; }; }
-  function hash(n) { var s = Math.sin(n * 91.7 + 17.3) * 43758.5453; return s - Math.floor(s); }
 
-  // ---------- sprites ----------
-  var sprFeixes = {};
-  function feixe(cor) { // cone de luz de holofote
-    var s = sprFeixes[cor];
+  // ---------- textos em cache (sprite 1:1: 1 drawImage por texto) ----------
+  var textosC = {}, nTextos = 0;
+  function texto(txt, fill, borda, px) {
+    var k = txt + "|" + fill + "|" + borda + "|" + px, s = textosC[k];
     if (s) return s;
-    var rgb = hexRgb(cor);
-    s = criarCanvas(150, 520);
-    var g = s.getContext("2d");
-    var gr = g.createLinearGradient(0, 0, 0, 520);
-    gr.addColorStop(0, "rgba(" + rgb.join(",") + ",0.55)");
-    gr.addColorStop(1, "rgba(" + rgb.join(",") + ",0)");
-    g.fillStyle = gr;
-    g.beginPath(); g.moveTo(68, 0); g.lineTo(82, 0); g.lineTo(150, 520); g.lineTo(0, 520); g.closePath(); g.fill();
-    return (sprFeixes[cor] = s);
+    if (nTextos > 160) { textosC = {}; nTextos = 0; }
+    var pad = 5, fonte = "800 " + px + "px system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    var m = criarCanvas(4, 4).getContext("2d"); m.font = fonte;
+    var w = Math.ceil(m.measureText(txt).width) + pad * 2, h = px + pad * 2 + 4;
+    var c = criarCanvas(w, h), g = c.getContext("2d");
+    g.font = fonte; g.textAlign = "center"; g.textBaseline = "middle"; g.lineJoin = "round";
+    g.lineWidth = Math.max(3.5, px * 0.14); g.strokeStyle = borda; g.strokeText(txt, w / 2, h / 2 + 1);
+    g.fillStyle = fill; g.fillText(txt, w / 2, h / 2 + 1);
+    nTextos++;
+    return (textosC[k] = { c: c, w: w, h: h });
   }
-  var sprBrilhos = {};
-  function brilho(cor) {
-    var s = sprBrilhos[cor];
-    if (s) return s;
-    var rgb = hexRgb(cor);
-    s = criarCanvas(64, 64);
-    var g = s.getContext("2d");
-    var gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gr.addColorStop(0, "rgba(" + rgb.join(",") + ",1)");
-    gr.addColorStop(0.4, "rgba(" + rgb.join(",") + ",0.5)");
-    gr.addColorStop(1, "rgba(" + rgb.join(",") + ",0)");
-    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-    return (sprBrilhos[cor] = s);
+  function poeTexto(ctx, s, x, y, esc) {
+    if (!esc || esc === 1) ctx.drawImage(s.c, Math.round(x - s.w / 2), Math.round(y - s.h / 2));
+    else ctx.drawImage(s.c, x - s.w * esc / 2, y - s.h * esc / 2, s.w * esc, s.h * esc);
   }
 
-  // ---------- fundo em cache ----------
-  var fundoCache = null, fundoChave = "";
-  var fileiras = null; // plateia (duas fileiras separadas, para balançarem)
+  // ---------- braços (sprites) ----------
+  // paleta da pele dos braços: um tico mais clara que a bolinha (separa do corpo) e sombra mais funda
+  var peles = {};
+  function pele(cor) {
+    if (peles[cor]) return peles[cor];
+    var p = pal(cor), o = {}; for (var k in p) o[k] = p[k];
+    o.base = mix(p.rgb, [255, 255, 255], 0.07);
+    o.sombra = mix(p.rgb, [48, 28, 120], 0.5);
+    return (peles[cor] = o);
+  }
+  // traço fino de definição muscular
+  function linha(g, p, a, lw) { g.globalAlpha = a; g.strokeStyle = p.contorno; g.lineWidth = lw; g.lineCap = "round"; g.stroke(); g.globalAlpha = 1; }
 
-  function desenharPlateia(g, W, base, cor, raioCab, passo, seed, brilhoCor) {
-    var rnd = semente(seed);
-    g.fillStyle = cor;
-    var x = -20;
-    while (x < W + 40) {
-      var cx = x + rnd() * 10, cy = base - rnd() * raioCab * 0.9;
-      // corpo
-      g.beginPath(); g.ellipse(cx, cy + raioCab * 1.9, raioCab * 1.5, raioCab * 1.6, 0, 0, PI2); g.fill();
-      // cabeça
-      g.beginPath(); g.arc(cx, cy, raioCab, 0, PI2); g.fill();
-      // braço levantado com mão (alguns)
-      if (rnd() < 0.34) {
-        var lado = rnd() < 0.5 ? -1 : 1, alto = raioCab * (1.8 + rnd() * 1.2);
-        g.strokeStyle = cor; g.lineWidth = raioCab * 0.55; g.lineCap = "round";
-        g.beginPath(); g.moveTo(cx + lado * raioCab * 1.1, cy + raioCab * 1.2);
-        g.lineTo(cx + lado * raioCab * 1.7, cy - alto); g.stroke();
-        g.beginPath(); g.arc(cx + lado * raioCab * 1.7, cy - alto, raioCab * 0.45, 0, PI2); g.fill();
-        // bastão luminoso / bandeirinha colorida
-        if (rnd() < 0.6) {
-          var cb = brilhoCor[(rnd() * brilhoCor.length) | 0];
-          g.strokeStyle = cb; g.lineWidth = 3;
-          g.beginPath(); g.moveTo(cx + lado * raioCab * 1.7, cy - alto);
-          g.lineTo(cx + lado * raioCab * 1.7 + lado * 5, cy - alto - raioCab * 1.5); g.stroke();
-        }
-      }
-      // luz de borda (rim) colorida na cabeça
-      g.fillStyle = brilhoCor[(rnd() * brilhoCor.length) | 0];
-      g.globalAlpha = 0.28;
-      g.beginPath(); g.arc(cx - raioCab * 0.2, cy - raioCab * 0.3, raioCab * 0.85, Math.PI * 1.05, Math.PI * 1.75); g.lineTo(cx, cy); g.fill();
-      g.globalAlpha = 1; g.fillStyle = cor;
-      x += passo * (0.8 + rnd() * 0.45);
+  // antebraço apontando para +x (ou -x com lado = -1), origem no cotovelo. Munhequeira perto da ponta.
+  var antebracos = {};
+  function antebraco(cor, lado, faixaCor, listra) {
+    var k = cor + "|" + lado + "|" + faixaCor;
+    if (antebracos[k]) return antebracos[k];
+    var p = pele(cor), pf = pal(faixaCor), ox = 52, oy = 64, w = 202, h = 120;
+    var c = criarCanvas(w * SS, h * SS), g = c.getContext("2d");
+    g.scale(SS, SS); g.translate(lado > 0 ? ox : w - ox, oy); g.scale(lado, 1);
+    var L = L_ANTE, lw = 2.5;
+    function forma() {
+      g.beginPath();
+      g.moveTo(-42, 4);
+      g.bezierCurveTo(-50, -30, -18, -54, 16, -56);
+      g.bezierCurveTo(54, -60, 90, -42, L + 14, -27);
+      g.lineTo(L + 14, 27);
+      g.bezierCurveTo(92, 33, 56, 48, 16, 48);
+      g.bezierCurveTo(-20, 48, -40, 32, -42, 4);
+      g.closePath();
     }
+    cel(g, forma, p, -6 * lado, -8, lw);
+    g.save(); forma(); g.clip();
+    // ventre do músculo de cima (extensores): luz + contorno na borda de baixo
+    g.beginPath(); g.moveTo(-8, -34); g.bezierCurveTo(22, -66, 64, -46, 96, -16); g.bezierCurveTo(66, -30, 24, -22, -8, -34); g.closePath();
+    g.fillStyle = p.luz; g.globalAlpha = 0.45; g.fill(); g.globalAlpha = 1;
+    g.beginPath(); g.moveTo(96, -16); g.bezierCurveTo(66, -30, 24, -22, -8, -34); linha(g, p, 0.75, 2);
+    // músculo de baixo (flexores): sombra e contorno na borda de cima
+    g.beginPath(); g.moveTo(-2, 22); g.bezierCurveTo(28, 44, 72, 40, 100, 14); g.bezierCurveTo(70, 24, 30, 22, -2, 22); g.closePath();
+    g.fillStyle = p.sombra; g.globalAlpha = 0.4; g.fill(); g.globalAlpha = 1;
+    g.beginPath(); g.moveTo(100, 14); g.bezierCurveTo(70, 24, 30, 22, -2, 22); linha(g, p, 0.7, 2);
+    // brilho e dobra do cotovelo
+    g.fillStyle = "#fff"; g.globalAlpha = 0.7; g.beginPath(); g.ellipse(26, -45, 20, 5.5, -0.22, 0, PI2); g.fill(); g.globalAlpha = 1;
+    g.beginPath(); g.moveTo(-30, -6); g.bezierCurveTo(-24, 6, -14, 12, -2, 12); linha(g, p, 0.6, 1.8);
+    g.beginPath(); g.moveTo(98, -8); g.lineTo(L + 4, -6); linha(g, p, 0.4, 1.5);
+    g.beginPath(); g.moveTo(98, 4); g.lineTo(L + 4, 6); linha(g, p, 0.4, 1.5);
+    g.strokeStyle = p.rim; g.lineWidth = 2.2; g.globalAlpha = 0.95; g.lineCap = "round";
+    g.beginPath(); g.moveTo(-36, 24); g.bezierCurveTo(-24, 38, -6, 44, 16, 44); g.stroke(); g.globalAlpha = 1;
+    g.restore();
+    forma(); g.strokeStyle = p.contorno; g.lineWidth = lw; g.lineJoin = "round"; g.stroke();
+    // munhequeira
+    var bx = L - 38, bw = 20;
+    retArred(g, bx, -33, bw, 66, 6); g.fillStyle = pf.base; g.fill();
+    g.save(); g.clip(); g.fillStyle = pf.sombra; g.fillRect(bx + bw * 0.62, -40, bw, 80); g.fillStyle = pf.luz; g.globalAlpha = 0.7; g.fillRect(bx + 2, -40, 4, 80); g.globalAlpha = 0.95; g.fillStyle = listra; g.fillRect(bx + 8.5, -40, 3.5, 80); g.restore();
+    retArred(g, bx, -33, bw, 66, 6); g.strokeStyle = pf.contorno; g.lineWidth = lw * 0.9; g.stroke();
+    return (antebracos[k] = { c: c, ox: lado > 0 ? ox : w - ox, oy: oy, w: w, h: h });
   }
 
-  function criarFundo(W, H) {
-    var oy = (H - 720) / 2;
-    var c = criarCanvas(W, H), g = c.getContext("2d");
-    var ox = (W - 1280) / 2;
+  // braço (ombro -> cotovelo) com deltoide e bíceps grandes; origem no ombro
+  var bracos = {};
+  function braco(cor, lado) {
+    var k = cor + "|" + lado;
+    if (bracos[k]) return bracos[k];
+    var p = pele(cor), ox = 40, oy = 90, w = 214, h = 158;
+    var c = criarCanvas(w * SS, h * SS), g = c.getContext("2d");
+    g.scale(SS, SS); g.translate(lado > 0 ? ox : w - ox, oy); g.scale(lado, 1);
+    var lw = 2.5;
+    function forma() {
+      g.beginPath();
+      g.moveTo(-32, -6);
+      g.bezierCurveTo(-36, -44, -6, -60, 26, -58);
+      g.bezierCurveTo(54, -56, 70, -84, 108, -76);
+      g.bezierCurveTo(136, -70, 152, -52, 170, -42);
+      g.lineTo(170, 42);
+      g.bezierCurveTo(142, 52, 104, 68, 66, 62);
+      g.bezierCurveTo(30, 56, -26, 50, -32, -6);
+      g.closePath();
+    }
+    cel(g, forma, p, -6 * lado, -9, lw);
+    g.save(); forma(); g.clip();
+    // deltoide (cabeça do ombro)
+    g.beginPath(); g.arc(-4, -8, 36, 0, PI2); g.fillStyle = p.luz; g.globalAlpha = 0.28; g.fill(); g.globalAlpha = 1;
+    g.beginPath(); g.arc(-4, -8, 36, -0.5, 1.1); linha(g, p, 0.65, 2);
+    // bíceps: pico com luz e contorno inferior
+    g.beginPath(); g.ellipse(88, -46, 42, 28, -0.2, 0, PI2); g.fillStyle = p.luz; g.globalAlpha = 0.42; g.fill(); g.globalAlpha = 1;
+    g.beginPath(); g.moveTo(46, -34); g.bezierCurveTo(70, -14, 112, -14, 140, -34); linha(g, p, 0.75, 2.2);
+    g.fillStyle = "#fff"; g.globalAlpha = 0.7; g.beginPath(); g.ellipse(80, -64, 21, 6.5, -0.2, 0, PI2); g.fill(); g.globalAlpha = 1;
+    // tríceps e veia
+    g.beginPath(); g.moveTo(40, 34); g.bezierCurveTo(78, 46, 112, 40, 146, 24); linha(g, p, 0.65, 2);
+    g.beginPath(); g.moveTo(66, 4); g.bezierCurveTo(88, -2, 112, 2, 136, -4); linha(g, p, 0.35, 1.6);
+    g.strokeStyle = p.rim; g.lineWidth = 2.2; g.lineCap = "round"; g.globalAlpha = 0.95;
+    g.beginPath(); g.moveTo(10, 50); g.bezierCurveTo(50, 62, 100, 62, 160, 44); g.stroke(); g.globalAlpha = 1;
+    g.restore();
+    forma(); g.strokeStyle = p.contorno; g.lineWidth = lw; g.lineJoin = "round"; g.stroke();
+    return (bracos[k] = { c: c, ox: lado > 0 ? ox : w - ox, oy: oy, w: w, h: h });
+  }
 
-    // céu da arena: roxo profundo com um núcleo mais claro no meio
-    var gr = g.createLinearGradient(0, 0, 0, H);
-    gr.addColorStop(0, "#150a33"); gr.addColorStop(0.45, "#35154f"); gr.addColorStop(1, "#1a0b30");
+  // ---------- mãos entrelaçadas (1 sprite por par de cores) ----------
+  var maosC = {};
+  function maos(c1, c2) {
+    var k = c1 + "|" + c2;
+    if (maosC[k]) return maosC[k];
+    var pa = pele(c1), pb = pele(c2), w = 230, h = 180, ox = 115, oy = 114;
+    var c = criarCanvas(w * SSM, h * SSM), g = c.getContext("2d");
+    g.scale(SSM, SSM); g.translate(ox, oy);
+    var lw = 2.5;
+    function sombraSob(trace, dx, dy) { g.save(); g.translate(dx, dy); trace(); g.fillStyle = "rgba(24,12,60,0.34)"; g.fill(); g.restore(); }
+    function peca(trace, p, dx, dy, brilho) {
+      cel(g, trace, p, dx, dy, lw);
+      if (brilho) { g.save(); trace(); g.clip(); brilho(p); g.restore(); }
+    }
+    // dorso de cada mão: afunila no pulso e alarga nos nós dos dedos
+    function bloco(lado) {
+      return function() {
+        var s = lado;
+        g.beginPath();
+        g.moveTo(s * -76, -2);
+        g.bezierCurveTo(s * -52, -6, s * -34, -34, s * -6, -36);
+        g.bezierCurveTo(s * 18, -37, s * 28, -18, s * 28, 4);
+        g.bezierCurveTo(s * 28, 30, s * 24, 52, s * 2, 52);
+        g.bezierCurveTo(s * -26, 52, s * -52, 38, s * -76, 30);
+        g.closePath();
+      };
+    }
+    function luzBloco(sx, lado) {
+      return function(p) {
+        g.fillStyle = p.luz; g.globalAlpha = 0.5; g.beginPath(); g.ellipse(sx, -20, 20, 6.5, 0, 0, PI2); g.fill();
+        g.fillStyle = "#fff"; g.globalAlpha = 0.65; g.beginPath(); g.ellipse(sx - 4 * lado, -23, 8, 2.6, 0, 0, PI2); g.fill(); g.globalAlpha = 1;
+        // tendões no dorso e nós dos dedos
+        g.beginPath(); g.moveTo(sx - 26 * lado, -4); g.lineTo(sx + 6 * lado, -8); linha(g, p, 0.35, 1.6);
+        g.beginPath(); g.moveTo(sx - 26 * lado, 8); g.lineTo(sx + 6 * lado, 6); linha(g, p, 0.35, 1.6);
+      };
+    }
+    // polegar: cápsula grossa, nó e unha
+    function polegar(x1, y1, x2, y2, p) {
+      function t() { capsula(g, x1, y1, x2, y2, 25); }
+      sombraSob(t, 2, 3);
+      peca(t, p, -3, -4, function(pp) {
+        var a = Math.atan2(y2 - y1, x2 - x1), mx = x1 + (x2 - x1) * 0.42, my = y1 + (y2 - y1) * 0.42;
+        g.save(); g.translate(x2 - Math.cos(a) * 8, y2 - Math.sin(a) * 8); g.rotate(a);
+        g.fillStyle = pp.brilho; g.globalAlpha = 0.95; g.beginPath(); g.ellipse(0, 0, 7.5, 6.5, 0, 0, PI2); g.fill(); g.restore(); g.globalAlpha = 1;
+        g.save(); g.translate(mx, my); g.rotate(a); g.beginPath(); g.moveTo(0, -9); g.quadraticCurveTo(3, 0, 0, 9); linha(g, pp, 0.5, 1.7); g.restore();
+        g.fillStyle = "#fff"; g.globalAlpha = 0.55; g.beginPath(); g.ellipse(x1 + (x2 - x1) * 0.3 - 3, y1 + (y2 - y1) * 0.3 - 4, 8, 2.8, a, 0, PI2); g.fill(); g.globalAlpha = 1;
+      });
+    }
+    // dedo: cápsula com 2 juntas e brilho
+    function dedo(x1, y, x2, p, wd) {
+      function t() { capsula(g, x1, y, x2, y, wd); }
+      sombraSob(t, 1.5, 3.2);
+      peca(t, p, -2, -3.4, function(pp) {
+        var m = (x1 + x2) / 2, d = Math.abs(x2 - x1);
+        g.fillStyle = "#fff"; g.globalAlpha = 0.5; g.beginPath(); g.ellipse(m, y - 5.5, d * 0.28, 2.4, 0, 0, PI2); g.fill(); g.globalAlpha = 1;
+        var j1 = x1 + (x2 - x1) * 0.38, j2 = x1 + (x2 - x1) * 0.72;
+        g.beginPath(); g.moveTo(j1, y - 7); g.lineTo(j1, y + 7); linha(g, pp, 0.5, 1.5);
+        g.beginPath(); g.moveTo(j2, y - 6); g.lineTo(j2, y + 6); linha(g, pp, 0.5, 1.5);
+      });
+    }
+    // ordem: mão B (trás) -> polegar B -> mão A -> dedos de A sobre B -> dedos de B sobre A -> polegar A (por cima)
+    peca(bloco(-1), pb, -4, -5, luzBloco(46, -1));
+    polegar(34, -24, 16, -58, pb);
+    peca(bloco(1), pa, -4, -5, luzBloco(-46, 1));
+    dedo(-10, -23, 46, pa, 24);
+    dedo(-10, -1, 50, pa, 24);
+    dedo(10, 21, -46, pb, 21);
+    dedo(10, 40, -42, pb, 18);
+    polegar(-34, -24, -14, -60, pa);
+    return (maosC[k] = { c: c, ox: ox, oy: oy, w: w, h: h });
+  }
+
+  // mãos já giradas e na escala final (HS), em NR ângulos: por quadro é 1 drawImage 1:1 (girar em tempo real é caro)
+  var NR = 15, RMIN = -0.5, RMAX = 0.5, maosRot = {};
+  function maoRot(c1, c2, th) {
+    var k = c1 + "|" + c2, arr = maosRot[k] || (maosRot[k] = []);
+    var i = clamp(Math.round((th - RMIN) / (RMAX - RMIN) * (NR - 1)), 0, NR - 1);
+    if (arr[i]) return arr[i];
+    var m = maos(c1, c2), ang = RMIN + i * (RMAX - RMIN) / (NR - 1), ca = Math.cos(ang), sa = Math.sin(ang);
+    // limites do retângulo girado em torno do centro (m.ox, m.oy)
+    var xs = [-m.ox, m.w - m.ox], ys = [-m.oy, m.h - m.oy], x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (var a = 0; a < 2; a++) for (var b = 0; b < 2; b++) {
+      var px = (xs[a] * ca - ys[b] * sa) * HS, py = (xs[a] * sa + ys[b] * ca) * HS;
+      if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
+    }
+    x0 = Math.floor(x0) - 1; y0 = Math.floor(y0) - 1;
+    var c = criarCanvas(Math.ceil(x1 - x0) + 2, Math.ceil(y1 - y0) + 2), g = c.getContext("2d");
+    g.translate(-x0, -y0); g.rotate(ang); g.scale(HS, HS);
+    g.drawImage(m.c, -m.ox, -m.oy, m.w, m.h);
+    return (arr[i] = { c: c, ox: -x0, oy: -y0 });
+  }
+
+  // coroa dourada do vencedor
+  var coroaS = null;
+  function coroa() {
+    if (coroaS) return coroaS;
+    var c = criarCanvas(100 * SS, 76 * SS), g = c.getContext("2d");
+    g.scale(SS, SS); g.translate(50, 40);
+    function forma() {
+      g.beginPath(); g.moveTo(-34, 24); g.lineTo(-40, -22); g.lineTo(-18, -4); g.lineTo(0, -32); g.lineTo(18, -4); g.lineTo(40, -22); g.lineTo(34, 24); g.closePath();
+    }
+    cel(g, forma, { sombra: "#e0961b", base: "#ffd23f", contorno: "#7a4a0c" }, -5, -4, 2.4);
+    g.fillStyle = "#fff3a6"; g.globalAlpha = 0.8; g.beginPath(); g.ellipse(-18, 8, 6, 2.4, -0.4, 0, PI2); g.fill(); g.globalAlpha = 1;
+    [[-40, -22], [0, -32], [40, -22]].forEach(function(q) { g.beginPath(); g.arc(q[0], q[1], 5, 0, PI2); g.fillStyle = "#ff5d73"; g.fill(); g.strokeStyle = "#7a4a0c"; g.lineWidth = 2; g.stroke(); });
+    g.fillStyle = "#e0961b"; g.fillRect(-34, 16, 68, 8);
+    forma(); g.strokeStyle = "#7a4a0c"; g.lineWidth = 2.4; g.stroke();
+    return (coroaS = c);
+  }
+
+  // ---------- arena (pré-renderizada) ----------
+  var fundoC = {};
+  function criarFundo(W, H, c1, c2) {
+    var dy = Math.round((H - 720) / 2), cv = criarCanvas(W, H), g = cv.getContext("2d");
+    var p1 = pal(c1), p2 = pal(c2), i, r = semente(11);
+    // parede
+    var gr = g.createLinearGradient(0, 0, 0, dy + 500);
+    gr.addColorStop(0, "#100e2b"); gr.addColorStop(0.6, "#25205a"); gr.addColorStop(1, "#322c6e");
     g.fillStyle = gr; g.fillRect(0, 0, W, H);
-    var rg = g.createRadialGradient(W / 2, oy + 330, 20, W / 2, oy + 330, 560);
-    rg.addColorStop(0, "rgba(255,120,190,0.32)"); rg.addColorStop(0.5, "rgba(140,70,220,0.14)"); rg.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = rg; g.fillRect(0, 0, W, H);
-
-    // parede de luzes ao fundo (lâmpadas coloridas em arcos)
-    var cores = ["#ff5d9e", "#ffd43b", "#4dd2ff", "#8cff6b", "#ff9a3b", "#b57bff"];
-    g.save(); g.translate(ox, oy);
-    for (var fila = 0; fila < 3; fila++) {
-      var yy = 150 + fila * 34;
-      for (var i = 0; i < 28; i++) {
-        var x = 28 + i * 45 + (fila & 1) * 22;
-        var cc = cores[(i + fila * 2) % 6];
-        g.globalAlpha = 0.9;
-        g.drawImage(brilho(cc), x - 14, yy - 14, 28, 28);
-        g.globalAlpha = 1;
-        g.fillStyle = "#fff"; g.beginPath(); g.arc(x, yy, 2.4, 0, PI2); g.fill();
+    g.translate(0, dy);
+    // chão
+    var gf = g.createLinearGradient(0, 490, 0, 720 + dy);
+    gf.addColorStop(0, "#3a3278"); gf.addColorStop(1, "#1b1744");
+    g.fillStyle = gf; g.fillRect(0, 490, W, 240 + dy);
+    g.strokeStyle = "rgba(255,255,255,0.05)"; g.lineWidth = 2;                   // linhas do piso em perspectiva
+    for (i = -8; i <= 8; i++) { g.beginPath(); g.moveTo(640 + i * 60, 492); g.lineTo(640 + i * 230, 720 + dy); g.stroke(); }
+    // painéis da parede (listras suaves)
+    g.fillStyle = "rgba(255,255,255,0.025)";
+    for (i = 0; i < 9; i++) g.fillRect(i * 160 + 20, -dy, 70, 520 + dy);
+    // faixas de cor dos dois lados (bandeiras penduradas)
+    function bandeira(x, p) {
+      g.beginPath(); g.moveTo(x - 38, -dy); g.lineTo(x + 38, -dy); g.lineTo(x + 38, 250); g.lineTo(x, 218); g.lineTo(x - 38, 250); g.closePath();
+      g.fillStyle = p.fundo; g.fill(); g.strokeStyle = TINTA; g.lineWidth = 2.5; g.lineJoin = "round"; g.stroke();
+      g.fillStyle = p.base; g.globalAlpha = 0.9; g.fillRect(x - 38, 60, 76, 12); g.fillRect(x - 38, 82, 76, 5); g.globalAlpha = 1;
+      g.beginPath(); for (var j = 0; j < 10; j++) { var a = -PI / 2 + j * PI / 5, rr = j % 2 ? 7 : 17; g.lineTo(x + Math.cos(a) * rr, 150 + Math.sin(a) * rr); } g.closePath();
+      g.fillStyle = p.luz; g.fill();
+    }
+    bandeira(96, p1); bandeira(1184, p2);
+    // refletores e cones de luz
+    var lamps = [190, 420, 640, 860, 1090];
+    for (i = 0; i < lamps.length; i++) {
+      var lx = lamps[i], alvo = 640 + (lx - 640) * 0.3;
+      g.beginPath(); g.moveTo(lx - 12, 6 - dy); g.lineTo(lx + 12, 6 - dy); g.lineTo(alvo + 150, 580); g.lineTo(alvo - 150, 580); g.closePath();
+      g.fillStyle = "rgba(255,240,205,0.045)"; g.fill();
+      g.beginPath(); g.moveTo(lx - 6, 6 - dy); g.lineTo(lx + 6, 6 - dy); g.lineTo(alvo + 70, 580); g.lineTo(alvo - 70, 580); g.closePath();
+      g.fillStyle = "rgba(255,240,205,0.04)"; g.fill();
+    }
+    g.fillStyle = "#0e0c28"; g.fillRect(0, -dy, W, 12);                             // barra do teto (no topo da tela)
+    g.fillStyle = "#1e1a4d"; g.fillRect(0, 6 - dy + 6, W, 3);
+    for (i = 0; i < lamps.length; i++) {
+      retArred(g, lamps[i] - 20, 4 - dy, 40, 16, 5); g.fillStyle = "#171440"; g.fill(); g.strokeStyle = "#08061c"; g.lineWidth = 2; g.stroke();
+      g.beginPath(); g.ellipse(lamps[i], 21 - dy, 14, 4, 0, 0, PI2); g.fillStyle = "#fff0c0"; g.fill();
+    }
+    // plateia: 3 fileiras de silhuetas (mais ao fundo = mais clara e menor)
+    function fileira(y, rad, passo, cor, cor2, seed, bracos) {
+      var rr = semente(seed), x = -10 + rr() * 10;
+      while (x < W + 20) {
+        var hy = y + (rr() - 0.5) * 8, hr = rad * (0.9 + rr() * 0.2);
+        g.fillStyle = cor;
+        g.beginPath(); g.ellipse(x, hy + hr * 2.1, hr * 1.5, hr * 1.5, 0, PI, PI2); g.fill();               // ombros
+        g.beginPath(); g.arc(x, hy, hr, 0, PI2); g.fill();                                                       // cabeça
+        g.fillStyle = cor2; g.globalAlpha = 0.5; g.beginPath(); g.arc(x - hr * 0.25, hy - hr * 0.3, hr * 0.55, PI * 0.9, PI * 1.7); g.lineTo(x - hr * 0.25, hy - hr * 0.3); g.fill(); g.globalAlpha = 1;
+        if (bracos && rr() < 0.22) {
+          var lado = rr() < 0.5 ? -1 : 1, ax = x + lado * hr * 1.2, ay = hy + hr * 1.4, bx = ax + lado * hr * 0.5, by = hy - hr * 2.1;
+          g.strokeStyle = cor; g.lineWidth = hr * 0.8; g.lineCap = "round"; g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+          if (rr() < 0.55) { g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + lado * hr * 2.2, by + hr * 0.5); g.lineTo(bx, by + hr * 1.3); g.closePath(); g.fillStyle = rr() < 0.5 ? p1.fundo : p2.fundo; g.fill(); }
+        }
+        x += passo * (0.85 + rr() * 0.3);
       }
     }
+    fileira(370, 11, 27, "#2f2a69", "#4a4590", 3, true);
+    fileira(402, 15, 36, "#231f57", "#38337c", 7, true);
+    // mureta com neon dos dois times
+    g.fillStyle = "#16133a"; g.fillRect(0, 434, W, 24);
+    g.fillStyle = "#0d0b26"; g.fillRect(0, 454, W, 4);
+    function neon(x0, x1, p) { g.fillStyle = p.base; g.fillRect(x0, 440, x1 - x0, 5); g.fillStyle = p.luz; g.globalAlpha = 0.8; g.fillRect(x0, 440, x1 - x0, 2); g.globalAlpha = 1; }
+    neon(0, 640, p1); neon(640, W, p2);
+    // holofote no chão e sombra da mesa
+    g.fillStyle = "rgba(255,238,205,0.06)"; g.beginPath(); g.ellipse(640, 625, 560, 80, 0, 0, PI2); g.fill();
+    g.fillStyle = "rgba(255,238,205,0.06)"; g.beginPath(); g.ellipse(640, 625, 380, 50, 0, 0, PI2); g.fill();
+    g.fillStyle = "rgba(10,6,30,0.45)"; g.beginPath(); g.ellipse(640, 676, 520, 30, 0, 0, PI2); g.fill();
+    // mesa: pernas, frente, tampo
+    g.fillStyle = "#17143f"; g.fillRect(214, 600, 40, 78); g.fillRect(1026, 600, 40, 78);
+    g.strokeStyle = TINTA; g.lineWidth = 2.5; g.strokeRect(214, 600, 40, 78); g.strokeRect(1026, 600, 40, 78);
+    g.beginPath(); g.moveTo(150, MESA_FRENTE); g.lineTo(1130, MESA_FRENTE); g.lineTo(1112, 666); g.lineTo(168, 666); g.closePath();
+    g.fillStyle = "#2d2a72"; g.fill(); g.strokeStyle = TINTA; g.lineJoin = "round"; g.stroke();
+    g.fillStyle = "#24215e"; g.fillRect(170, 650, 940, 15);
+    g.fillStyle = "#5b58b8"; g.fillRect(152, MESA_FRENTE + 1, 976, 3);
+    function neonMesa(x0, x1, p) { retArred(g, x0, 628, x1 - x0, 7, 3.5); g.fillStyle = p.base; g.fill(); g.fillStyle = p.luz; g.globalAlpha = 0.7; g.fillRect(x0 + 4, 629, x1 - x0 - 8, 2); g.globalAlpha = 1; }
+    neonMesa(200, 626, p1); neonMesa(654, 1080, p2);
+    g.beginPath(); g.moveTo(205, MESA_FUNDO); g.lineTo(1075, MESA_FUNDO); g.lineTo(1130, MESA_FRENTE); g.lineTo(150, MESA_FRENTE); g.closePath();
+    g.fillStyle = "#5855b0"; g.fill();
+    g.save(); g.clip();
+    g.fillStyle = "#4a47a0"; g.fillRect(100, MESA_FUNDO, 1100, 18);                                           // faixa de trás (sombra)
+    g.fillStyle = "#6663c4"; g.beginPath(); g.moveTo(236, 478); g.lineTo(1044, 478); g.lineTo(1096, 600); g.lineTo(184, 600); g.closePath(); g.fill();   // feltro
+    g.strokeStyle = "rgba(255,255,255,0.10)"; g.lineWidth = 2.5; g.beginPath(); g.ellipse(640, 540, 96, 30, 0, 0, PI2); g.stroke();   // marca central
+    g.fillStyle = "rgba(255,255,255,0.05)"; g.beginPath(); g.moveTo(236, 478); g.lineTo(420, 478); g.lineTo(380, 600); g.lineTo(184, 600); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(860, 478); g.lineTo(1044, 478); g.lineTo(1096, 600); g.lineTo(900, 600); g.closePath(); g.fill();
+    g.strokeStyle = "rgba(255,255,255,0.16)"; g.lineWidth = 3; g.beginPath(); g.moveTo(640, 482); g.lineTo(640, 598); g.stroke();
+    g.fillStyle = "rgba(255,255,255,0.16)"; g.beginPath(); g.ellipse(640, 540, 16, 5, 0, 0, PI2); g.fill();
     g.restore();
-
-    // plateia em silhueta (duas fileiras em canvases separados, para balançarem)
-    var f1 = criarCanvas(W + 80, 420), f2 = criarCanvas(W + 80, 420);
-    desenharPlateia(f1.getContext("2d"), W + 80, 120, "#2a1550", 17, 44, 7, cores);
-    desenharPlateia(f2.getContext("2d"), W + 80, 150, "#1b0c38", 23, 62, 21, cores);
-    fileiras = [f1, f2];
-
-    // bandeirinhas de festa no alto
-    g.save(); g.translate(ox, oy);
-    for (var fio = 0; fio < 2; fio++) {
-      var y0 = 4 + fio * 26;
-      g.strokeStyle = "rgba(255,255,255,0.45)"; g.lineWidth = 1.6;
-      g.beginPath(); g.moveTo(-10, y0 + 8);
-      g.quadraticCurveTo(640, y0 + 72, 1290, y0 + 8); g.stroke();
-      for (var k = 0; k <= 30; k++) {
-        var tt = k / 30;
-        var bx = -10 + 1300 * tt, by = (1 - tt) * (1 - tt) * (y0 + 8) + 2 * tt * (1 - tt) * (y0 + 72) + tt * tt * (y0 + 8);
-        g.fillStyle = cores[(k + fio * 3) % 6];
-        g.strokeStyle = CONTORNO; g.lineWidth = 1.6; g.lineJoin = "round";
-        g.beginPath(); g.moveTo(bx - 11, by); g.lineTo(bx + 11, by); g.lineTo(bx, by + 24); g.closePath(); g.fill(); g.stroke();
-      }
+    g.beginPath(); g.moveTo(205, MESA_FUNDO); g.lineTo(1075, MESA_FUNDO); g.lineTo(1130, MESA_FRENTE); g.lineTo(150, MESA_FRENTE); g.closePath();
+    g.strokeStyle = TINTA; g.lineWidth = 2.5; g.stroke();
+    g.strokeStyle = "#9d9bef"; g.lineWidth = 3; g.beginPath(); g.moveTo(151, MESA_FRENTE - 1.5); g.lineTo(1129, MESA_FRENTE - 1.5); g.stroke();
+    ArteBolinha.sombra(g, CX1, MESA_FUNDO + 6, BOLA_R * 0.95, 0); ArteBolinha.sombra(g, CX2, MESA_FUNDO + 6, BOLA_R * 0.95, 0);   // sombra das bolinhas na mesa
+    // almofadas dos cotovelos (cor de cada jogador)
+    function almofada(x, p) {
+      g.fillStyle = "rgba(10,6,30,0.35)"; g.beginPath(); g.ellipse(x + 3, 562, 70, 15, 0, 0, PI2); g.fill();
+      g.beginPath(); g.ellipse(x, 558, 66, 14, 0, 0, PI2); g.fillStyle = p.sombra; g.fill();
+      g.save(); g.clip(); g.beginPath(); g.ellipse(x - 3, 555, 62, 12, 0, 0, PI2); g.fillStyle = p.base; g.fill(); g.restore();
+      g.fillStyle = "#fff"; g.globalAlpha = 0.55; g.beginPath(); g.ellipse(x - 22, 552, 20, 3, 0, 0, PI2); g.fill(); g.globalAlpha = 1;
+      g.beginPath(); g.ellipse(x, 558, 66, 14, 0, 0, PI2); g.strokeStyle = p.contorno; g.lineWidth = 2.4; g.stroke();
     }
-    g.restore();
+    almofada(ELB1, p1); almofada(ELB2, p2);
+    return cv;
+  }
+  function fundo(W, H, c1, c2) {
+    var k = W + "|" + H + "|" + c1 + "|" + c2;
+    if (fundoC.k !== k) { fundoC.k = k; fundoC.c = criarFundo(W, H, c1, c2); }
+    return fundoC.c;
+  }
 
-    // palco: piso de madeira em perspectiva (do topo da mesa para baixo), num canvas à parte
-    var topo = oy + 486;
-    var pisoCanvas = criarCanvas(W, H - topo);
-    pisoCache = { c: pisoCanvas, y: topo };
-    g = pisoCanvas.getContext("2d");
-    g.translate(0, -topo);
-    var gp = g.createLinearGradient(0, topo, 0, H);
-    gp.addColorStop(0, "#6a3a22"); gp.addColorStop(0.35, "#4c2818"); gp.addColorStop(1, "#2a140e");
-    g.fillStyle = gp; g.fillRect(0, topo, W, H - topo);
-    g.fillStyle = "rgba(255,200,140,0.1)"; g.fillRect(0, topo, W, 3);
-    // tábuas
-    g.strokeStyle = "rgba(20,8,5,0.55)"; g.lineWidth = 2;
-    for (var ti = -14; ti <= 14; ti++) {
-      g.beginPath(); g.moveTo(W / 2 + ti * 46, topo); g.lineTo(W / 2 + ti * 150, H); g.stroke();
+  // ---------- estado das animações (pulsos de toque) ----------
+  var ult1 = -1, ult2 = -1, tp1 = -9, tp2 = -9, tAnt = 0, posVis = null;
+  function agora() { return (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000; }
+
+  // faixa com contraste para cada bolinha
+  var FAIXAS = ["#ffffff", "#ffd43b", "#2c2680", "#ff4d4d"];
+  function escolherFaixa(cor, evitar) {
+    var l = lumin(cor), melhor = null, mv = -1, ci = hexRgb(cor);
+    for (var i = 0; i < FAIXAS.length; i++) {
+      var f = FAIXAS[i]; if (f === evitar) continue;
+      var cf = hexRgb(f), d = Math.abs(cf[0] - ci[0]) + Math.abs(cf[1] - ci[1]) + Math.abs(cf[2] - ci[2]);
+      if (d > mv) { mv = d; melhor = f; }
     }
-    for (var li = 0; li < 5; li++) {
-      var ly = topo + Math.pow(li / 5, 1.6) * (H - topo) + 12 + li * 6;
-      g.beginPath(); g.moveTo(0, ly); g.lineTo(W, ly); g.stroke();
-    }
-    // piscina de luz no piso (elipse achatada)
-    g.save();
-    g.translate(W / 2, oy + 590); g.scale(1, 0.32);
-    var pl = g.createRadialGradient(0, 0, 10, 0, 0, 560);
-    pl.addColorStop(0, "rgba(255,210,150,0.42)"); pl.addColorStop(1, "rgba(255,210,150,0)");
-    g.fillStyle = pl; g.fillRect(-W, -700, W * 2, 1400);
+    return melhor;
+  }
+
+  // descritores reaproveitados (sem alocar por quadro)
+  var D1 = {}, D2 = {}, DI1 = {}, DI2 = {};
+  function copiar(d, s) { for (var k in s) d[k] = s[k]; return d; }
+
+  // ---------- barra de força (2 sprites com a moldura; por quadro só recorta e cola) ----------
+  var BW = 700, BH = 34, BX = 290, barras = {}, divS = null;
+  function barraSpr(cor) {
+    if (barras[cor]) return barras[cor];
+    var p = pal(cor), c = criarCanvas(BW + 8, BH + 8), g = c.getContext("2d");
+    g.translate(4, 4);
+    retArred(g, -4, -4, BW + 8, BH + 8, 21); g.fillStyle = "#0d0b29"; g.fill(); g.strokeStyle = "#04030f"; g.lineWidth = 2.5; g.stroke();
+    g.save(); retArred(g, 0, 0, BW, BH, 17); g.clip();
+    g.fillStyle = p.base; g.fillRect(0, 0, BW, BH);
+    g.fillStyle = p.sombra; g.fillRect(0, BH * 0.66, BW, BH * 0.34);
+    g.fillStyle = p.luz; g.globalAlpha = 0.6; g.fillRect(0, 3, BW, 5); g.globalAlpha = 1;
     g.restore();
-    return c;
+    retArred(g, 0, 0, BW, BH, 17); g.strokeStyle = "#04030f"; g.lineWidth = 2; g.stroke();
+    return (barras[cor] = c);
+  }
+  function divisor() {
+    if (divS) return divS;
+    var c = criarCanvas(14, 50), g = c.getContext("2d");
+    retArred(g, 3, 2, 8, 46, 4); g.fillStyle = "#fff"; g.fill(); g.strokeStyle = TINTA; g.lineWidth = 2; g.stroke();
+    return (divS = c);
+  }
+  function barra(ctx, q, c1, c2, f1, pul1, pul2, y0, tt, venc) {
+    var L = barraSpr(c1), R = barraSpr(c2), xr = clamp(Math.round(BW * f1) + 4, 4, BW + 4), yy = Math.round(y0) - 4;
+    ctx.drawImage(L, 0, 0, xr, BH + 8, BX - 4, yy, xr, BH + 8);
+    ctx.drawImage(R, xr, 0, BW + 8 - xr, BH + 8, BX - 4 + xr, yy, BW + 8 - xr, BH + 8);
+    var pul = Math.max(pul1, pul2);
+    if (pul > 0.05) ctx.drawImage(divisor(), BX - 4 + xr - 7 - pul * 2, yy - 1 - pul * 2, 14 + pul * 4, 50 + pul * 4);
+    else ctx.drawImage(divisor(), BX - 4 + xr - 7, yy - 1);
+    // nomes
+    var t1 = texto(q.nome1 || "", "#fff", "#1a1550", 19), t2 = texto(q.nome2 || "", "#fff", "#1a1550", 19);
+    poeTexto(ctx, t1, BX + 16 + t1.w / 2, y0 + BH / 2 + 1);
+    poeTexto(ctx, t2, BX + BW - 16 - t2.w / 2, y0 + BH / 2 + 1);
+    // carinhas nas pontas
+    var s1 = DI1, s2 = DI2;
+    s1.cor = c1; s2.cor = c2; s1.r = s2.r = 25; s1.cache = s2.cache = true;
+    s1.x = BX - 38; s2.x = BX + BW + 38; s1.y = s2.y = Math.round(y0 + BH / 2);
+    s1.olharX = 0.7; s2.olharX = -0.7; s1.olharY = s2.olharY = 0; s1.vira = 0.4; s2.vira = -0.4;
+    s1.escalaX = s1.escalaY = 1 + 0.16 * pul1; s2.escalaX = s2.escalaY = 1 + 0.16 * pul2;
+    s1.t = s2.t = tt; s1.piscar = s2.piscar = 0;
+    s1.expressao = venc ? (venc === 1 ? "feliz" : "dor") : (f1 > 0.6 ? "smirk" : f1 < 0.4 ? "medo" : "bravo");
+    s2.expressao = venc ? (venc === 2 ? "feliz" : "dor") : (f1 < 0.4 ? "smirk" : f1 > 0.6 ? "medo" : "bravo");
+    ArteBolinha.desenhar(ctx, s1); ArteBolinha.desenhar(ctx, s2);
   }
 
-  var pisoCache = null;
-  function fundo(W, H) {
-    var k = W + "x" + H;
-    if (fundoChave !== k) { fundoCache = criarFundo(W, H); fundoChave = k; }
-    return fundoCache;
-  }
-
-  // ---------- mesa em cache (por par de cores) ----------
-  var mesas = {};
-  function mesa(cor1, cor2) {
-    var k = cor1 + "|" + cor2;
-    if (mesas[k]) return mesas[k];
-    var c = criarCanvas(900, 190), g = c.getContext("2d");
-    g.translate(450, -480); // o canvas guarda o mundo de y=480 a y=670
-    g.lineJoin = "round"; g.lineCap = "round";
-    var xb = 285, xf = 392; // meia largura atrás e na frente
-    var yt = MESA_TOPO, yf = MESA_FRENTE, ye = MESA_FIM;
-    // sombra no piso
-    g.fillStyle = "rgba(10,4,20,0.4)";
-    g.beginPath(); g.ellipse(0, ye + 6, xf + 20, 16, 0, 0, PI2); g.fill();
-    // frente (saia da mesa) com faixa nas cores dos dois lados
-    g.fillStyle = CONTORNO;
-    retArred(g, -xf - 3, yf - 3, xf * 2 + 6, ye - yf + 6, 12); g.fill();
-    var gf = g.createLinearGradient(0, yf, 0, ye);
-    gf.addColorStop(0, "#8c4e2a"); gf.addColorStop(1, "#5a2e19");
-    g.fillStyle = gf; retArred(g, -xf, yf, xf * 2, ye - yf, 10); g.fill();
-    // faixa colorida (cada metade na cor do jogador)
-    g.save(); retArred(g, -xf, yf, xf * 2, ye - yf, 10); g.clip();
-    var rgb1 = hexRgb(cor1), rgb2 = hexRgb(cor2);
-    g.fillStyle = cor1; g.fillRect(-xf, yf + 10, xf, 22);
-    g.fillStyle = cor2; g.fillRect(0, yf + 10, xf, 22);
-    g.fillStyle = "rgba(255,255,255,0.28)"; g.fillRect(-xf, yf + 10, xf * 2, 7);
-    g.fillStyle = "rgba(0,0,0,0.22)"; g.fillRect(-xf, yf + 26, xf * 2, 6);
-    // estrelinhas decorativas na faixa
-    g.fillStyle = "rgba(255,255,255,0.8)";
-    for (var i = -3; i <= 3; i++) {
-      if (!i) continue;
-      g.beginPath(); g.arc(i * 100 - Math.sign(i) * 20, yf + 21, 3.2, 0, PI2); g.fill();
-    }
-    g.restore();
-    g.strokeStyle = CONTORNO; g.lineWidth = 3; retArred(g, -xf, yf, xf * 2, ye - yf, 10); g.stroke();
-    // tampo trapezoidal (perspectiva)
-    g.beginPath(); g.moveTo(-xb, yt); g.lineTo(xb, yt); g.lineTo(xf, yf); g.lineTo(-xf, yf); g.closePath();
-    var gt = g.createLinearGradient(0, yt, 0, yf);
-    gt.addColorStop(0, "#d9944d"); gt.addColorStop(1, "#b9692f");
-    g.fillStyle = gt; g.fill();
-    g.strokeStyle = CONTORNO; g.lineWidth = 3.4; g.stroke();
-    // veios de madeira
-    g.save(); g.beginPath(); g.moveTo(-xb, yt); g.lineTo(xb, yt); g.lineTo(xf, yf); g.lineTo(-xf, yf); g.closePath(); g.clip();
-    g.strokeStyle = "rgba(90,40,10,0.22)"; g.lineWidth = 1.6;
-    for (i = 0; i < 7; i++) {
-      var yy = yt + 5 + i * 6.5;
-      g.beginPath(); g.moveTo(-xf, yy); g.bezierCurveTo(-200, yy - 3, 150, yy + 4, xf, yy - 1); g.stroke();
-    }
-    var gl = g.createLinearGradient(-xf, 0, xf, 0);
-    gl.addColorStop(0, "rgba(255,255,255,0)"); gl.addColorStop(0.5, "rgba(255,240,200,0.28)"); gl.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = gl; g.fillRect(-xf, yt, xf * 2, 12);
-    g.restore();
-    // almofadinhas dos cotovelos
-    var ey = COTOVELO_Y;
-    var pads = [COT1_X - CX, COT2_X - CX];
-    for (i = 0; i < 2; i++) {
-      g.fillStyle = CONTORNO; g.beginPath(); g.ellipse(pads[i], ey + 2, 46, 15, 0, 0, PI2); g.fill();
-      g.fillStyle = i ? mist(rgb2, PR, 0.35) : mist(rgb1, PR, 0.35);
-      g.beginPath(); g.ellipse(pads[i], ey, 43, 12.5, 0, 0, PI2); g.fill();
-      g.fillStyle = "rgba(255,255,255,0.22)"; g.beginPath(); g.ellipse(pads[i] - 8, ey - 3, 24, 4.5, 0, 0, PI2); g.fill();
-    }
-    // linha central e marcas de "vitória" nas pontas
-    g.strokeStyle = "rgba(255,255,255,0.4)"; g.lineWidth = 2; g.setLineDash([5, 6]);
-    g.beginPath(); g.moveTo(0, yt + 3); g.lineTo(0, yf - 3); g.stroke(); g.setLineDash([]);
-    return (mesas[k] = { c: c, x: -450, y: 480 });
-  }
-
-  // ---------- peças dinâmicas ----------
-  function gota(g, x, y, s) {
-    g.beginPath();
-    g.moveTo(x, y - s * 1.5);
-    g.bezierCurveTo(x + s * 0.3, y - s * 0.6, x + s, y - s * 0.2, x + s, y + s * 0.4);
-    g.arc(x, y + s * 0.4, s, 0, Math.PI);
-    g.bezierCurveTo(x - s, y - s * 0.2, x - s * 0.3, y - s * 0.6, x, y - s * 1.5);
-    g.closePath();
-  }
-
-  // braço grosso com contorno, passando pelo cotovelo
-  function braco(g, sx, sy, ex, ey, hx, hy, cor) {
-    var rgb = hexRgb(cor);
-    g.lineCap = "round"; g.lineJoin = "round";
-    g.strokeStyle = mist(rgb, PR, 0.78); g.lineWidth = 36;
-    g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex, ey); g.lineTo(hx, hy); g.stroke();
-    g.strokeStyle = mist(rgb, PR, 0.15); g.lineWidth = 29;
-    g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex, ey); g.lineTo(hx, hy); g.stroke();
-    g.strokeStyle = cor; g.lineWidth = 22;
-    g.beginPath(); g.moveTo(sx, sy - 1); g.lineTo(ex, ey - 1); g.lineTo(hx, hy - 1); g.stroke();
-    g.strokeStyle = "rgba(255,255,255,0.38)"; g.lineWidth = 5;
-    g.beginPath(); g.moveTo(sx, sy - 6); g.lineTo(ex, ey - 6); g.lineTo(hx, hy - 6); g.stroke();
-    // munhequeira branca perto da mão
-    var dx = hx - ex, dy = hy - ey, d = Math.sqrt(dx * dx + dy * dy) || 1;
-    dx /= d; dy /= d;
-    var px = hx - dx * 36, py = hy - dy * 36, qx = hx - dx * 26, qy = hy - dy * 26;
-    g.strokeStyle = CONTORNO; g.lineWidth = 34;
-    g.beginPath(); g.moveTo(px, py); g.lineTo(qx, qy); g.stroke();
-    g.strokeStyle = "#fff"; g.lineWidth = 27;
-    g.beginPath(); g.moveTo(px, py); g.lineTo(qx, qy); g.stroke();
-    g.strokeStyle = cor; g.lineWidth = 27;
-    g.beginPath(); g.moveTo(px + dx * 3.5, py + dy * 3.5); g.lineTo(px + dx * 6.5, py + dy * 6.5); g.stroke();
-  }
-
-  function luva(g, x, y, ang, escala) {
-    g.save();
-    g.translate(x, y); g.rotate(ang); g.scale(escala, escala);
-    g.lineJoin = "round";
-    // punho
-    g.fillStyle = "#fff"; g.strokeStyle = CONTORNO; g.lineWidth = 3.4;
-    g.beginPath(); g.arc(0, 0, 25, 0, PI2); g.fill(); g.stroke();
-    // sombra por baixo
-    g.save(); g.beginPath(); g.arc(0, 0, 23.5, 0, PI2); g.clip();
-    g.fillStyle = "rgba(120,110,170,0.35)"; g.beginPath(); g.arc(6, 10, 26, 0, PI2); g.fill();
-    g.restore();
-    // dedos
-    g.strokeStyle = "rgba(27,16,48,0.7)"; g.lineWidth = 2.2; g.lineCap = "round";
-    for (var i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(i * 8 + 2, -4); g.lineTo(i * 8 + 2, 10); g.stroke(); }
-    // brilho
-    g.fillStyle = "rgba(255,255,255,0.9)";
-    g.beginPath(); g.ellipse(-9, -12, 6, 3.5, -0.6, 0, PI2); g.fill();
-    g.restore();
-  }
-
-  function coroa(g, x, y, s, rot) {
-    g.save();
-    g.translate(x, y); g.rotate(rot); g.scale(s, s);
-    g.lineJoin = "round";
-    g.beginPath();
-    g.moveTo(-26, 12); g.lineTo(-30, -16); g.lineTo(-14, -2); g.lineTo(0, -22); g.lineTo(14, -2); g.lineTo(30, -16); g.lineTo(26, 12);
-    g.closePath();
-    var gr = g.createLinearGradient(0, -22, 0, 12);
-    gr.addColorStop(0, "#fff08a"); gr.addColorStop(1, "#ffb21f");
-    g.fillStyle = gr; g.fill();
-    g.strokeStyle = CONTORNO; g.lineWidth = 3.4; g.stroke();
-    g.fillStyle = "#ff4d6d"; g.beginPath(); g.arc(0, 2, 4.4, 0, PI2); g.fill();
-    g.fillStyle = "#4dabf7"; g.beginPath(); g.arc(-15, 3, 3, 0, PI2); g.fill();
-    g.beginPath(); g.arc(15, 3, 3, 0, PI2); g.fill();
-    g.fillStyle = "rgba(255,255,255,0.8)"; g.beginPath(); g.ellipse(-8, -2, 6, 2.5, -0.7, 0, PI2); g.fill();
-    g.fillStyle = "#fff"; g.strokeStyle = CONTORNO; g.lineWidth = 1.4;
-    g.restore();
-  }
-
-  // explosão de linhas de impacto (estilo gibi) no ponto de encontro das mãos
-  function impactoMaos(g, x, y, t, forca) {
-    g.save();
-    g.translate(x, y);
-    g.globalCompositeOperation = "lighter";
-    var s = 70 + forca * 36;
-    g.globalAlpha = 0.55 + 0.2 * Math.sin(t * 22);
-    g.drawImage(brilho("#ffb347"), -s, -s, s * 2, s * 2);
-    g.globalAlpha = 1;
-    g.lineCap = "round";
-    var n = 9, q = Math.floor(t * 18);
-    for (var i = 0; i < n; i++) {
-      var a = i / n * PI2 + hash(q * 3 + i) * 0.5;
-      var l0 = 34, l1 = 46 + hash(i * 3.3 + q) * 30 * (0.6 + forca);
-      g.strokeStyle = i & 1 ? "#fff3a8" : "#ffc233";
-      g.lineWidth = 3.4;
-      g.beginPath(); g.moveTo(Math.cos(a) * l0, Math.sin(a) * l0 - 8); g.lineTo(Math.cos(a) * l1, Math.sin(a) * l1 - 8); g.stroke();
-    }
-    g.restore();
-  }
-
-  function textoCaixa(g, txt, x, y, tam, cor, esc) {
-    g.save();
-    g.translate(x, y); g.scale(esc, esc);
-    g.font = "900 " + tam + "px " + FONTE;
-    g.textAlign = "center"; g.textBaseline = "middle"; g.lineJoin = "round";
-    g.lineWidth = tam * 0.2; g.strokeStyle = CONTORNO; g.strokeText(txt, 0, 0);
-    g.fillStyle = cor; g.fillText(txt, 0, 0);
-    g.restore();
-  }
-
-  // cartela com a dica de controle
-  var largTxt = {};
-  function dica(g, txt, x, y, cor, pulso, t) {
-    if (!txt) return;
-    g.save();
-    g.font = "700 21px " + FONTE;
-    var w = largTxt[txt];
-    if (!w) w = largTxt[txt] = g.measureText(txt).width;
-    var larg = Math.min(430, w + 76), alt = 38;
-    g.translate(x, y); g.scale(1 + 0.06 * pulso, 1 + 0.06 * pulso);
-    g.fillStyle = "rgba(20,10,40,0.78)"; retArred(g, -larg / 2, -alt / 2, larg, alt, 19); g.fill();
-    g.strokeStyle = cor; g.lineWidth = 3; g.stroke();
-    // ícone de toque (dedinho com ondas)
-    var ix = -larg / 2 + 24, k = (t * 1.8) % 1;
-    g.strokeStyle = cor; g.globalAlpha = 1 - k; g.lineWidth = 2.4;
-    g.beginPath(); g.arc(ix, 0, 5 + k * 10, 0, PI2); g.stroke();
-    g.globalAlpha = 1;
-    g.fillStyle = "#fff"; g.beginPath(); g.arc(ix, 0, 4.6 + pulso * 1.5, 0, PI2); g.fill();
-    g.fillStyle = "#fff"; g.textAlign = "left"; g.textBaseline = "middle";
-    g.fillText(txt, ix + 18, 1.5, larg - 56);
-    g.restore();
-  }
-
-  // ---------- estado interno (pulsos e suavização) ----------
-  var ult1 = 0, ult2 = 0, p1 = -9, p2 = -9, tAnt = 0, posS = 0;
-  var esc1 = {}, esc2 = {}; // descritores de bolinha reaproveitados
-  function copiar(dest, src) { for (var k in src) dest[k] = src[k]; return dest; }
-
-  // ---------- API ----------
+  // ---------- desenhar ----------
   function desenhar(ctx, q, largura, altura) {
     var W = largura || 1280, H = altura || 720;
-    var t = q.t || 0;
-    var ox = (W - 1280) / 2, oy = (H - 720) / 2;
-
-    // pulsos nos toques e suavização da posição
-    if (t < tAnt - 0.5) { ult1 = q.toques1 | 0; ult2 = q.toques2 | 0; p1 = p2 = -9; posS = q.pos || 0; }
-    var dt = Math.min(0.1, Math.max(0, t - tAnt)); tAnt = t;
-    if ((q.toques1 | 0) !== ult1) { ult1 = q.toques1 | 0; p1 = t; }
-    if ((q.toques2 | 0) !== ult2) { ult2 = q.toques2 | 0; p2 = t; }
-    var alvo = Math.max(-1, Math.min(1, q.pos || 0));
-    posS += (alvo - posS) * Math.min(1, dt * 14 + 0.001);
-    var pos = posS;
-    var pul1 = Math.max(0, 1 - (t - p1) / 0.28), pul2 = Math.max(0, 1 - (t - p2) / 0.28);
-    var venc = q.vencedor | 0;
+    var dy = Math.max(0, Math.round((H - 720) / 2));
+    var c1 = q.b1.cor || "#ff5d73", c2 = q.b2.cor || "#4dabf7";
+    var posAlvo = clamp(q.pos || 0, -1, 1), t = q.t || 0, venc = q.vencedor | 0;
+    if (posVis === null || Math.abs(posAlvo - posVis) > 0.3) posVis = posAlvo; else posVis += (posAlvo - posVis) * 0.35;   // os braços deslizam em vez de pular a cada toque
+    var pos = posVis;
+    var tr = agora();
+    // pulsos de toque (relógio próprio: o t do motor reinicia na vitória)
+    if (q.toques1 < ult1 || q.toques2 < ult2) { ult1 = -1; ult2 = -1; }
+    if (q.toques1 !== ult1) { if (ult1 >= 0 || q.toques1 > 0) tp1 = tr; ult1 = q.toques1; }
+    if (q.toques2 !== ult2) { if (ult2 >= 0 || q.toques2 > 0) tp2 = tr; ult2 = q.toques2; }
+    var pul1 = clamp(1 - (tr - tp1) / 0.22, 0, 1), pul2 = clamp(1 - (tr - tp2) / 0.22, 0, 1);
+    pul1 *= pul1; pul2 *= pul2;
 
     ctx.save();
-    var b1 = copiar(esc1, q.b1), b2 = copiar(esc2, q.b2);
-    var cor1 = b1.cor || "#ff5d73", cor2 = b2.cor || "#4dabf7";
+    ctx.drawImage(fundo(W, H, c1, c2), 0, 0, W, H);
+    ctx.translate((W - 1280) / 2, dy);
 
-    // 1. fundo em cache
-    ctx.drawImage(fundo(W, H), 0, 0, W, H);
+    // ----- pose -----
+    var lose1 = pos > 0 ? pos : 0, lose2 = pos < 0 ? -pos : 0, a = Math.abs(pos);
+    var esf1 = venc ? 0 : 0.5 + 1.1 * lose1 + 0.8 * pul1, esf2 = venc ? 0 : 0.5 + 1.1 * lose2 + 0.8 * pul2;
+    var vt = venc ? 0 : t;
+    var sh1x = Math.sin(vt * 57) * esf1 * 2.6, sh1y = Math.cos(vt * 49) * esf1 * 1.2;
+    var sh2x = Math.sin(vt * 61 + 1.7) * esf2 * 2.6, sh2y = Math.cos(vt * 53 + 0.8) * esf2 * 1.2;
+    var salto1 = venc === 1 ? -Math.abs(Math.sin(t * 6.5)) * 22 : 0, salto2 = venc === 2 ? -Math.abs(Math.sin(t * 6.5)) * 22 : 0;
+    var x1 = CX1 - 32 * lose1 + 12 * lose2 + sh1x + 5 * pul1, y1 = CY + 10 * lose1 + sh1y + salto1;
+    var x2 = CX2 + 32 * lose2 - 12 * lose1 + sh2x - 5 * pul2, y2 = CY + 10 * lose2 + sh2y + salto2;
+    var rot1 = 0.09 + 0.07 * lose2 - 0.15 * lose1, rot2 = -(0.09 + 0.07 * lose1 - 0.15 * lose2);
+    var cx = MAO_X - 55 * pos + (sh1x + sh2x) * 0.35, cy = MAO_Y + 34 * Math.pow(a, 1.2) + (sh1y + sh2y) * 0.35;
+    var th = -0.4 * pos + Math.sin(t * 50) * 0.01 * (esf1 + esf2);
+    var cth = Math.cos(th), sth = Math.sin(th), wx = 60 * HS, wy = 14 * HS;
+    var w1x = cx + (-wx * cth - wy * sth), w1y = cy + (-wx * sth + wy * cth);
+    var w2x = cx + (wx * cth - wy * sth), w2y = cy + (wx * sth + wy * cth);
+    var e1x = ELB1 - 40 * lose1 + 40 * lose2, e1y = ELB_Y + 6 * lose1 - 14 * lose2;
+    var e2x = ELB2 + 40 * lose2 - 40 * lose1, e2y = ELB_Y + 6 * lose2 - 14 * lose1;
+    var ombro1x = x1 + (-0.78 * BOLA_R) * Math.cos(rot1) - (0.42 * BOLA_R) * Math.sin(rot1), ombro1y = y1 + (-0.78 * BOLA_R) * Math.sin(rot1) + (0.42 * BOLA_R) * Math.cos(rot1);
+    var ombro2x = x2 + (0.78 * BOLA_R) * Math.cos(rot2) - (0.42 * BOLA_R) * Math.sin(rot2), ombro2y = y2 + (0.78 * BOLA_R) * Math.sin(rot2) + (0.42 * BOLA_R) * Math.cos(rot2);
 
-    // plateia (balança), holofotes
-    var f = fileiras;
-    ctx.drawImage(f[0], -40, oy + 250 + Math.sin(t * 3.2) * 4 - 0, W + 80, 420);
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    var fcores = ["#ff5d9e", "#4dd2ff", "#ffd43b"];
-    for (var i = 0; i < 3; i++) {
-      var ang = Math.sin(t * 0.9 + i * 2.1) * 0.28 + (i - 1) * 0.28;
-      ctx.save();
-      ctx.translate(ox + 240 + i * 400, oy - 6);
-      ctx.rotate(ang);
-      ctx.globalAlpha = 0.5 + 0.1 * Math.sin(t * 2 + i);
-      ctx.drawImage(feixe(fcores[i]), -75, 0, 150, 520);
+    // ----- sombras na mesa -----
+    ArteBolinha.sombra(ctx, e1x, ELB_Y + 18, 38, (ELB_Y - e1y) * 2);
+    ArteBolinha.sombra(ctx, e2x, ELB_Y + 18, 38, (ELB_Y - e2y) * 2);
+
+    // ----- peça de braço: sprite girado/esticado entre dois pontos -----
+    function peca(sp, ax, ay, bx, by, L0, flex, lado, esp) {
+      var dx = bx - ax, dyy = by - ay, len = Math.sqrt(dx * dx + dyy * dyy) || 1;
+      var sx = clamp(len / L0, 0.7, 1.5), sy = esp / Math.sqrt(sx) * (1 + flex);
+      var ang = Math.atan2(dyy, dx) - (lado < 0 ? PI : 0);
+      ctx.save(); ctx.translate(ax, ay); ctx.rotate(ang); ctx.scale(sx, sy);
+      ctx.drawImage(sp.c, -sp.ox, -sp.oy, sp.w, sp.h);
       ctx.restore();
     }
-    ctx.restore();
-    ctx.drawImage(f[1], -40, oy + 276 + Math.sin(t * 3.6 + 1.3) * 6, W + 80, 420);
-    // palco por cima da plateia
-    ctx.drawImage(pisoCache.c, 0, pisoCache.y);
+    // ----- bolinhas (faixa na cabeça, olhar intenso, rostos colados) -----
+    var f1c = escolherFaixa(c1, ""), f2c = escolherFaixa(c2, f1c);
+    var lado1 = -pos, lado2 = pos;
+    var ex1 = venc ? (venc === 1 ? "feliz" : "dor") : (lado1 > 0.28 ? "smirk" : lado1 < -0.12 ? "esforco" : "bravo");
+    var ex2 = venc ? (venc === 2 ? "feliz" : "dor") : (lado2 > 0.28 ? "smirk" : lado2 < -0.12 ? "esforco" : "bravo");
+    var d1 = D1, d2 = D2;
+    d1.cache = d2.cache = true;
+    d1.x = x1; d1.y = y1; d1.r = BOLA_R; d1.cor = c1; d1.expressao = ex1; d1.olharX = 1; d1.olharY = 0.12; d1.vira = lose1 > 0.5 ? 0.55 : 0.8; d1.t = t * (1 + esf1 * 0.4);
+    d1.faixa = f1c; d1.faixaLado = -1; d1.faixaListra = f1c === "#ffffff" ? c1 : "#fff"; d1.faixaFase = 0; d1.faixaInc = 0.03;
+    d1.escalaX = d1.escalaY = 1; d1.piscar = (!venc && (t * 0.37 % 1) > 0.985) ? 1 : 0;
+    d2.x = x2; d2.y = y2; d2.r = BOLA_R; d2.cor = c2; d2.expressao = ex2; d2.olharX = -1; d2.olharY = 0.12; d2.vira = lose2 > 0.5 ? -0.55 : -0.8; d2.t = t * (1 + esf2 * 0.4);
+    d2.faixa = f2c; d2.faixaLado = 1; d2.faixaListra = f2c === "#ffffff" ? c2 : "#fff"; d2.faixaFase = 2; d2.faixaInc = -0.03;
+    d2.escalaX = d2.escalaY = 1; d2.piscar = (!venc && ((t * 0.37 + 0.5) % 1) > 0.985) ? 1 : 0;
+    ArteBolinha.desenhar(ctx, d1); ArteBolinha.desenhar(ctx, d2);
 
-    ctx.translate(ox, oy);
+    // ----- braços (bíceps na frente das bolinhas) -----
+    peca(braco(c1, 1), ombro1x, ombro1y, e1x, e1y, L_BRACO, 0.1 * pul1, 1, 0.76);
+    peca(braco(c2, -1), ombro2x, ombro2y, e2x, e2y, L_BRACO, 0.1 * pul2, -1, 0.76);
 
-    // 2. esforço: quem está perdendo sua, quem está ganhando faz força
-    var lado1 = -pos, lado2 = pos;                      // positivo = ganhando
-    var esf1 = 0.45 + 0.4 * (lado1 > 0 ? lado1 : 0) + pul1 * 0.4;
-    var esf2 = 0.45 + 0.4 * (lado2 > 0 ? lado2 : 0) + pul2 * 0.4;
-    if (venc) { esf1 = esf2 = 0; }
+    // ----- mãos entrelaçadas, depois antebraços por cima (munhequeira cobre o punho) -----
+    var mn = maoRot(c1, c2, th);
+    ctx.drawImage(mn.c, Math.round(cx - mn.ox + (pul1 - pul2) * 3), Math.round(cy - mn.oy));
 
-    // holofote no vencedor (aditivo, cresce ao longo do tempo)
-    if (venc) {
-      var vx = venc === 1 ? BOLA1_X - pos * 30 : BOLA2_X - pos * 30;
-      ctx.save(); ctx.globalCompositeOperation = "lighter";
-      var gs = 260 + 20 * Math.sin(t * 6);
-      ctx.globalAlpha = 0.65;
-      ctx.drawImage(brilho(venc === 1 ? cor1 : cor2), vx - gs, BOLA_Y - gs + 10, gs * 2, gs * 2);
-      ctx.restore();
-    }
+    peca(antebraco(c1, 1, f1c, f1c === "#ffffff" ? c1 : "#fff"), e1x, e1y, w1x, w1y, L_ANTE, 0.1 * pul1, 1, 0.68);
+    peca(antebraco(c2, -1, f2c, f2c === "#ffffff" ? c2 : "#fff"), e2x, e2y, w2x, w2y, L_ANTE, 0.1 * pul2, -1, 0.68);
 
-    // 3. posições das bolinhas
-    var pulo1 = 0, pulo2 = 0;
-    if (venc === 1) pulo1 = -Math.abs(Math.sin(t * 6.5)) * 34;
-    if (venc === 2) pulo2 = -Math.abs(Math.sin(t * 6.5)) * 34;
-    var x1 = BOLA1_X - pos * 34 + Math.sin(t * 57) * esf1 * 2.6;
-    var x2 = BOLA2_X - pos * 34 + Math.sin(t * 61 + 1.7) * esf2 * 2.6;
-    var y1 = BOLA_Y + Math.cos(t * 49) * esf1 * 1.8 + pulo1 + (lado1 < 0 ? -lado1 * 10 : 0);
-    var y2 = BOLA_Y + Math.cos(t * 53 + 0.8) * esf2 * 1.8 + pulo2 + (lado2 < 0 ? -lado2 * 10 : 0);
-    var rot1 = venc ? 0 : 0.1 + lado1 * 0.15;
-    var rot2 = venc ? 0 : -(0.1 + lado2 * 0.15);
-
-    // expressões
-    function expr(lado, v, eu) {
-      if (v) return v === eu ? "feliz" : "tonto";
-      if (lado < -0.55) return "medo";
-      if (lado > 0.55) return "bravo";
-      return "esforco";
-    }
-    b1.expressao = expr(lado1, venc, 1); b2.expressao = expr(lado2, venc, 2);
-    var tt = t;
-    b1.t = tt; b2.t = tt + 0.7;
-    b1.r = b2.r = BOLA_R;
-    b1.piscar = b1.expressao === "feliz" ? 0 : (b1.piscar || 0);
-    b2.piscar = b2.expressao === "feliz" ? 0 : (b2.piscar || 0);
-    b1.olharX = 0.85; b1.olharY = 0.15; b2.olharX = -0.85; b2.olharY = 0.15;
-    var s1 = 1 + 0.1 * pul1, s2 = 1 + 0.1 * pul2;
-    b1.escalaX = s1 * (1 + 0.04 * esf1 * Math.sin(t * 40)); b1.escalaY = s1 * (1 - 0.04 * esf1 * Math.sin(t * 40));
-    b2.escalaX = s2 * (1 + 0.04 * esf2 * Math.sin(t * 43)); b2.escalaY = s2 * (1 - 0.04 * esf2 * Math.sin(t * 43));
-    b1.flash = Math.max(b1.flash || 0, 0); b2.flash = Math.max(b2.flash || 0, 0);
-
-    // sombras no palco
-    ArteBolinha.sombra(ctx, x1, MESA_TOPO + 14, BOLA_R, -pulo1 * 2 + 0);
-    ArteBolinha.sombra(ctx, x2, MESA_TOPO + 14, BOLA_R, -pulo2 * 2 + 0);
-
-    // 4. bolinhas (atrás da mesa), inclinadas
-    ctx.save(); ctx.translate(x1, y1); ctx.rotate(rot1); b1.x = 0; b1.y = 0; ArteBolinha.desenhar(ctx, b1); ctx.restore();
-    ctx.save(); ctx.translate(x2, y2); ctx.rotate(rot2); b2.x = 0; b2.y = 0; ArteBolinha.desenhar(ctx, b2); ctx.restore();
-
-    // gotas de suor (só as com cor azul clara, sem sangue)
-    function suor(xc, yc, dir, intens, fase) {
-      ctx.save();
-      var n = intens > 0.8 ? 4 : 2;
-      for (var k = 0; k < n; k++) {
-        var ph = (t * 1.35 + k / n + fase) % 1;
-        var gx = xc + dir * (BOLA_R * 0.72 + ph * 62), gy = yc - BOLA_R * 0.62 - 26 * Math.sin(ph * Math.PI) + 150 * ph * ph;
-        ctx.globalAlpha = Math.min(1, (1 - ph) * 2.2);
-        gota(ctx, gx, gy, 6.5 - ph * 2);
-        ctx.fillStyle = "#9be7ff"; ctx.fill();
-        ctx.strokeStyle = "#2a6f9a"; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = "rgba(255,255,255,0.9)";
-        ctx.beginPath(); ctx.arc(gx - 2, gy + 1, 1.8, 0, PI2); ctx.fill();
+    // ----- impacto do toque: traços de força em volta das mãos -----
+    var pm = Math.max(pul1, pul2);
+    if (pm > 0.2) {
+      ctx.globalAlpha = pm;
+      var rr = 70 + (1 - pm) * 40;
+      ctx.strokeStyle = pul1 > pul2 ? pal(c1).luz : pal(c2).luz; ctx.lineWidth = 2 + 4 * pm; ctx.lineCap = "round";
+      ctx.beginPath();
+      for (var i = 0; i < 10; i++) {
+        var aa = i / 10 * PI2 + 0.3, r0 = rr, r1 = rr + 16 + 16 * pm;
+        ctx.moveTo(cx + Math.cos(aa) * r0, cy - 8 + Math.sin(aa) * r0 * 0.8); ctx.lineTo(cx + Math.cos(aa) * r1, cy - 8 + Math.sin(aa) * r1 * 0.8);
       }
-      ctx.restore();
-    }
-    if (!venc) {
-      suor(x1, y1, -1, 0.5 + Math.max(0, -lado1) * 0.9, 0);
-      suor(x2, y2, 1, 0.5 + Math.max(0, -lado2) * 0.9, 0.31);
+      ctx.stroke(); ctx.globalAlpha = 1;
     }
 
-    // 5. mesa
-    var m = mesa(cor1, cor2);
-    ctx.drawImage(m.c, CX + m.x, m.y);
-
-    // 6. braços: ombro -> cotovelo -> mão (a mão vai para o lado de quem perde)
-    var cot1x = COT1_X - pos * 40 + (venc ? 0 : Math.sin(t * 45) * esf1 * 1.5);
-    var cot2x = COT2_X - pos * 40 + (venc ? 0 : Math.sin(t * 47 + 1) * esf2 * 1.5);
-    var forte = Math.pow(Math.abs(pos), 1.7);
-    var hx = CX - pos * 118, hy = COTOVELO_Y - 150 * (1 - forte) - 10 * forte;
-    var vib = venc ? 0 : (1 - forte) * 2.5;
-    hx += Math.sin(t * 51) * vib; hy += Math.cos(t * 44) * vib;
-    // um ombro de cada lado (um pouco abaixo do centro da bolinha)
-    braco(ctx, x1 + BOLA_R * 0.62, y1 + BOLA_R * 0.5, cot1x, COTOVELO_Y, hx - 4, hy, cor1);
-    braco(ctx, x2 - BOLA_R * 0.62, y2 + BOLA_R * 0.5, cot2x, COTOVELO_Y, hx + 4, hy, cor2);
-
-    // mãos entrelaçadas
-    var angMao = -pos * 0.35;
-    luva(ctx, hx - 9, hy, angMao - 0.1, 1);
-    luva(ctx, hx + 9, hy, angMao + 0.1, 0.96);
-
-    // faíscas/linhas de impacto onde as mãos se encontram (mais forte quando equilibrado)
-    if (!venc) impactoMaos(ctx, hx, hy - 16, t, 1 - forte);
-
-    // 7. barra de força no topo
-    var share1 = (1 - pos) / 2;
-    var bx0 = 250, bw = 780, byy = 44, bh = 32;
-    ctx.save();
-    ctx.lineJoin = "round";
-    // moldura
-    ctx.fillStyle = CONTORNO; retArred(ctx, bx0 - 5, byy - 5, bw + 10, bh + 10, 21); ctx.fill();
-    ctx.save(); retArred(ctx, bx0, byy, bw, bh, 16); ctx.clip();
-    ctx.fillStyle = cor2; ctx.fillRect(bx0, byy, bw, bh);
-    var xm = bx0 + bw * share1;
-    ctx.fillStyle = cor1; ctx.fillRect(bx0, byy, xm - bx0, bh);
-    // listras animadas
-    ctx.globalAlpha = 0.13; ctx.fillStyle = "#fff";
-    var off = (t * 24) % 28;
-    for (var sx = bx0 - 28 + off; sx < bx0 + bw; sx += 28) {
-      ctx.beginPath(); ctx.moveTo(sx, byy + bh); ctx.lineTo(sx + 14, byy + bh); ctx.lineTo(sx + 30, byy); ctx.lineTo(sx + 16, byy); ctx.closePath(); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    // brilho de vidro
-    ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.fillRect(bx0, byy, bw, bh * 0.38);
-    ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.fillRect(bx0, byy + bh * 0.72, bw, bh * 0.28);
-    ctx.restore();
-    // marcador no ponto de encontro
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.9;
-    ctx.drawImage(brilho("#ffffff"), xm - 26, byy + bh / 2 - 26, 52, 52);
-    ctx.restore();
-    ctx.fillStyle = CONTORNO; retArred(ctx, xm - 7, byy - 9, 14, bh + 18, 7); ctx.fill();
-    ctx.fillStyle = "#fff"; retArred(ctx, xm - 4.2, byy - 6, 8.4, bh + 12, 4); ctx.fill();
-    // linha do meio
-    ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.fillRect(bx0 + bw / 2 - 1, byy + bh + 2, 2, 6);
-    // nomes dentro da barra
-    ctx.font = "900 20px " + FONTE; ctx.textBaseline = "middle"; ctx.lineWidth = 4; ctx.strokeStyle = CONTORNO;
-    ctx.textAlign = "left"; ctx.strokeText(q.nome1 || "", bx0 + 18, byy + bh / 2 + 1); ctx.fillStyle = "#fff"; ctx.fillText(q.nome1 || "", bx0 + 18, byy + bh / 2 + 1);
-    ctx.textAlign = "right"; ctx.strokeText(q.nome2 || "", bx0 + bw - 18, byy + bh / 2 + 1); ctx.fillText(q.nome2 || "", bx0 + bw - 18, byy + bh / 2 + 1);
-    ctx.restore();
-    // carinhas nas pontas da barra
-    var ic1 = copiar({}, b1);
-    ic1.x = bx0 - 34; ic1.y = byy + bh / 2; ic1.r = 24; ic1.escalaX = ic1.escalaY = 1 + 0.14 * pul1;
-    ic1.expressao = lado1 > 0.1 ? "feliz" : lado1 < -0.1 ? "medo" : "normal"; ic1.olharX = 0.6; ic1.olharY = 0;
-    if (venc) ic1.expressao = venc === 1 ? "feliz" : "tonto";
-    var ic2 = copiar({}, b2);
-    ic2.x = bx0 + bw + 34; ic2.y = byy + bh / 2; ic2.r = 24; ic2.escalaX = ic2.escalaY = 1 + 0.14 * pul2;
-    ic2.expressao = lado2 > 0.1 ? "feliz" : lado2 < -0.1 ? "medo" : "normal"; ic2.olharX = -0.6; ic2.olharY = 0;
-    if (venc) ic2.expressao = venc === 2 ? "feliz" : "tonto";
-    ic1.flash = ic2.flash = 0; ic1.fogo = ic2.fogo = false; ic1.escudo = ic2.escudo = false;
-    ic1.congelado = ic2.congelado = false; ic1.furia = ic2.furia = false; ic1.rapidez = ic2.rapidez = false; ic1.fantasma = ic2.fantasma = 0;
-    ArteBolinha.desenhar(ctx, ic1);
-    ArteBolinha.desenhar(ctx, ic2);
-
-    // 8. números de toques e dicas
-    textoCaixa(ctx, String(q.toques1 | 0), BOLA1_X, 652, 52, "#fff", 1 + 0.35 * pul1 * pul1 + 0.1 * pul1);
-    textoCaixa(ctx, String(q.toques2 | 0), BOLA2_X, 652, 52, "#fff", 1 + 0.35 * pul2 * pul2 + 0.1 * pul2);
-    // tira de cor atrás do número
-    dica(ctx, q.dica1, BOLA1_X, 695, cor1, pul1, t);
-    dica(ctx, q.dica2, BOLA2_X, 695, cor2, pul2, t);
-
-    // 9. vencedor: coroa e confete
+    // ----- vencedor: coroa e confete -----
     if (venc) {
-      var cx = venc === 1 ? x1 : x2, cy = (venc === 1 ? y1 : y2) - BOLA_R - 30 + Math.sin(t * 5) * 4;
-      coroa(ctx, cx, cy, 1.5, Math.sin(t * 3) * 0.12);
-      var cores = ["#ff5d9e", "#ffd43b", "#4dd2ff", "#8cff6b", cor1, cor2];
-      for (i = 0; i < 46; i++) {
-        var hx0 = hash(i * 1.7), hv = 0.6 + hash(i * 3.9) * 0.7;
-        var px = hx0 * 1280 + Math.sin(t * 2 + i) * 22;
-        var py = ((t * 110 * hv + hash(i * 7.1) * 800) % 800) - 40;
-        ctx.save();
-        ctx.translate(px, py); ctx.rotate(t * (3 + hv * 4) + i);
-        ctx.fillStyle = cores[i % 6];
-        ctx.fillRect(-5, -2.5 * Math.cos(t * 6 + i), 10, 5 * Math.cos(t * 6 + i));
-        ctx.restore();
+      var vx = venc === 1 ? x1 : x2, vy = (venc === 1 ? y1 : y2) - BOLA_R - 34 + Math.sin(t * 5) * 4, cs = 1 + 0.06 * Math.sin(t * 8);
+      ctx.save(); ctx.translate(vx, vy); ctx.rotate(venc === 1 ? 0.1 : -0.1); ctx.scale(cs, cs);
+      ctx.drawImage(coroa(), -50, -40, 100, 76); ctx.restore();
+      var cores = [pal(venc === 1 ? c1 : c2).base, "#ffd43b", "#ffffff", pal(venc === 1 ? c1 : c2).luz];
+      for (var ci = 0; ci < 4; ci++) {
+        ctx.fillStyle = cores[ci]; ctx.beginPath();
+        for (var j = ci; j < 44; j += 4) {
+          var hx = (Math.sin(j * 91.7) * 0.5 + 0.5), hy2 = (Math.sin(j * 37.3 + 2) * 0.5 + 0.5), vel = 110 + hy2 * 160;
+          var px = hx * 1280 + Math.sin(t * 2 + j) * 24, py = ((t * vel + hy2 * (H + 80)) % (H + 80)) - 40 - dy;
+          var rt = t * 4 + j, ca = Math.cos(rt) * 7, sa = Math.sin(rt) * 7, fl = Math.abs(Math.cos(t * 5 + j)) + 0.2;
+          ctx.moveTo(px - ca, py - sa * fl); ctx.lineTo(px + ca, py + sa * fl); ctx.lineTo(px + ca + 3, py + sa * fl + 5); ctx.lineTo(px - ca + 3, py - sa * fl + 5); ctx.closePath();
+        }
+        ctx.fill();
       }
     }
+
+    // ----- barra de força (no topo da tela) e contadores -----
+    barra(ctx, q, c1, c2, (1 - pos) / 2, pul1, pul2, 24 - dy, t, venc);
+    var n1 = texto(String(q.toques1 | 0), "#ffffff", pal(c1).contorno, 46), n2 = texto(String(q.toques2 | 0), "#ffffff", pal(c2).contorno, 46);
+    poeTexto(ctx, n1, 330, 636, pul1 > 0.03 ? 1 + 0.35 * pul1 : 1);
+    poeTexto(ctx, n2, 950, 636, pul2 > 0.03 ? 1 + 0.35 * pul2 : 1);
+    dica(ctx, q.dica1, 330, 694, c1, pul1);
+    dica(ctx, q.dica2, 950, 694, c2, pul2);
     ctx.restore();
   }
 
-  return { desenhar: desenhar };
+  // etiqueta com a dica (pílula escura com borda da cor do jogador), em sprite
+  var pilulas = {};
+  function dica(ctx, txt, x, y, cor, pul) {
+    if (!txt) return;
+    var k = txt + "|" + cor, sp = pilulas[k];
+    if (!sp) {
+      var p = pal(cor), s = texto(txt, "#ffffff", "#150f38", 20), w = Math.ceil(s.w + 22), h = 38;
+      var c = criarCanvas(w, h), g = c.getContext("2d");
+      retArred(g, 2, 2, w - 4, h - 4, 17); g.fillStyle = "rgba(14,10,44,0.88)"; g.fill(); g.strokeStyle = p.base; g.lineWidth = 2.5; g.stroke();
+      g.drawImage(s.c, (w - s.w) / 2, (h - s.h) / 2 - 0.5);
+      sp = pilulas[k] = { c: c, w: w, h: h };
+    }
+    poeTexto(ctx, sp, x, y, pul > 0.03 ? 1 + 0.08 * pul : 1);
+  }
+
+  // pré-aquece os caches (opcional): chame com as cores antes da cena para evitar engasgo no 1º quadro
+  function preparar(c1, c2, largura, altura) {
+    fundo(largura || 1280, altura || 720, c1, c2);
+    var f1 = escolherFaixa(c1, ""), f2 = escolherFaixa(c2, f1);
+    braco(c1, 1); braco(c2, -1); antebraco(c1, 1, f1, "#fff"); antebraco(c2, -1, f2, "#fff"); maos(c1, c2); coroa();
+    for (var i = 0; i < NR; i++) maoRot(c1, c2, RMIN + i * (RMAX - RMIN) / (NR - 1));
+    var ex = ['bravo', 'smirk', 'esforco'], dd = { x: -999, y: -999, r: BOLA_R, cache: true, olharY: 0.12, faixaInc: 0.03, t: 0 };
+    var cv = criarCanvas(4, 4).getContext('2d');
+    for (var e = 0; e < ex.length; e++) for (var v = 0; v < 2; v++) for (var lado = 0; lado < 2; lado++) {   // rostos principais (fora da tela) para não engasgar no 1º uso
+      dd.expressao = ex[e]; dd.cor = lado ? c2 : c1; dd.faixa = lado ? f2 : f1; dd.faixaListra = dd.faixa === '#ffffff' ? dd.cor : '#fff'; dd.faixaLado = lado ? 1 : -1; dd.olharX = lado ? -1 : 1; dd.vira = (lado ? -1 : 1) * (v ? 0.55 : 0.8); dd.piscar = 0;
+      ArteBolinha.desenhar(cv, dd);
+    }
+  }
+
+  return { desenhar: desenhar, preparar: preparar };
 })();

@@ -1,417 +1,368 @@
 "use strict";
 
 // =========================
-// EFEITOS: sistema de partículas com pool fixo (sem alocar no quadro)
-// Tudo desenhado com sprites em cache (brilho/fumaça/fogo/estrela) ou formas simples.
+// EFEITOS (v2): partículas com pool fixo (sem alocar no quadro).
+// Estilo "flat premium": formas sólidas nítidas em 2 tons, sem borrão.
+// Desempenho (raster por software): o que custa é a CHAMADA, não o pixel. Por isso:
+//  - explosão = 9 quadros pré-renderizados por tamanho (clarão, bola de fogo em 4 tons, anel), desenhados 1:1 (sem escala/rotação)
+//  - fumaça, estrelas e chamas = sprites em níveis de tamanho fixos, desenhados 1:1 em pixel inteiro
+//  - faíscas (triângulos), cacos, confete e bolinhas = LOTES: 1 path e 1 fill por cor
+//  - textos = sprite em cache por (texto, cor), 1:1
+// Nenhum gradiente, blur ou "lighter" por quadro.
 // =========================
 
 const Efeitos = (function() {
   var MAX = 800;
-  var PI2 = Math.PI * 2;
-  var CONTORNO = "#1b1030";
+  var PI = Math.PI, PI2 = Math.PI * 2;
 
   // tipos de partícula
-  var T_BRILHO = 0, T_SUAVE = 1, T_FOGO = 2, T_ESTRELA = 3, T_FLARE = 4, T_CONFETE = 5,
-      T_CACO = 6, T_FAISCA = 7, T_ANEL = 8, T_PEDACO = 9, T_CRISTAL = 10;
-  // quais desenham com "lighter" (brilho aditivo)
-  var ADITIVO = [1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0];
-  // quanto rápido some no fim da vida (alfa = alfa * min(1, vida01 * k))
-  var FADE = [1.2, 2.2, 2.4, 3, 2, 3, 3, 1.6, 1.4, 3, 3];
+  var T_FUMACA = 0, T_FAISCA = 1, T_CACO = 2, T_CONFETE = 3, T_BIT = 4, T_ESTRELA = 5, T_FLASH = 6, T_CHAMA = 7, T_ANEL = 8, T_CRISTAL = 9;
 
   // ---------- pool em arrays (struct of arrays) ----------
-  var X = new Float32Array(MAX), Y = new Float32Array(MAX);
-  var VX = new Float32Array(MAX), VY = new Float32Array(MAX);
-  var VIDA = new Float32Array(MAX), VMAX = new Float32Array(MAX);
-  var TAM = new Float32Array(MAX), TAMF = new Float32Array(MAX);
-  var ROT = new Float32Array(MAX), VROT = new Float32Array(MAX);
+  var X = new Float32Array(MAX), Y = new Float32Array(MAX), VX = new Float32Array(MAX), VY = new Float32Array(MAX);
+  var VIDA = new Float32Array(MAX), VMAX = new Float32Array(MAX), TAM = new Float32Array(MAX), TAMF = new Float32Array(MAX);
+  var PICO = new Float32Array(MAX), ROT = new Float32Array(MAX), VROT = new Float32Array(MAX);
   var GRAV = new Float32Array(MAX), ARR = new Float32Array(MAX), ALFA = new Float32Array(MAX);
-  var EST = new Float32Array(MAX), EXTRA = new Float32Array(MAX);
-  var TIPO = new Uint8Array(MAX);
-  var CID = new Uint16Array(MAX), CID2 = new Uint16Array(MAX);
+  var TIPO = new Uint8Array(MAX), CID = new Uint16Array(MAX), ESTILO = new Uint8Array(MAX);
   var n = 0;
+  var COPIAR = [X, Y, VX, VY, VIDA, VMAX, TAM, TAMF, PICO, ROT, VROT, GRAV, ARR, ALFA, TIPO, CID, ESTILO];
 
-  // ---------- cores: id numérico por string ----------
-  var nomesCor = [], idsCor = {};
-  function cid(cor) {
-    var i = idsCor[cor];
-    if (i === undefined) { i = nomesCor.length; nomesCor.push(cor); idsCor[cor] = i; }
-    return i;
-  }
+  // ---------- cores ----------
+  var ESC = [26, 13, 51], BRA = [255, 255, 255], AZU = [48, 28, 120];
   function hexRgb(h) {
     if (h.charAt(0) === "#") h = h.slice(1);
     if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
     var v = parseInt(h, 16);
     return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
   }
-  function mix(cor, alvo, q) {
-    var a = hexRgb(cor);
-    return "rgb(" + Math.round(a[0] + (alvo[0] - a[0]) * q) + "," + Math.round(a[1] + (alvo[1] - a[1]) * q) +
-      "," + Math.round(a[2] + (alvo[2] - a[2]) * q) + ")";
+  function mix(a, b, q) {
+    return "rgb(" + Math.round(a[0] + (b[0] - a[0]) * q) + "," + Math.round(a[1] + (b[1] - a[1]) * q) + "," + Math.round(a[2] + (b[2] - a[2]) * q) + ")";
   }
-  function paraHex(cor) {
-    // garante hex (mix devolve rgb()); só usado em cores de partículas derivadas
-    var m = /rgb\((\d+),(\d+),(\d+)\)/.exec(cor);
-    if (!m) return cor;
-    return "#" + [m[1], m[2], m[3]].map(function(v) { return ("0" + (+v).toString(16)).slice(-2); }).join("");
+  function claro(cor) {   // versão clara (hex) de uma cor
+    var r = hexRgb(cor), q = 0.45, h = "#";
+    for (var i = 0; i < 3; i++) { var v = Math.round(r[i] + (255 - r[i]) * q); h += (v < 16 ? "0" : "") + v.toString(16); }
+    return h;
   }
-  var luz = function(c) { return paraHex(mix(c, [255, 255, 255], 0.5)); };
-  var escura = function(c) { return paraHex(mix(c, [27, 16, 48], 0.55)); };
+  // cada cor vira um id numérico com paleta (base, luz, sombra azulada, contorno escuro da própria cor)
+  var idsCor = {}, nCores = 0, PB = [], PL = [], PS = [], PC = [];
+  function cid(cor) {
+    var i = idsCor[cor];
+    if (i !== undefined) return i;
+    var rgb = hexRgb(cor);
+    i = nCores++; idsCor[cor] = i;
+    PB.push("rgb(" + rgb.join(",") + ")"); PL.push(mix(rgb, BRA, 0.5)); PS.push(mix(rgb, AZU, 0.28)); PC.push(mix(rgb, ESC, 0.7));
+    return i;
+  }
+  var C_BRANCO = cid("#ffffff"), C_AMARELO = cid("#ffd23f"), C_LARANJA = cid("#ff8a2b"), C_CREME = cid("#fff3b0");
+  var C_MADEIRA = cid("#6d5a7c"), C_CINZA = cid("#4a3f63"), C_GELO = cid("#bfe9ff");
 
-  var C_BRANCO = cid("#ffffff"), C_AMARELO = cid("#ffe066"), C_LARANJA = cid("#ff9a1f"),
-      C_VERMELHO = cid("#ff4a1c"), C_CINZA = cid("#8d8698"), C_CINZA_ESC = cid("#4a4452"),
-      C_BEGE = cid("#d9c3a0"), C_CONTORNO = cid(CONTORNO), C_GELO = cid("#bff4ff"),
-      C_GELO_ESC = cid("#2e7aa6"), C_CREME = cid("#fff3b0"), C_MARROM = cid("#7a5238"),
-      C_MARROM_ESC = cid("#2c1a14"), C_CINZA_PED = cid("#6d6676");
-
-  // ---------- sprites em cache ----------
-  function criarCanvas(w, h) { var c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
-
-  var sprBrilho = [], sprSuave = [], sprEstrela = [];
-  function brilhoSpr(i) {
-    var s = sprBrilho[i];
-    if (s) return s;
-    var rgb = hexRgb(nomesCor[i]);
-    s = criarCanvas(64, 64);
-    var g = s.getContext("2d");
-    var gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gr.addColorStop(0, "rgba(255,255,255,1)");
-    gr.addColorStop(0.18, "rgba(" + Math.min(255, rgb[0] + 90) + "," + Math.min(255, rgb[1] + 90) + "," + Math.min(255, rgb[2] + 90) + ",0.95)");
-    gr.addColorStop(0.45, "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ",0.5)");
-    gr.addColorStop(1, "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ",0)");
-    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-    return (sprBrilho[i] = s);
-  }
-  function suaveSpr(i) {
-    var s = sprSuave[i];
-    if (s) return s;
-    var rgb = hexRgb(nomesCor[i]);
-    s = criarCanvas(64, 64);
-    var g = s.getContext("2d");
-    var gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gr.addColorStop(0, "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ",0.95)");
-    gr.addColorStop(0.55, "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ",0.55)");
-    gr.addColorStop(1, "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ",0)");
-    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-    return (sprSuave[i] = s);
-  }
-  // estrela de 5 pontas fofa (contorno escuro + miolo claro)
-  function estrelaSpr(i) {
-    var s = sprEstrela[i];
-    if (s) return s;
-    var cor = nomesCor[i];
-    s = criarCanvas(48, 48);
-    var g = s.getContext("2d");
-    function ponta(ro, ri) {
-      g.beginPath();
-      for (var k = 0; k < 10; k++) {
-        var a = k * Math.PI / 5 - Math.PI / 2, rr = k & 1 ? ri : ro;
-        g[k ? "lineTo" : "moveTo"](24 + Math.cos(a) * rr, 25 + Math.sin(a) * rr);
-      }
-      g.closePath();
-    }
-    g.lineJoin = "round";
-    ponta(21, 9.5); g.fillStyle = CONTORNO; g.fill(); g.strokeStyle = CONTORNO; g.lineWidth = 3; g.stroke();
-    ponta(18, 8); g.fillStyle = cor; g.fill();
-    ponta(10, 4.5); g.fillStyle = "rgba(255,255,255,0.7)"; g.fill();
-    return (sprEstrela[i] = s);
-  }
-  // clarão em cruz (4 pontas finas), branco
-  var sprFlare = null;
-  function flareSpr() {
-    if (sprFlare) return sprFlare;
-    var c = criarCanvas(96, 96), g = c.getContext("2d");
-    g.translate(48, 48);
-    var gr = g.createRadialGradient(0, 0, 0, 0, 0, 16);
-    gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = gr; g.beginPath(); g.arc(0, 0, 16, 0, PI2); g.fill();
-    g.fillStyle = "#fff";
-    for (var k = 0; k < 4; k++) {
-      g.save(); g.rotate(k * Math.PI / 2);
-      g.beginPath(); g.moveTo(-3.6, 0); g.quadraticCurveTo(-1.8, -1.8, 0, -46);
-      g.quadraticCurveTo(1.8, -1.8, 3.6, 0); g.closePath(); g.fill();
-      g.restore();
-    }
-    return (sprFlare = c);
-  }
-  // 4 sprites de bola de fogo: amarelo, laranja, vermelho, fumaça
-  var sprFogo = null;
-  function fogoSprs() {
-    if (sprFogo) return sprFogo;
-    var cores = [
-      ["#fffbd0", "#ffd24a", "#ff9a1f"],
-      ["#ffc440", "#ff7a1c", "#d8401a"],
-      ["#e05a22", "#a42f1c", "#4d2422"],
-      ["#7c7482", "#524b59", "#2f2a36"]
-    ];
-    sprFogo = cores.map(function(c, idx) {
-      var s = criarCanvas(64, 64), g = s.getContext("2d");
-      var gr = g.createRadialGradient(28, 27, 0, 32, 32, 31);
-      gr.addColorStop(0, c[0]); gr.addColorStop(0.45, c[1]); gr.addColorStop(0.8, c[2]);
-      gr.addColorStop(1, "rgba(0,0,0,0)");
-      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-      return s;
-    });
-    return sprFogo;
-  }
-
-  // ---------- spawn ----------
+  function criarCanvas(w, h) { var c = document.createElement("canvas"); c.width = Math.ceil(w); c.height = Math.ceil(h); return c; }
   var rnd = Math.random;
   function entre(a, b) { return a + (b - a) * rnd(); }
+  function suave(u) { return 1 - (1 - u) * (1 - u); }          // easing: rápido no começo, devagar no fim
 
-  function nova(tipo, x, y, vx, vy, vida, tam, tamf, c, grav, arr, alfa) {
-    if (n >= MAX) return -1;
-    var i = n++;
-    TIPO[i] = tipo; X[i] = x; Y[i] = y; VX[i] = vx; VY[i] = vy;
-    VIDA[i] = vida; VMAX[i] = vida; TAM[i] = tam; TAMF[i] = tamf;
-    CID[i] = c; CID2[i] = C_CONTORNO; GRAV[i] = grav; ARR[i] = arr; ALFA[i] = alfa;
-    ROT[i] = 0; VROT[i] = 0; EST[i] = 0; EXTRA[i] = 0;
+  // índice do nível mais próximo (>= v) numa lista crescente
+  function nivel(lista, v) {
+    var i = 0, m = lista.length - 1;
+    while (i < m && lista[i] < v) i++;
     return i;
   }
 
-  // atalhos
-  function brilhoP(x, y, vida, tam, tamf, c, alfa) { return nova(T_BRILHO, x, y, 0, 0, vida, tam, tamf, c, 0, 0, alfa); }
-  function anelP(x, y, vida, r0, r1, c, larg, alfa) {
-    var i = nova(T_ANEL, x, y, 0, 0, vida, r0, r1, c, 0, 0, alfa);
-    if (i >= 0) EXTRA[i] = larg;
+  // ---------- sprites em níveis de tamanho (desenhados 1:1) ----------
+  // puff de fumaça: círculo 2 tons (base + sombra azulada), brilho e contorno fino
+  var ESTILOS = [
+    ["#cdc8e6", "#8f89bd", "#5f5a92"],   // 0 fumaça clara
+    ["#7d77a3", "#524d7a", "#322d58"],   // 1 fumaça escura
+    ["#ecdcc2", "#c3ab89", "#97805f"],   // 2 poeira
+    ["#ffffff", "#d3d6f0", "#9ea3d0"],   // 3 branco
+    ["#ff9a3d", "#e0472b", "#8a2121"]    // 4 fumaça de fogo
+  ];
+  var NIV_PUFF = [3, 4, 5, 6, 7, 9, 11, 13, 16, 19, 23, 28, 34, 41, 50, 60];
+  var puffS = {};
+  function puff(est, lv) {
+    var k = est * 32 + lv, s = puffS[k];
+    if (s) return s;
+    var r = NIV_PUFF[lv], S = 2 * (r + 3), e = ESTILOS[est], c = criarCanvas(S, S), g = c.getContext("2d");
+    var lw = r < 7 ? 1.2 : 2;
+    g.translate(S / 2, S / 2);
+    g.beginPath(); g.arc(0, 0, r - lw / 2, 0, PI2); g.fillStyle = e[1]; g.fill();
+    g.save(); g.clip();
+    g.beginPath(); g.arc(-r * 0.14, -r * 0.17, r * 0.86, 0, PI2); g.fillStyle = e[0]; g.fill();
+    g.restore();
+    if (r >= 7) { g.beginPath(); g.ellipse(-r * 0.38, -r * 0.48, r * 0.27, r * 0.15, -0.7, 0, PI2); g.fillStyle = "rgba(255,255,255,0.22)"; g.fill(); }
+    g.beginPath(); g.arc(0, 0, r - lw / 2, 0, PI2); g.strokeStyle = e[2]; g.lineWidth = lw; g.stroke();
+    return (puffS[k] = { c: c, m: S / 2 });
   }
-  function faiscaP(x, y, ang, vel, vida, tam, c, grav) {
-    nova(T_FAISCA, x, y, Math.cos(ang) * vel, Math.sin(ang) * vel, vida, tam, tam * 0.4, c, grav, 0.7, 1);
+
+  // estrela de 4 pontas côncava (2 tons), por cor e nível
+  var NIV_EST = [5, 7, 9, 12, 16, 22, 30, 42, 58, 80];
+  var estrelaS = {};
+  function estrela(id, lv, v) {
+    var k = (id * 16 + lv) * 2 + v, s = estrelaS[k];
+    if (s) return s;
+    var R = NIV_EST[lv], S = 2 * R + 6, c = criarCanvas(S, S), g = c.getContext("2d");
+    g.translate(S / 2, S / 2); g.rotate(v ? 0.4 : 0);
+    function forma(q) {
+      g.beginPath();
+      for (var i = 0; i < 8; i++) { var a = -PI / 2 + i * PI / 4, r = (i % 2 ? 0.26 : 1) * R * q; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+      g.closePath();
+    }
+    forma(1); g.fillStyle = PB[id]; g.fill();
+    g.save(); forma(1); g.clip(); g.fillStyle = PS[id]; g.beginPath(); g.moveTo(-R * 2, R * 2); g.lineTo(R * 2, -R * 2); g.lineTo(R * 2, R * 2); g.closePath(); g.fill(); g.restore();
+    forma(0.5); g.fillStyle = PL[id]; g.fill();
+    forma(1); g.strokeStyle = PC[id]; g.lineWidth = R < 10 ? 1.2 : 2; g.lineJoin = "round"; g.stroke();
+    return (estrelaS[k] = { c: c, m: S / 2 });
   }
-  function estrelaP(x, y, ang, vel, vida, tam, c, grav) {
-    var i = nova(T_ESTRELA, x, y, Math.cos(ang) * vel, Math.sin(ang) * vel, vida, tam, tam * 0.5, c, grav, 1.2, 1);
-    if (i >= 0) { ROT[i] = rnd() * PI2; VROT[i] = entre(-8, 8); }
+
+  // chama (gota de fogo, 3 camadas) por altura
+  var NIV_CHAMA = [7, 9, 12, 15, 19, 24];
+  var chamaS = {};
+  function chama(lv) {
+    var s = chamaS[lv];
+    if (s) return s;
+    var H = NIV_CHAMA[lv], W = Math.ceil(H * 0.72), c = criarCanvas(W + 6, H + 6), g = c.getContext("2d");
+    g.translate(3, 3);
+    function gota(cx, base, w, h) {
+      g.beginPath(); g.moveTo(cx - w, base);
+      g.bezierCurveTo(cx - w * 1.1, base - h * 0.45, cx - w * 0.2, base - h * 0.55, cx + w * 0.05, base - h);
+      g.bezierCurveTo(cx + w * 0.3, base - h * 0.55, cx + w * 1.1, base - h * 0.45, cx + w, base);
+      g.arc(cx, base, w, 0, PI, false); g.closePath();
+    }
+    var cx = W / 2, w = W * 0.42, b = H - w * 0.3;
+    gota(cx, b, w, b * 0.98); g.fillStyle = "#ff6a1f"; g.fill(); g.strokeStyle = "#8e2418"; g.lineWidth = H < 12 ? 1.2 : 2; g.lineJoin = "round"; g.stroke();
+    gota(cx + 0.5, b - 1, w * 0.62, b * 0.64); g.fillStyle = "#ffc22e"; g.fill();
+    if (H >= 12) { gota(cx + 0.5, b - 1.5, w * 0.3, b * 0.3); g.fillStyle = "#fff3a6"; g.fill(); }
+    return (chamaS[lv] = { c: c, w: W + 6, h: H + 6, cx: 3 + cx, base: 3 + b });
   }
-  function flareP(x, y, vida, tam, rot, alfa) {
-    var i = nova(T_FLARE, x, y, 0, 0, vida, tam, tam * 0.4, C_BRANCO, 0, 0, alfa);
-    if (i >= 0) ROT[i] = rot;
+
+  // clarão da boca da arma: apontando para +x, origem em (18,40)
+  var flashS = null;
+  function flashSpr() {
+    if (flashS) return flashS;
+    var c = criarCanvas(128, 80), g = c.getContext("2d");
+    g.translate(18, 40);
+    function espinho(ang, L, w) {
+      g.save(); g.rotate(ang);
+      g.beginPath(); g.moveTo(0, -w); g.quadraticCurveTo(L * 0.5, -w * 0.7, L, 0); g.quadraticCurveTo(L * 0.5, w * 0.7, 0, w); g.closePath(); g.restore();
+    }
+    var lista = [[0, 108, 15], [-0.62, 62, 10], [0.62, 62, 10], [-1.25, 40, 7], [1.25, 40, 7]];
+    g.lineJoin = "round";
+    for (var i = lista.length - 1; i >= 0; i--) {
+      espinho(lista[i][0], lista[i][1], lista[i][2]); g.fillStyle = "#ffb62e"; g.fill(); g.strokeStyle = "#c2481f"; g.lineWidth = 3; g.stroke();
+    }
+    for (i = 0; i < 3; i++) { espinho(lista[i][0], lista[i][1] * 0.72, lista[i][2] * 0.62); g.fillStyle = "#fff0a0"; g.fill(); }
+    g.beginPath(); g.arc(2, 0, 13, 0, PI2); g.fillStyle = "#fff"; g.fill();
+    return (flashS = c);
   }
-  function suaveP(x, y, vx, vy, vida, tam, tamf, c, alfa, grav, arr) {
-    nova(T_SUAVE, x, y, vx, vy, vida, tam, tamf, c, grav || 0, arr || 0, alfa);
+
+  // ---------- quadros da explosão (pré-renderizados por tamanho, 1:1) ----------
+  var NQ = 9, NIV_EXP = [26, 36, 48, 62, 80, 102, 130];
+  var explS = {};
+  function explosaoFrames(lv, variante) {
+    var k = lv * 2 + variante, fr = explS[k];
+    if (fr) return fr;
+    var R = NIV_EXP[lv], S = 2 * Math.ceil(R * 1.25), sem = variante ? 91 : 7, q, i;
+    function pr() { sem = (sem * 1103515245 + 12345) % 2147483648; return sem / 2147483648; }
+    var lobos = [];
+    for (i = 0; i < 9; i++) lobos.push({ a: i / 9 * PI2 + (pr() - 0.5) * 0.5, d: 0.40 + pr() * 0.22, r: 0.27 + pr() * 0.13 });
+    fr = { s: S, m: S / 2, q: [] };
+    var lw = Math.max(1.6, R * 0.025);
+    for (q = 0; q < NQ; q++) {
+      var u = q / (NQ - 1), c = criarCanvas(S, S), g = c.getContext("2d");
+      g.translate(S / 2, S / 2);
+      var cr = u < 0.4 ? suave(u / 0.4) : 1 - 0.3 * ((u - 0.4) / 0.6);         // cresce rápido, depois encolhe
+      var frio = Math.max(0, Math.min(1, (u - 0.3) / 0.7)), calor = 1 - frio;
+      var alfa = u > 0.78 ? 1 - (u - 0.78) / 0.22 * 0.9 : 1;
+      // anel de choque (traço que afina)
+      g.globalAlpha = Math.pow(1 - u, 0.7);
+      g.beginPath(); g.arc(0, 0, R * (0.5 + 0.7 * suave(u)), 0, PI2); g.strokeStyle = "#fff6d6"; g.lineWidth = Math.max(1.2, R * 0.12 * (1 - u)); g.stroke();
+      g.globalAlpha = alfa;
+      // bola de fogo: 4 camadas chapadas
+      var lobosEsc = function(kk, dx, dy) {
+        g.beginPath();
+        for (var j = 0; j < lobos.length; j++) {
+          var L = lobos[j], a = L.a + u * 0.35, d = L.d * R * cr, rr = L.r * R * cr * kk;
+          var cx = Math.cos(a) * d * (0.8 + 0.2 * kk) + dx * R, cy = Math.sin(a) * d * (0.8 + 0.2 * kk) + dy * R;
+          g.moveTo(cx + rr, cy); g.arc(cx, cy, rr, 0, PI2);
+        }
+        g.moveTo(0.5 * R * cr * kk + dx * R, dy * R); g.arc(dx * R, dy * R, 0.5 * R * cr * kk, 0, PI2);
+      };
+      lobosEsc(1, 0, 0); g.fillStyle = mix([226, 58, 38], [79, 58, 99], frio * 0.8); g.fill();
+      g.strokeStyle = mix([110, 26, 34], [48, 36, 70], frio); g.lineWidth = lw; g.lineJoin = "round"; g.stroke();
+      lobosEsc(0.84, -0.04, -0.05); g.fillStyle = mix([255, 122, 31], [122, 74, 99], frio * 0.9); g.fill();
+      if (calor > 0.15) { lobosEsc(0.78 * calor + 0.1, -0.07, -0.09); g.fillStyle = "#ffc233"; g.fill(); }
+      if (calor > 0.4) { lobosEsc(0.5 * calor, -0.1, -0.12); g.fillStyle = "#fff4b0"; g.fill(); }
+      // clarão inicial: estrela sólida
+      if (q < 4) {
+        var rf = R * [0.55, 0.95, 0.75, 0.42][q];
+        g.globalAlpha = [1, 1, 0.85, 0.5][q];
+        g.beginPath();
+        for (i = 0; i < 16; i++) { var aa = i * PI / 8 + 0.2, rr2 = i % 2 ? rf * 0.5 : rf; g.lineTo(Math.cos(aa) * rr2, Math.sin(aa) * rr2); }
+        g.closePath(); g.fillStyle = "#fffbe6"; g.fill(); g.strokeStyle = "#ffb62e"; g.lineWidth = lw; g.stroke();
+      }
+      fr.q.push(c);
+    }
+    return (explS[k] = fr);
   }
-  function fogoP(x, y, vx, vy, vida, tam, tamf, est, alfa, grav, arr) {
-    var i = nova(T_FOGO, x, y, vx, vy, vida, tam, tamf, 0, grav || 0, arr || 0, alfa);
-    if (i >= 0) EST[i] = est;
+
+  // ---------- criação de partículas ----------
+  function nova(tipo, x, y, vx, vy, vida, tam, tamf, c, grav, arr, alfa, rot, vrot, estilo, pico) {
+    var i;
+    if (n < MAX) i = n++; else i = (rnd() * MAX) | 0;        // pool cheio: sobrescreve uma qualquer
+    X[i] = x; Y[i] = y; VX[i] = vx; VY[i] = vy; VIDA[i] = VMAX[i] = vida; TAM[i] = tam; TAMF[i] = tamf;
+    PICO[i] = pico === undefined ? -1 : pico; ROT[i] = rot || 0; VROT[i] = vrot || 0; GRAV[i] = grav || 0; ARR[i] = arr || 0;
+    ALFA[i] = alfa === undefined ? 1 : alfa; TIPO[i] = tipo; CID[i] = c || 0; ESTILO[i] = estilo || 0;
+    return i;
   }
+  function faisca(x, y, ang, vel, vida, tam, c, grav) { nova(T_FAISCA, x, y, Math.cos(ang) * vel, Math.sin(ang) * vel, vida, tam, 0, c, grav === undefined ? 380 : grav, 2.2); }
+  function fumacaP(x, y, vx, vy, vida, t0, pico, tf, est, alfa, grav, arr) { nova(T_FUMACA, x, y, vx, vy, vida, t0, tf, 0, grav || 0, arr === undefined ? 1.6 : arr, alfa, 0, 0, est, pico); }
+  function estrelaP(x, y, tam, c, vida, rot, vx, vy) { nova(T_ESTRELA, x, y, vx || 0, vy || 0, vida, tam, 0, c, 0, 3, 1, rot || 0, 0); }
+  function anelP(x, y, r0, r1, larg, c, vida) { nova(T_ANEL, x, y, 0, 0, vida, r0, r1, c, 0, 0, larg); }
+  function cacoP(x, y, ang, vel, vida, tam, c, grav) { nova(T_CACO, x, y, Math.cos(ang) * vel, Math.sin(ang) * vel, vida, tam, 0, c, grav, 1.2, 1, rnd() * PI2, entre(-9, 9)); }
+  function bitP(x, y, ang, vel, vida, tam, c, grav) { nova(T_BIT, x, y, Math.cos(ang) * vel, Math.sin(ang) * vel, vida, tam, 0, c, grav, 1.6); }
+
+  // ---------- explosões (pool próprio) ----------
+  var NE = 14, EX = new Float32Array(NE), EY = new Float32Array(NE), EI = new Float32Array(NE), ED = new Float32Array(NE);
+  var ENIV = new Uint8Array(NE), EVAR = new Uint8Array(NE), EVIVA = new Uint8Array(NE);
+  var proxE = 0;
 
   // ---------- tremor de câmera ----------
-  var tremorA = 0;
-  var desloc = { x: 0, y: 0 };
-  function tremer(forca) {
-    forca = Math.min(26, forca || 0);
-    if (forca > tremorA) tremorA = forca;
-  }
+  var tremorA = 0, desloc = { x: 0, y: 0 };
+  function tremer(forca) { forca = Math.min(26, forca || 0); if (forca > tremorA) tremorA = forca; }
   function deslocamento() { return desloc; }
 
-  // ---------- textos flutuantes (poucos, lista própria) ----------
-  var NT = 28;
-  var textos = [];
-  for (var ti = 0; ti < NT; ti++) textos.push({ vivo: false, txt: "", cor: "#fff", x: 0, y: 0, vida: 0, vmax: 1, vy: 0, esc: 1 });
-  var proxTexto = 0;
+  // ---------- textos (sprite em cache por texto+cor, 1:1) ----------
+  var NT = 24, textos = [], proxT = 0, cacheTxt = {}, nCacheTxt = 0;
+  for (var ti = 0; ti < NT; ti++) textos.push({ vivo: false, s: null, x: 0, y: 0, vida: 0, vy: 0, esc: 1, idade: 0 });
+  function spriteTexto(txt, cor) {
+    var k = txt + "|" + cor, s = cacheTxt[k];
+    if (s) return s;
+    if (nCacheTxt > 90) { cacheTxt = {}; nCacheTxt = 0; }
+    var F = 24, pad = 5, rgb = hexRgb(cor);
+    var fonte = "800 " + F + "px system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    var m = criarCanvas(4, 4).getContext("2d"); m.font = fonte;
+    var w = Math.ceil(m.measureText(txt).width) + pad * 2, h = F + pad * 2 + 4;
+    var c = criarCanvas(w, h), g = c.getContext("2d");
+    g.font = fonte; g.textAlign = "center"; g.textBaseline = "middle"; g.lineJoin = "round";
+    g.lineWidth = 3.6; g.strokeStyle = mix(rgb, ESC, 0.82); g.strokeText(txt, w / 2, h / 2 + 1);   // contorno escuro fino
+    g.fillStyle = "rgb(" + rgb.join(",") + ")"; g.fillText(txt, w / 2, h / 2 + 1);
+    s = cacheTxt[k] = { c: c, w: w, h: h };
+    nCacheTxt++;
+    return s;
+  }
   function texto(x, y, txt, cor, escala) {
-    var tx = null;
-    for (var k = 0; k < NT; k++) { if (!textos[k].vivo) { tx = textos[k]; break; } }
-    if (!tx) { tx = textos[proxTexto]; proxTexto = (proxTexto + 1) % NT; } // reaproveita o mais antigo
-    tx.vivo = true; tx.txt = String(txt); tx.cor = cor || "#fff";
-    tx.x = x; tx.y = y; tx.vmax = tx.vida = 1.0; tx.vy = 95; tx.esc = escala || 1;
+    var tx = null, k;
+    for (k = 0; k < NT; k++) if (!textos[k].vivo) { tx = textos[k]; break; }
+    if (!tx) { tx = textos[proxT]; proxT = (proxT + 1) % NT; }
+    tx.vivo = true; tx.s = spriteTexto(String(txt), cor || "#ffffff");
+    tx.x = x; tx.y = y; tx.idade = 0; tx.vida = 1.05; tx.vy = 110; tx.esc = escala || 1;
   }
 
   // ---------- efeitos prontos ----------
   function explosao(x, y, raio) {
-    var R = Math.max(18, raio || 60);
-    var k = R / 80;
+    var R = Math.max(18, raio || 60), i, a;
+    var e = proxE; proxE = (proxE + 1) % NE;
+    var lv = nivel(NIV_EXP, R * 0.94);
+    EX[e] = x; EY[e] = y; EI[e] = 0; ED[e] = 0.5 + R * 0.0019; ENIV[e] = lv; EVAR[e] = rnd() < 0.5 ? 0 : 1; EVIVA[e] = 1;
+    var k = R / 100;
+    // fumaça (atrás da bola de fogo): puffs 2 tons que crescem e encolhem
+    var nf = 5 + Math.round(R / 30);
+    for (i = 0; i < nf; i++) {
+      a = rnd() * PI2; var d = entre(0.25, 0.6) * R;
+      fumacaP(x + Math.cos(a) * d, y + Math.sin(a) * d, Math.cos(a) * entre(20, 90) * k, Math.sin(a) * entre(20, 90) * k - 28, entre(0.8, 1.3), R * 0.14, R * entre(0.34, 0.5), R * 0.06, i % 3 ? 1 : 0, 1, -30 * k, 1.8);
+    }
+    // faíscas afiadas
+    var ns = 10 + Math.round(R / 10);
+    for (i = 0; i < ns; i++) faisca(x, y, rnd() * PI2, entre(220, 620) * k, entre(0.35, 0.8), entre(2.4, 4) * Math.min(1.5, k + 0.3), i % 3 === 0 ? C_BRANCO : (i % 3 === 1 ? C_AMARELO : C_LARANJA));
+    // pedaços escuros
+    var nc = 4 + Math.round(R / 30);
+    for (i = 0; i < nc; i++) cacoP(x, y, rnd() * PI2, entre(160, 420) * k, entre(0.5, 0.95), entre(4, 8) * Math.min(1.5, k + 0.2), i % 2 ? C_MADEIRA : C_CINZA, 650);
+    for (i = 0; i < 4; i++) bitP(x, y, rnd() * PI2, entre(80, 300) * k, entre(0.4, 0.8), entre(2, 3.4), i % 2 ? C_AMARELO : C_LARANJA, 220);
     tremer(Math.min(16, R * 0.13));
-
-    // clarão branco-amarelo + halo laranja
-    brilhoP(x, y, 0.16, R * 0.8, R * 1.8, C_CREME, 0.75);
-    brilhoP(x, y, 0.4, R * 0.8, R * 1.5, C_LARANJA, 0.4);
-    flareP(x, y, 0.18, R * 1.5, rnd() * 3, 0.7);
-
-    // núcleo da bola de fogo + bolhas de fogo que viram fumaça
-    fogoP(x, y, 0, 0, 0.55, R * 0.5, R * 1.0, 2.6, 1, 0, 0);
-    var nf = Math.round(5 + R / 14);
-    for (var i = 0; i < nf; i++) {
-      var a = rnd() * PI2, d = rnd() * R * 0.5, v = entre(40, 160) * k;
-      fogoP(x + Math.cos(a) * d, y + Math.sin(a) * d, Math.cos(a) * v, Math.sin(a) * v - 25 * k,
-        entre(0.5, 0.95), R * entre(0.35, 0.55), R * entre(0.55, 0.85), 3, 1, -30, 1.6);
-    }
-    // anéis de choque
-    anelP(x, y, 0.36, R * 0.25, R * 1.3, C_CREME, 3 + R / 28, 0.85);
-    anelP(x, y, 0.5, R * 0.2, R * 1.0, C_LARANJA, 2 + R / 40, 0.7);
-    // fumaça escura subindo
-    var ns = Math.round(3 + R / 28);
-    for (i = 0; i < ns; i++) {
-      suaveP(x + entre(-R, R) * 0.4, y + entre(-R, R) * 0.3, entre(-30, 30) * k, entre(-70, -25) * k,
-        entre(1.0, 1.7), R * entre(0.25, 0.4), R * entre(0.6, 0.9), C_CINZA_ESC, 0.5, -20, 0.8);
-    }
-    // faíscas
-    var nfa = Math.round(10 + R / 5);
-    var cs = [C_AMARELO, C_LARANJA, C_BRANCO, C_CREME];
-    for (i = 0; i < nfa; i++) {
-      faiscaP(x, y, rnd() * PI2, entre(220, 780) * (0.55 + 0.45 * k), entre(0.35, 0.95), entre(1.8, 3.2), cs[(rnd() * 4) | 0], 650);
-    }
-    // pedacinhos (terra/pedra)
-    var np = Math.round(5 + R / 13);
-    for (i = 0; i < np; i++) {
-      var ap = rnd() * PI2, vp = entre(160, 480) * (0.6 + 0.4 * k);
-      var j = nova(T_PEDACO, x, y, Math.cos(ap) * vp, Math.sin(ap) * vp - 160, entre(0.7, 1.3), entre(2.5, 5.5) * (0.7 + 0.3 * k), 0,
-        rnd() < 0.5 ? C_MARROM : C_CINZA_PED, 950, 0.2, 1);
-      if (j >= 0) { CID2[j] = C_MARROM_ESC; ROT[j] = rnd() * PI2; VROT[j] = entre(-12, 12); }
-    }
   }
-
   function impacto(x, y, ang, cor) {
-    var base = ang + Math.PI;
-    var c = cid(cor || "#ffe08a");
-    brilhoP(x, y, 0.12, 14, 38, c, 0.9);
-    for (var i = 0; i < 7; i++) {
-      faiscaP(x, y, base + entre(-0.95, 0.95), entre(120, 440), entre(0.22, 0.5), entre(1.4, 2.4), i % 3 ? c : C_BRANCO, 520);
-    }
-    suaveP(x, y, Math.cos(base) * 30, Math.sin(base) * 30 - 10, 0.45, 5, 15, C_CINZA, 0.5, -10, 2);
-    anelP(x, y, 0.14, 3, 15, C_BRANCO, 2.2, 0.8);
+    var c = cid(cor || "#ffd23f"), back = ang + PI, i;
+    for (i = 0; i < 7; i++) faisca(x, y, back + (rnd() - 0.5) * 1.9, entre(130, 400), entre(0.22, 0.45), entre(2, 3.2), i % 3 === 0 ? C_BRANCO : (i % 3 === 1 ? c : C_AMARELO));
+    estrelaP(x, y, 14, C_BRANCO, 0.16, rnd());
+    fumacaP(x, y, Math.cos(back) * 20, Math.sin(back) * 20, 0.35, 3, 6, 1, 2, 0.9, 0, 3);
   }
-
   function acerto(x, y, cor) {
-    var c = cid(cor || "#ffffff"), cl = cid(luz(cor || "#ffffff"));
-    tremer(1.2);
-    brilhoP(x, y, 0.14, 18, 54, C_BRANCO, 1);
-    flareP(x, y, 0.16, 34, rnd() * 3, 0.95);
-    for (var i = 0; i < 5; i++) {
-      estrelaP(x, y, rnd() * PI2, entre(90, 260), entre(0.4, 0.7), entre(3.6, 6.4), i % 2 ? C_BRANCO : (i === 2 ? C_AMARELO : c), 380);
-    }
-    for (i = 0; i < 8; i++) faiscaP(x, y, rnd() * PI2, entre(160, 420), entre(0.2, 0.45), entre(1.6, 2.6), i & 1 ? cl : C_BRANCO, 300);
-    anelP(x, y, 0.22, 4, 30, c, 3.2, 0.9);
+    var c = cid(cor || "#ffffff"), i, a;
+    estrelaP(x, y, 28, C_BRANCO, 0.22, 0.3);
+    anelP(x, y, 6, 36, 6, C_BRANCO, 0.26);
+    for (i = 0; i < 5; i++) { a = rnd() * PI2; estrelaP(x + Math.cos(a) * 6, y + Math.sin(a) * 6, entre(10, 16), i % 2 ? c : C_BRANCO, entre(0.35, 0.5), rnd(), Math.cos(a) * entre(70, 190), Math.sin(a) * entre(70, 190)); }
+    for (i = 0; i < 8; i++) faisca(x, y, rnd() * PI2, entre(120, 380), entre(0.25, 0.5), entre(2, 3.3), i % 2 ? c : C_BRANCO, 200);
   }
-
   function estouro(x, y, cor) {
-    var base = cor || "#ff5d73";
-    var c = cid(base), cl = cid(luz(base)), ce = cid(escura(base));
-    tremer(7);
-    brilhoP(x, y, 0.3, 40, 120, c, 0.8);
-    brilhoP(x, y, 0.14, 26, 80, C_BRANCO, 0.7);
-    flareP(x, y, 0.2, 80, rnd() * 3, 0.7);
-    anelP(x, y, 0.5, 14, 85, cl, 5, 0.9);
-    anelP(x, y, 0.35, 8, 55, C_BRANCO, 2.5, 0.7);
-    suaveP(x, y, 0, 0, 0.55, 25, 60, c, 0.7, 0, 0);
-    // confete (retângulos coloridos que giram)
-    var pal = [c, cl, ce, C_BRANCO, c, cl, C_AMARELO];
-    var i, j;
-    for (i = 0; i < 38; i++) {
-      var a = rnd() * PI2, v = entre(130, 560);
-      j = nova(T_CONFETE, x, y, Math.cos(a) * v, Math.sin(a) * v - 140, entre(0.9, 1.8), entre(4, 8.5), 0, pal[i % 7], 620, 1.0, 1);
-      if (j >= 0) { ROT[j] = rnd() * PI2; VROT[j] = entre(-14, 14); EXTRA[j] = rnd() * PI2; }
+    var c = cid(cor || "#4dabf7"), i, a;
+    var cl = cid(claro(cor || "#4dabf7"));
+    estrelaP(x, y, 78, C_BRANCO, 0.22, 0.4);
+    estrelaP(x, y, 54, c, 0.3, 0.8);
+    anelP(x, y, 14, 96, 10, c, 0.45);
+    anelP(x, y, 8, 62, 5, C_BRANCO, 0.34);
+    for (i = 0; i < 10; i++) cacoP(x, y, rnd() * PI2, entre(120, 440), entre(0.6, 1.1), entre(6, 11), c, 520);
+    for (i = 0; i < 24; i++) {                                 // confete da cor da bolinha + brancos
+      a = rnd() * PI2;
+      nova(T_CONFETE, x, y, Math.cos(a) * entre(80, 420), Math.sin(a) * entre(80, 420) - 90, entre(0.8, 1.5), entre(3.4, 5.6), 0, i % 3 === 0 ? C_BRANCO : (i % 3 === 1 ? c : cl), 360, 1.1, 1, rnd() * PI2, entre(-10, 10));
     }
-    // cacos brilhantes
-    for (i = 0; i < 9; i++) {
-      var a2 = rnd() * PI2, v2 = entre(120, 430);
-      j = nova(T_CACO, x, y, Math.cos(a2) * v2, Math.sin(a2) * v2 - 120, entre(0.9, 1.4), entre(6, 11), 0, i & 1 ? c : cl, 780, 0.5, 1);
-      if (j >= 0) { CID2[j] = ce; ROT[j] = rnd() * PI2; VROT[j] = entre(-10, 10); EXTRA[j] = (rnd() * 3) | 0; }
-    }
-    for (i = 0; i < 7; i++) estrelaP(x, y, rnd() * PI2, entre(90, 330), entre(0.7, 1.1), entre(4.5, 8), i % 3 === 0 ? C_AMARELO : (i & 1 ? cl : C_BRANCO), 300);
-    for (i = 0; i < 14; i++) faiscaP(x, y, rnd() * PI2, entre(200, 600), entre(0.3, 0.7), entre(1.8, 3), i & 1 ? cl : C_BRANCO, 500);
-  }
-
-  function fumaca(x, y) {
-    suaveP(x + entre(-3, 3), y, entre(-12, 12), entre(-55, -30), entre(0.8, 1.2), 8, 28, C_CINZA, 0.45, -8, 0.5);
-  }
-
-  function poeira(x, y) {
-    for (var i = 0; i < 6; i++) {
-      var s = i < 3 ? -1 : 1;
-      suaveP(x + s * entre(2, 10), y - entre(0, 3), s * entre(25, 95), -entre(4, 26), entre(0.35, 0.65), entre(5, 8), entre(14, 22), C_BEGE, 0.6, -20, 2.2);
-    }
-  }
-
-  function fagulhas(x, y, cor, qtd) {
-    var c = cid(cor || "#ffd43b"), q = qtd || 8;
-    for (var i = 0; i < q; i++) {
-      faiscaP(x, y, rnd() * PI2, entre(80, 340), entre(0.3, 0.8), entre(1.5, 2.8), i % 3 === 0 ? C_BRANCO : c, 420);
-    }
-  }
-
-  function disparo(x, y, ang, tamanho) {
-    var s = tamanho || 18;
-    if (s <= 4) s *= 18; // aceita multiplicador
-    var cx = Math.cos(ang), cy = Math.sin(ang);
-    brilhoP(x + cx * s * 0.3, y + cy * s * 0.3, 0.1, s * 0.9, s * 2.1, C_CREME, 0.95);
-    flareP(x + cx * s * 0.2, y + cy * s * 0.2, 0.1, s * 1.7, ang + Math.PI / 4, 1);
-    // cone de faíscas para frente
-    for (var i = 0; i < 4; i++) {
-      faiscaP(x, y, ang + entre(-0.35, 0.35), entre(260, 560), entre(0.1, 0.22), entre(1.6, 2.4), i & 1 ? C_AMARELO : C_BRANCO, 0);
-    }
-  }
-
-  function anel(x, y, cor, raio) {
-    var R = raio || 40;
-    var c = cid(cor || "#ffffff"), cl = cid(luz(cor || "#ffffff"));
-    brilhoP(x, y, 0.35, R * 0.8, R * 2, c, 0.9);
-    anelP(x, y, 0.5, R * 0.25, R, cl, 5, 1);
-    anelP(x, y, 0.38, R * 0.15, R * 0.7, C_BRANCO, 2.5, 0.9);
-    for (var i = 0; i < 7; i++) {
-      var a = rnd() * PI2;
-      var j = nova(T_FLARE, x + Math.cos(a) * R * 0.5, y + Math.sin(a) * R * 0.5, Math.cos(a) * R * 0.7, Math.sin(a) * R * 0.7 - 20,
-        entre(0.35, 0.6), entre(8, 15), 3, C_BRANCO, 0, 2, 1);
-      if (j >= 0) ROT[j] = rnd();
-    }
-    estrelaP(x, y - R * 0.3, -Math.PI / 2 + entre(-0.6, 0.6), entre(60, 120), 0.7, 5.5, cl, 90);
-  }
-
-  function congelar(x, y) {
+    for (i = 0; i < 8; i++) bitP(x, y, rnd() * PI2, entre(80, 300), entre(0.5, 0.9), entre(3, 5), i % 2 ? c : C_BRANCO, 300);
     tremer(2);
-    brilhoP(x, y, 0.3, 30, 90, C_GELO, 0.9);
-    anelP(x, y, 0.4, 8, 56, C_GELO, 4, 1);
-    for (var i = 0; i < 12; i++) {
-      var a = rnd() * PI2, v = entre(60, 260);
-      var j = nova(T_CRISTAL, x, y, Math.cos(a) * v, Math.sin(a) * v - 60, entre(0.7, 1.2), entre(3.5, 6.5), 0, C_GELO, 420, 0.8, 1);
-      if (j >= 0) { CID2[j] = C_GELO_ESC; ROT[j] = rnd() * PI2; VROT[j] = entre(-9, 9); }
-    }
-    for (i = 0; i < 4; i++) flareP(x + entre(-18, 18), y + entre(-18, 18), entre(0.25, 0.5), entre(14, 26), rnd(), 1);
-    for (i = 0; i < 4; i++) suaveP(x + entre(-10, 10), y + entre(-10, 10), entre(-40, 40), entre(-40, 10), 0.7, 12, 34, C_GELO, 0.4, 0, 1.5);
   }
-
+  function fumaca(x, y) {
+    fumacaP(x + entre(-4, 4), y, entre(-10, 10), entre(-50, -28), entre(0.7, 1.1), 5, 11, 3, rnd() < 0.5 ? 0 : 1, 0.9, -12, 1.2);
+  }
+  function poeira(x, y) {
+    for (var i = 0; i < 5; i++) {
+      var s = i < 2 ? -1 : 1, v = entre(30, 110) * (i === 4 ? 0.3 : s);
+      fumacaP(x + entre(-8, 8), y + entre(-3, 0), v, entre(-22, -6), entre(0.3, 0.5), 3, entre(6, 10), 1.5, 2, 0.95, 0, 3);
+    }
+  }
+  function fagulhas(x, y, cor, qtd) {
+    var c = cid(cor || "#ffd23f"), q = qtd || 6;
+    for (var i = 0; i < q; i++) faisca(x, y, rnd() * PI2, entre(80, 300), entre(0.25, 0.55), entre(2, 3.2), i % 3 === 0 ? C_BRANCO : c);
+  }
+  function disparo(x, y, ang, tamanho) {
+    var m = tamanho === undefined ? 1 : (tamanho > 4 ? tamanho / 20 : tamanho);
+    nova(T_FLASH, x, y, 0, 0, 0.085, m, 0, 0, 0, 0, 1, ang);
+    for (var i = 0; i < 3; i++) faisca(x, y, ang + (rnd() - 0.5) * 0.7, entre(260, 520) * Math.min(1.6, m), entre(0.12, 0.22), 2.4, i ? C_AMARELO : C_BRANCO, 0);
+    fumacaP(x + Math.cos(ang) * 6, y + Math.sin(ang) * 6, Math.cos(ang) * 40, Math.sin(ang) * 40 - 16, 0.4, 2.5, 5 * Math.min(1.6, m), 1.5, 0, 0.85, 0, 3);
+  }
+  function anel(x, y, cor, raio) {
+    var c = cid(cor || "#ffffff"), R = raio || 40, i, a;
+    anelP(x, y, R * 0.25, R, 6, c, 0.4);
+    anelP(x, y, R * 0.15, R * 0.62, 3, C_BRANCO, 0.3);
+    for (i = 0; i < 6; i++) { a = i / 6 * PI2 + 0.3; estrelaP(x + Math.cos(a) * R * 0.5, y + Math.sin(a) * R * 0.5, 9 + (i % 2) * 4, i % 2 ? c : C_BRANCO, 0.4, rnd(), Math.cos(a) * R * 0.9, Math.sin(a) * R * 0.9); }
+  }
+  function congelar(x, y) {
+    var i, a;
+    anelP(x, y, 10, 58, 6, C_GELO, 0.4);
+    estrelaP(x, y, 42, C_BRANCO, 0.25, 0.4);
+    for (i = 0; i < 10; i++) { a = rnd() * PI2; nova(T_CRISTAL, x, y, Math.cos(a) * entre(80, 280), Math.sin(a) * entre(80, 280) - 50, entre(0.6, 1), entre(5, 9), 0, 0, 340, 1.4, rnd() * PI2, entre(-6, 6)); }
+    for (i = 0; i < 5; i++) bitP(x, y, rnd() * PI2, entre(40, 150), entre(0.5, 0.9), entre(2, 3.2), C_BRANCO, 60);
+  }
   function fogo(x, y) {
-    fogoP(x + entre(-7, 7), y + entre(-4, 6), entre(-14, 14), entre(-110, -55), entre(0.32, 0.55), entre(6, 10), entre(2.5, 4.5), 2.2, 0.95, -60, 0.4);
-    if (rnd() < 0.45) {
-      faiscaP(x + entre(-6, 6), y, -Math.PI / 2 + entre(-0.7, 0.7), entre(70, 190), entre(0.3, 0.6), 1.6, rnd() < 0.5 ? C_AMARELO : C_LARANJA, -80);
-    }
-    if (rnd() < 0.25) suaveP(x + entre(-6, 6), y - 10, entre(-10, 10), entre(-45, -25), 0.7, 5, 16, C_CINZA, 0.3, 0, 0.5);
+    nova(T_CHAMA, x + entre(-4, 4), y, entre(-12, 12), entre(-90, -50), entre(0.35, 0.55), entre(10, 16), entre(3, 6), 0, -30, 0.5, 1, 0, 0, 0);
+    if (rnd() < 0.25) bitP(x + entre(-5, 5), y, -PI / 2 + entre(-0.6, 0.6), entre(40, 100), entre(0.4, 0.7), 2, rnd() < 0.5 ? C_AMARELO : C_LARANJA, -40);
   }
-
   function teleporte(x, y, cor) {
-    var base = cor || "#cc5de8";
-    var c = cid(base), cl = cid(luz(base));
-    brilhoP(x, y, 0.4, 50, 130, c, 0.9);
-    brilhoP(x, y, 0.2, 20, 70, C_BRANCO, 1);
-    anelP(x, y, 0.45, 12, 70, cl, 5, 1);
-    anelP(x, y, 0.3, 5, 40, C_BRANCO, 2.5, 0.9);
-    // partículas subindo em coluna + espiral entrando
-    for (var i = 0; i < 12; i++) {
-      var a = i / 12 * PI2;
-      var d = 46;
-      var j = nova(T_BRILHO, x + Math.cos(a) * d, y + Math.sin(a) * d, -Math.cos(a) * d / 0.3, -Math.sin(a) * d / 0.3 - 20, 0.3, 14, 4, i & 1 ? cl : c, 0, 0, 1);
-      if (j < 0) break;
-    }
-    for (i = 0; i < 8; i++) {
-      faiscaP(x + entre(-16, 16), y + entre(-8, 14), -Math.PI / 2 + entre(-0.15, 0.15), entre(160, 420), entre(0.4, 0.8), entre(1.8, 2.8), i & 1 ? cl : C_BRANCO, 0);
-    }
-    for (i = 0; i < 4; i++) estrelaP(x, y, rnd() * PI2, entre(60, 200), 0.6, 4.5, cl, 0);
+    var c = cid(cor || "#b197fc"), i, a;
+    anelP(x, y, 8, 54, 7, c, 0.42);
+    anelP(x, y, 4, 34, 4, C_BRANCO, 0.3);
+    estrelaP(x, y, 48, C_BRANCO, 0.22, 0.5);
+    for (i = 0; i < 9; i++) { a = i / 9 * PI2 + rnd() * 0.4; faisca(x, y, a, entre(120, 300), entre(0.3, 0.5), entre(2, 3.2), i % 2 ? c : C_BRANCO, 0); }
+    for (i = 0; i < 4; i++) bitP(x, y, -PI / 2 + entre(-0.5, 0.5), entre(80, 220), entre(0.4, 0.8), entre(2, 3.4), i % 2 ? c : C_BRANCO, 0);
   }
 
   // ---------- atualizar ----------
   function atualizar(dtMs) {
     var dt = (dtMs === undefined ? 16.667 : dtMs) / 1000;
     if (dt > 0.1) dt = 0.1;
-    var i = 0;
+    var i = 0, k, j;
     while (i < n) {
       var v = VIDA[i] - dt;
       if (v <= 0) {
-        // remove trocando com a última (sem alocar)
-        var u = --n;
-        if (i !== u) {
-          X[i] = X[u]; Y[i] = Y[u]; VX[i] = VX[u]; VY[i] = VY[u]; VIDA[i] = VIDA[u]; VMAX[i] = VMAX[u];
-          TAM[i] = TAM[u]; TAMF[i] = TAMF[u]; ROT[i] = ROT[u]; VROT[i] = VROT[u]; GRAV[i] = GRAV[u];
-          ARR[i] = ARR[u]; ALFA[i] = ALFA[u]; EST[i] = EST[u]; EXTRA[i] = EXTRA[u];
-          TIPO[i] = TIPO[u]; CID[i] = CID[u]; CID2[i] = CID2[u];
-        }
+        var u = --n;                                         // remove trocando com a última (sem alocar)
+        if (i !== u) for (j = 0; j < COPIAR.length; j++) COPIAR[j][i] = COPIAR[j][u];
         continue;
       }
       VIDA[i] = v;
@@ -422,170 +373,183 @@ const Efeitos = (function() {
       ROT[i] += VROT[i] * dt;
       i++;
     }
-    // textos
-    for (var k = 0; k < NT; k++) {
+    for (k = 0; k < NE; k++) if (EVIVA[k]) { EI[k] += dt; if (EI[k] >= ED[k]) EVIVA[k] = 0; }
+    for (k = 0; k < NT; k++) {
       var tx = textos[k];
       if (!tx.vivo) continue;
-      tx.vida -= dt;
-      if (tx.vida <= 0) { tx.vivo = false; continue; }
-      tx.y -= tx.vy * dt;
-      tx.vy *= Math.max(0, 1 - 2.4 * dt);
+      tx.idade += dt;
+      if (tx.idade >= tx.vida) { tx.vivo = false; continue; }
+      tx.y -= tx.vy * dt; tx.vy *= Math.max(0, 1 - 2.6 * dt);
     }
-    // tremor
     if (tremorA > 0) {
       tremorA *= Math.pow(0.86, dt * 60);
       if (tremorA < 0.12) tremorA = 0;
     }
-    if (tremorA > 0) {
-      desloc.x = (rnd() * 2 - 1) * tremorA;
-      desloc.y = (rnd() * 2 - 1) * tremorA;
-    } else { desloc.x = 0; desloc.y = 0; }
+    if (tremorA > 0) { desloc.x = (rnd() * 2 - 1) * tremorA; desloc.y = (rnd() * 2 - 1) * tremorA; }
+    else { desloc.x = 0; desloc.y = 0; }
   }
 
   // ---------- desenhar ----------
-  function desenharTipo(ctx, i, tipo) {
-    var v01 = VIDA[i] / VMAX[i];
-    var f = 1 - v01;
-    var tam = TAM[i] + (TAMF[i] - TAM[i]) * f;
-    var a = ALFA[i] * Math.min(1, v01 * FADE[tipo]);
-    if (a <= 0.01) return;
-    var x = X[i], y = Y[i], c, s, e, st, fr, spr;
-
-    switch (tipo) {
-      case T_BRILHO:
-        s = tam; ctx.globalAlpha = a;
-        ctx.drawImage(brilhoSpr(CID[i]), x - s, y - s, s * 2, s * 2);
-        break;
-      case T_SUAVE:
-        s = tam; ctx.globalAlpha = a;
-        ctx.drawImage(suaveSpr(CID[i]), x - s, y - s, s * 2, s * 2);
-        break;
-      case T_FOGO:
-        s = tam; spr = fogoSprs();
-        e = EST[i] * f;
-        if (EST[i] <= 0) e = 0;
-        st = Math.floor(e); if (st > 2) st = 2;
-        fr = e - st; if (e >= 3) { st = 2; fr = 1; }
-        ctx.globalAlpha = a * (1 - fr * 0.5);
-        ctx.drawImage(spr[st], x - s, y - s, s * 2, s * 2);
-        if (fr > 0) {
-          ctx.globalAlpha = a * fr;
-          ctx.drawImage(spr[st + 1], x - s, y - s, s * 2, s * 2);
-        }
-        break;
-      case T_ESTRELA:
-        s = tam * (0.6 + 0.4 * Math.min(1, v01 * 3));
-        ctx.globalAlpha = a;
-        ctx.save(); ctx.translate(x, y); ctx.rotate(ROT[i]);
-        ctx.drawImage(estrelaSpr(CID[i]), -s, -s, s * 2, s * 2);
-        ctx.restore();
-        break;
-      case T_FLARE:
-        s = tam; ctx.globalAlpha = a;
-        ctx.save(); ctx.translate(x, y); ctx.rotate(ROT[i]);
-        ctx.drawImage(flareSpr(), -s, -s, s * 2, s * 2);
-        ctx.restore();
-        break;
-      case T_CONFETE:
-        ctx.globalAlpha = a;
-        ctx.fillStyle = nomesCor[CID[i]];
-        ctx.save(); ctx.translate(x, y); ctx.rotate(ROT[i]);
-        var fl = Math.cos(EXTRA[i] + f * 18); // vira de lado como confete de verdade
-        ctx.fillRect(-tam / 2, -tam * 0.28 * fl, tam, tam * 0.56 * fl);
-        ctx.restore();
-        break;
-      case T_CACO:
-        ctx.globalAlpha = a;
-        ctx.save(); ctx.translate(x, y); ctx.rotate(ROT[i]);
-        ctx.beginPath();
-        if (EXTRA[i] < 1) { ctx.moveTo(0, -tam); ctx.lineTo(tam * 0.9, tam * 0.6); ctx.lineTo(-tam * 0.7, tam * 0.5); }
-        else if (EXTRA[i] < 2) { ctx.moveTo(-tam * 0.8, -tam * 0.5); ctx.lineTo(tam * 0.8, -tam * 0.7); ctx.lineTo(tam * 0.5, tam * 0.7); ctx.lineTo(-tam * 0.6, tam * 0.4); }
-        else { ctx.moveTo(-tam, 0); ctx.lineTo(0, -tam * 0.8); ctx.lineTo(tam, tam * 0.2); ctx.lineTo(-tam * 0.2, tam * 0.7); }
-        ctx.closePath();
-        ctx.fillStyle = nomesCor[CID[i]]; ctx.fill();
-        ctx.lineJoin = "round"; ctx.lineWidth = 2; ctx.strokeStyle = nomesCor[CID2[i]]; ctx.stroke();
-        // reflexo
-        ctx.globalAlpha = a * 0.55; ctx.fillStyle = "#fff";
-        ctx.beginPath(); ctx.arc(-tam * 0.2, -tam * 0.25, tam * 0.16, 0, PI2); ctx.fill();
-        ctx.restore();
-        break;
-      case T_FAISCA:
-        var vx = VX[i], vy = VY[i];
-        var sp = Math.sqrt(vx * vx + vy * vy) + 0.001;
-        var len = Math.min(34, 3 + sp * 0.05);
-        ctx.globalAlpha = a;
-        ctx.strokeStyle = nomesCor[CID[i]];
-        ctx.lineWidth = tam;
-        ctx.beginPath();
-        ctx.moveTo(x - vx / sp * len, y - vy / sp * len);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        break;
-      case T_ANEL:
-        var eo = 1 - f * f * f;                 // sai rápido e desacelera
-        var rr = TAM[i] + (TAMF[i] - TAM[i]) * (1 - (1 - f) * (1 - f) * (1 - f));
-        ctx.globalAlpha = a * (v01 < 0.5 ? v01 * 2 : 1);
-        ctx.strokeStyle = nomesCor[CID[i]];
-        ctx.lineWidth = Math.max(0.6, EXTRA[i] * eo);
-        ctx.beginPath(); ctx.arc(x, y, rr, 0, PI2); ctx.stroke();
-        break;
-      case T_PEDACO:
-        ctx.globalAlpha = a;
-        ctx.save(); ctx.translate(x, y); ctx.rotate(ROT[i]);
-        ctx.fillStyle = nomesCor[CID[i]]; ctx.strokeStyle = nomesCor[CID2[i]]; ctx.lineWidth = 1.6;
-        ctx.lineJoin = "round";
-        ctx.beginPath(); ctx.moveTo(-tam, -tam * 0.6); ctx.lineTo(tam * 0.9, -tam * 0.8); ctx.lineTo(tam, tam * 0.5); ctx.lineTo(-tam * 0.4, tam);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.restore();
-        break;
-      case T_CRISTAL:
-        ctx.globalAlpha = a;
-        ctx.save(); ctx.translate(x, y); ctx.rotate(ROT[i]);
-        ctx.beginPath(); ctx.moveTo(0, -tam * 1.6); ctx.lineTo(tam * 0.75, 0); ctx.lineTo(0, tam * 1.6); ctx.lineTo(-tam * 0.75, 0);
-        ctx.closePath();
-        ctx.fillStyle = nomesCor[CID[i]]; ctx.fill();
-        ctx.lineJoin = "round"; ctx.lineWidth = 1.8; ctx.strokeStyle = nomesCor[CID2[i]]; ctx.stroke();
-        ctx.fillStyle = "rgba(255,255,255,0.8)";
-        ctx.beginPath(); ctx.moveTo(0, -tam * 1.3); ctx.lineTo(-tam * 0.4, -tam * 0.1); ctx.lineTo(0, -tam * 0.2); ctx.closePath(); ctx.fill();
-        ctx.restore();
-        break;
+  var marca = new Uint8Array(256), lista = new Uint16Array(256);
+  function coresDo(tipo) {        // lista (sem repetir) das cores usadas por um tipo
+    var nc = 0, i;
+    for (i = 0; i < n; i++) {
+      if (TIPO[i] !== tipo) continue;
+      var c = CID[i] & 255;
+      if (!marca[c]) { marca[c] = 1; lista[nc++] = CID[i]; }
     }
+    for (i = 0; i < nc; i++) marca[lista[i] & 255] = 0;
+    return nc;
+  }
+  var LUT_PUFF = null;
+  function lutPuff() {
+    LUT_PUFF = new Uint8Array(64);
+    for (var v = 0; v < 64; v++) LUT_PUFF[v] = nivel(NIV_PUFF, v);
+    return LUT_PUFF;
   }
 
   function desenhar(ctx) {
-    if (n === 0 && !textosAtivos()) return;
+    var i, c, k, nc, u;
+    if (n === 0 && !textosAtivos() && !explosoesAtivas()) return;
     ctx.save();
-    // camada normal
-    for (var i = 0; i < n; i++) {
-      var tp = TIPO[i];
-      if (!ADITIVO[tp]) desenharTipo(ctx, i, tp);
-    }
-    // camada de brilho aditivo
-    ctx.globalCompositeOperation = "lighter";
+    var lut = LUT_PUFF || lutPuff();
+    // 1. fumaça (atrás de tudo): sprites 1:1, só muda o nível e o alfa
     for (i = 0; i < n; i++) {
-      tp = TIPO[i];
-      if (ADITIVO[tp]) desenharTipo(ctx, i, tp);
+      if (TIPO[i] !== T_FUMACA) continue;
+      u = 1 - VIDA[i] / VMAX[i];
+      var s, pk = PICO[i];
+      if (u < 0.22) s = TAM[i] + (pk - TAM[i]) * suave(u / 0.22); else s = pk + (TAMF[i] - pk) * ((u - 0.22) / 0.78);
+      var al = ALFA[i] * (u > 0.6 ? (1 - u) / 0.4 : 1);
+      if (s < 2.5 || al <= 0.04) continue;
+      var sp = puff(ESTILO[i], lut[s > 62 ? 63 : (s + 0.5) | 0]);
+      ctx.globalAlpha = al;
+      ctx.drawImage(sp.c, (X[i] - sp.m + 0.5) | 0, (Y[i] - sp.m + 0.5) | 0);
     }
-    ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 1;
-    ctx.lineCap = "round";
-
-    // textos
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.lineJoin = "round";
-    for (var k = 0; k < NT; k++) {
+    // 2. bolas de fogo (quadros pré-renderizados, 1:1)
+    for (k = 0; k < NE; k++) {
+      if (!EVIVA[k]) continue;
+      u = EI[k] / ED[k];
+      var fr = explosaoFrames(ENIV[k], EVAR[k]), qi = Math.min(NQ - 1, (suave(u * 0.9 + 0.02) * NQ) | 0);
+      ctx.drawImage(fr.q[qi], (EX[k] - fr.m + 0.5) | 0, (EY[k] - fr.m + 0.5) | 0);
+    }
+    // 3. lotes: confete, bits, cristais, cacos, faíscas (1 fill por cor)
+    if ((nc = coresDo(T_CONFETE)) > 0) {
+      for (k = 0; k < nc; k++) {
+        c = lista[k]; ctx.fillStyle = PB[c]; ctx.beginPath();
+        for (i = 0; i < n; i++) {
+          if (TIPO[i] !== T_CONFETE || CID[i] !== c) continue;
+          u = VIDA[i] / VMAX[i]; var w = TAM[i] * (u < 0.25 ? u * 4 : 1), hh = w * 0.55, fl = Math.abs(Math.cos(ROT[i] * 1.3)) + 0.15, ca = Math.cos(ROT[i]), sa = Math.sin(ROT[i]);
+          var ax = ca * w, ay = sa * w, bx = -sa * hh * fl, by = ca * hh * fl;
+          ctx.moveTo(X[i] - ax - bx, Y[i] - ay - by); ctx.lineTo(X[i] + ax - bx, Y[i] + ay - by); ctx.lineTo(X[i] + ax + bx, Y[i] + ay + by); ctx.lineTo(X[i] - ax + bx, Y[i] - ay + by); ctx.closePath();
+        }
+        ctx.fill();
+      }
+    }
+    if ((nc = coresDo(T_BIT)) > 0) {
+      for (k = 0; k < nc; k++) {
+        c = lista[k]; ctx.fillStyle = PB[c]; ctx.beginPath();
+        for (i = 0; i < n; i++) {
+          if (TIPO[i] !== T_BIT || CID[i] !== c) continue;
+          u = VIDA[i] / VMAX[i]; var rb = TAM[i] * (u < 0.3 ? u / 0.3 : 1);
+          ctx.moveTo(X[i] + rb, Y[i]); ctx.arc(X[i], Y[i], rb, 0, PI2);
+        }
+        ctx.fill();
+      }
+    }
+    var temCristal = false;
+    for (i = 0; i < n; i++) if (TIPO[i] === T_CRISTAL) { temCristal = true; break; }
+    if (temCristal) {
+      for (var pass = 0; pass < 3; pass++) {
+        ctx.beginPath();
+        for (i = 0; i < n; i++) {
+          if (TIPO[i] !== T_CRISTAL) continue;
+          u = VIDA[i] / VMAX[i]; var sc = TAM[i] * (u < 0.3 ? u / 0.3 : 1), cx = Math.cos(ROT[i]), sy = Math.sin(ROT[i]);
+          // losango alongado; passo 1 = metade de sombra
+          var px = cx * sc * 0.55, py = sy * sc * 0.55, qx = -sy * sc * 1.1, qy = cx * sc * 1.1;
+          ctx.moveTo(X[i] + qx, Y[i] + qy); ctx.lineTo(X[i] + px, Y[i] + py); ctx.lineTo(X[i] - qx, Y[i] - qy);
+          if (pass !== 1) ctx.lineTo(X[i] - px, Y[i] - py);
+          ctx.closePath();
+        }
+        if (pass === 0) { ctx.fillStyle = "#c9edff"; ctx.fill(); }
+        else if (pass === 1) { ctx.fillStyle = "#7fc4f0"; ctx.fill(); }
+        else { ctx.strokeStyle = "#3f6fa8"; ctx.lineWidth = 1.5; ctx.lineJoin = "round"; ctx.stroke(); }
+      }
+    }
+    if ((nc = coresDo(T_CACO)) > 0) {
+      for (k = 0; k < nc; k++) {
+        c = lista[k];
+        for (var ps = 0; ps < 3; ps++) {
+          ctx.beginPath();
+          for (i = 0; i < n; i++) {
+            if (TIPO[i] !== T_CACO || CID[i] !== c) continue;
+            u = VIDA[i] / VMAX[i]; var rt = TAM[i] * (u < 0.3 ? u / 0.3 : 1), a0 = ROT[i];
+            var x0 = X[i] + Math.cos(a0) * rt, y0 = Y[i] + Math.sin(a0) * rt;
+            var x1 = X[i] + Math.cos(a0 + 2.45) * rt * 0.8, y1 = Y[i] + Math.sin(a0 + 2.45) * rt * 0.8;
+            var x2 = X[i] + Math.cos(a0 + 4.0) * rt * 0.9, y2 = Y[i] + Math.sin(a0 + 4.0) * rt * 0.9;
+            if (ps === 1) { ctx.moveTo(x0, y0); ctx.lineTo((x0 + x1) / 2, (y0 + y1) / 2); ctx.lineTo((x0 + x2) / 2, (y0 + y2) / 2); ctx.closePath(); }
+            else { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x2, y2); ctx.closePath(); }
+          }
+          if (ps === 0) { ctx.fillStyle = PS[c]; ctx.fill(); } else if (ps === 1) { ctx.fillStyle = PL[c]; ctx.fill(); }
+          else { ctx.strokeStyle = PC[c]; ctx.lineWidth = 1.5; ctx.lineJoin = "round"; ctx.stroke(); }
+        }
+      }
+    }
+    if ((nc = coresDo(T_FAISCA)) > 0) {
+      for (k = 0; k < nc; k++) {
+        c = lista[k]; ctx.fillStyle = PB[c]; ctx.beginPath();
+        for (i = 0; i < n; i++) {
+          if (TIPO[i] !== T_FAISCA || CID[i] !== c) continue;
+          var vx = VX[i], vy = VY[i], spd = Math.sqrt(vx * vx + vy * vy);
+          if (spd < 4) continue;
+          u = VIDA[i] / VMAX[i];
+          var dx = vx / spd, dy = vy / spd, len = TAM[i] * (2.4 + spd * 0.032) * (0.25 + 0.75 * (u > 0.5 ? 1 : u * 2)), wd = TAM[i] * (0.35 + 0.65 * u);
+          var hx = X[i] + dx * wd * 0.5, hy = Y[i] + dy * wd * 0.5;     // cabeça (ponta da frente) e cauda afinando: triângulo
+          ctx.moveTo(hx - dx * len, hy - dy * len); ctx.lineTo(hx - dy * wd * 0.5, hy + dx * wd * 0.5); ctx.lineTo(hx + dy * wd * 0.5, hy - dx * wd * 0.5); ctx.closePath();
+        }
+        ctx.fill();
+      }
+    }
+    // 4. sprites: chamas, estrelas, clarão de tiro
+    for (i = 0; i < n; i++) {
+      var tp = TIPO[i];
+      if (tp === T_CHAMA) {
+        u = 1 - VIDA[i] / VMAX[i]; var sh = TAM[i] + (TAMF[i] - TAM[i]) * u;
+        var cs = chama(nivel(NIV_CHAMA, sh));
+        ctx.globalAlpha = u > 0.65 ? (1 - u) / 0.35 : 1;
+        ctx.drawImage(cs.c, (X[i] - cs.cx + 0.5) | 0, (Y[i] - cs.base + 0.5) | 0);
+      } else if (tp === T_ESTRELA) {
+        u = 1 - VIDA[i] / VMAX[i];
+        var ss = TAM[i] * (u < 0.3 ? 0.45 + suave(u / 0.3) * 0.55 : 1 - (u - 0.3) / 0.7);
+        if (ss < 4) continue;
+        var es = estrela(CID[i], nivel(NIV_EST, ss), ROT[i] > 0.5 ? 1 : 0);
+        ctx.globalAlpha = 1;
+        ctx.drawImage(es.c, (X[i] - es.m + 0.5) | 0, (Y[i] - es.m + 0.5) | 0);
+      } else if (tp === T_FLASH) {
+        u = 1 - VIDA[i] / VMAX[i]; var fs = TAM[i] * (1 - u * 0.5) * 0.42;
+        ctx.globalAlpha = 1;
+        ctx.save(); ctx.translate(X[i], Y[i]); ctx.rotate(ROT[i]); ctx.scale(fs, fs * (u > 0.5 ? 0.7 : 1)); ctx.drawImage(flashSpr(), -18, -40); ctx.restore();
+      }
+    }
+    ctx.globalAlpha = 1;
+    // 5. anéis (traço que afina)
+    for (i = 0; i < n; i++) {
+      if (TIPO[i] !== T_ANEL) continue;
+      u = 1 - VIDA[i] / VMAX[i];
+      var lw = ALFA[i] * Math.pow(1 - u, 1.2);
+      if (lw < 0.4) continue;
+      ctx.beginPath(); ctx.arc(X[i], Y[i], TAM[i] + (TAMF[i] - TAM[i]) * suave(u), 0, PI2);
+      ctx.strokeStyle = PB[CID[i]]; ctx.lineWidth = lw; ctx.stroke();
+    }
+    // 6. textos (1:1; escala só no "pop" do começo)
+    for (k = 0; k < NT; k++) {
       var tx = textos[k];
       if (!tx.vivo) continue;
-      var idade = 1 - tx.vida / tx.vmax;
-      var pop = idade < 0.16 ? (idade / 0.16) : 1;
-      var esc = tx.esc * (idade < 0.16 ? 0.4 + 0.8 * pop + 0.3 * Math.sin(pop * Math.PI) : 1.2 - 0.2 * Math.min(1, (idade - 0.16) * 4));
-      ctx.globalAlpha = Math.min(1, tx.vida / tx.vmax * 3.2);
-      ctx.save();
-      ctx.translate(tx.x, tx.y); ctx.scale(esc, esc);
-      ctx.font = "900 24px 'Arial Rounded MT Bold','Trebuchet MS',system-ui,Arial,sans-serif";
-      ctx.lineWidth = 6; ctx.strokeStyle = CONTORNO; ctx.strokeText(tx.txt, 0, 0);
-      ctx.fillStyle = tx.cor; ctx.fillText(tx.txt, 0, 0);
-      ctx.restore();
+      var id = tx.idade, pop = id < 0.1 ? 0.6 + id / 0.1 * 0.7 : (id < 0.2 ? 1.3 - (id - 0.1) / 0.1 * 0.3 : 1);
+      var fade = tx.vida - id < 0.3 ? (tx.vida - id) / 0.3 : 1;
+      ctx.globalAlpha = fade;
+      if (pop === 1 && tx.esc === 1) ctx.drawImage(tx.s.c, (tx.x - tx.s.w / 2 + 0.5) | 0, (tx.y - tx.s.h / 2 + 0.5) | 0);
+      else { var sw = tx.s.w * pop * tx.esc, sh2 = tx.s.h * pop * tx.esc; ctx.drawImage(tx.s.c, tx.x - sw / 2, tx.y - sh2 / 2, sw, sh2); }
     }
     ctx.restore();
   }
@@ -594,11 +558,26 @@ const Efeitos = (function() {
     for (var k = 0; k < NT; k++) if (textos[k].vivo) return true;
     return false;
   }
+  function explosoesAtivas() {
+    for (var k = 0; k < NE; k++) if (EVIVA[k]) return true;
+    return false;
+  }
 
   function limpar() {
     n = 0;
     for (var k = 0; k < NT; k++) textos[k].vivo = false;
+    for (k = 0; k < NE; k++) EVIVA[k] = 0;
     tremorA = 0; desloc.x = 0; desloc.y = 0;
+  }
+
+  // Pré-aquece os sprites (opcional; chame no carregamento para não ter engasgo no 1º uso)
+  function preparar() {
+    var i;
+    for (i = 0; i < NIV_EXP.length; i++) { explosaoFrames(i, 0); explosaoFrames(i, 1); }
+    for (var e = 0; e < ESTILOS.length; e++) for (i = 0; i < NIV_PUFF.length; i++) puff(e, i);
+    for (i = 0; i < NIV_CHAMA.length; i++) chama(i);
+    for (i = 0; i < NIV_EST.length; i++) { estrela(C_BRANCO, i, 0); estrela(C_BRANCO, i, 1); estrela(C_AMARELO, i, 0); }
+    flashSpr();
   }
 
   return {
@@ -606,6 +585,7 @@ const Efeitos = (function() {
     fumaca: fumaca, poeira: poeira, fagulhas: fagulhas, disparo: disparo, anel: anel,
     texto: texto, congelar: congelar, fogo: fogo, teleporte: teleporte,
     tremer: tremer, deslocamento: deslocamento,
-    atualizar: atualizar, desenhar: desenhar, limpar: limpar
+    atualizar: atualizar, desenhar: desenhar, limpar: limpar,
+    preparar: preparar, contar: function() { return n; }
   };
 })();

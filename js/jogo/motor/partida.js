@@ -256,6 +256,7 @@ function comecarQueda(j) {
   j.total.quedas++;
   entrada.limparApertos();
   if (!j.demo) { Eventos.marco("arm-wrestling"); som("apito"); }
+  if (typeof ArteQueda !== "undefined" && ArteQueda.preparar) ArteQueda.preparar(j.cores[0], j.cores[1], CONFIG.largura, alturaTela);
   j.bots.forEach(function(bot) { if (bot) bot.proxClique = 0.25 + Math.random() * 0.3; });
 }
 

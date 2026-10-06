@@ -89,6 +89,7 @@ function quadro(agora) {
     setTimeout(function() {
       if (typeof ArteArmas !== "undefined" && ArteArmas.aquecer) ArteArmas.aquecer();
       if (typeof ArteCartas !== "undefined" && ArteCartas.aquecer) ArteCartas.aquecer();
+      if (typeof Efeitos !== "undefined" && Efeitos.preparar) Efeitos.preparar();
     }, 400);
   });
 })();
