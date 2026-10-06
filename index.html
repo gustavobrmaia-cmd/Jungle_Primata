@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Jogo</title>
+  <title>Duelo de Bolinhas</title>
   <!-- SDK do Poki no <head>, como pede a documentação (sem ele o jogo funciona igual, só sem anúncios) -->
   <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
   <link rel="stylesheet" href="estilo.css">
@@ -17,15 +17,36 @@
       <button id="btnPausa" class="hudBotao" data-acao="pausar" aria-label="pause">II</button>
     </div>
 
-    <!-- Menu principal -->
+    <!-- Menu principal (a luta de demonstração roda no fundo) -->
     <div id="telaMenu" class="tela">
       <h1 data-t="titulo"></h1>
+      <p class="resultado" id="menuResultado"></p>
       <div class="botoes">
         <button class="grande" data-acao="jogar" data-t="jogar"></button>
-        <button data-acao="idiomas" data-t="idioma"></button>
-        <button data-acao="som" id="btnSom"></button>
+        <div class="linha">
+          <button data-acao="idiomas" data-t="idioma"></button>
+          <button data-acao="som" id="btnSom"></button>
+        </div>
       </div>
-      <p class="recorde" id="menuRecorde"></p>
+    </div>
+
+    <!-- Escolha do modo: contra o bot ou 2 jogadores -->
+    <div id="telaModo" class="tela">
+      <h2 data-t="escolha_modo"></h2>
+      <div class="modos">
+        <button class="modo" data-acao="modoBot">
+          <span class="icone">🤖</span>
+          <span class="nome" data-t="contra_bot"></span>
+          <span class="dica" id="dicaBot"></span>
+        </button>
+        <button class="modo" data-acao="modo2p">
+          <span class="icone">👥</span>
+          <span class="nome" data-t="dois_jogadores"></span>
+          <span class="dica" id="dica2p"></span>
+        </button>
+      </div>
+      <button class="premiado" data-acao="lendaria" id="btnLendaria"></button>
+      <button data-acao="voltar" data-t="voltar" id="btnVoltarModo"></button>
     </div>
 
     <!-- Escolha do idioma (cada idioma com o nome na própria língua) -->
@@ -41,21 +62,20 @@
       <div class="botoes">
         <button class="grande" data-acao="continuar" data-t="continuar"></button>
         <button data-acao="som" id="btnSomPausa"></button>
-        <button data-acao="menu" data-t="menu"></button>
+        <button data-acao="sair" data-t="menu"></button>
       </div>
     </div>
 
-    <!-- Fim de jogo, com a oferta opcional de continuar assistindo um anúncio -->
-    <div id="telaFim" class="tela">
-      <h2 data-t="fim"></h2>
-      <p class="info" id="fimPontos"></p>
-      <p class="info" id="fimRecorde"></p>
+    <!-- Perdeu para o bot: oferta opcional de continuar assistindo um anúncio -->
+    <div id="telaContinuar" class="tela">
+      <h2 data-t="bot_venceu"></h2>
+      <p class="info" id="contPlacar"></p>
       <div class="botoes">
-        <button class="premiado" data-acao="reviver" id="btnReviver" data-t="reviver"></button>
-        <button class="grande" data-acao="denovo" data-t="denovo"></button>
-        <button data-acao="menu" data-t="menu"></button>
+        <button class="premiado grande" data-acao="continuarPartida" data-t="continuar_anuncio"></button>
+        <p class="info pequena" data-t="continuar_explica"></p>
+        <button data-acao="naoContinuar" data-t="nao_obrigado"></button>
       </div>
-      <p class="aviso" id="fimAviso"></p>
+      <p class="aviso" id="contAviso"></p>
     </div>
   </div>
 
@@ -67,7 +87,20 @@
   <script src="js/poki/eventos.js"></script>
   <script src="js/sistemas/audio.js"></script>
   <script src="js/sistemas/entrada.js"></script>
-  <script src="js/jogo/jogo.js"></script>
+  <script src="js/jogo/dados/armas.js"></script>
+  <script src="js/jogo/dados/cenarios.js"></script>
+  <script src="js/jogo/dados/cartas.js"></script>
+  <script src="js/jogo/arte/efeitos.js"></script>
+  <script src="js/jogo/arte/bolinhas.js"></script>
+  <script src="js/jogo/arte/armas.js"></script>
+  <script src="js/jogo/arte/cartas.js"></script>
+  <script src="js/jogo/arte/cenarios.js"></script>
+  <script src="js/jogo/arte/queda.js"></script>
+  <script src="js/jogo/motor/fisica.js"></script>
+  <script src="js/jogo/motor/combate.js"></script>
+  <script src="js/jogo/motor/bot.js"></script>
+  <script src="js/jogo/motor/partida.js"></script>
+  <script src="js/jogo/desenho.js"></script>
   <script src="js/interface/telas.js"></script>
   <script src="js/nucleo/main.js"></script>
 </body>

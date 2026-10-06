@@ -11,8 +11,10 @@ function saveNovo() {
     versao: 1,
     idioma: "",       // vazio: segue o navegador
     mudo: false,
-    recorde: 0,
-    partidas: 0       // quantas partidas já começou (útil para "primeira visita")
+    partidas: 0,      // quantas partidas já começou (0 = primeira visita)
+    vitorias: 0,      // contra o bot
+    derrotas: 0,
+    nivelBot: 0.28    // força do bot (0 a 1), ajustada depois de cada partida contra ele
   };
 }
 

@@ -49,14 +49,31 @@ js/
   nucleo/     config.js (ajustes), util.js (ferramentas), save.js (localStorage), main.js (tela e loop; carrega por último)
   poki/       poki.js (SDK e anúncios), eventos.js (Game Events)
   idiomas/    idiomas.js (t(), detecção, troca)  +  textos/xx.js (os 12 idiomas)
-  sistemas/   audio.js (som), entrada.js (teclado, toque, controle)
-  interface/  telas.js (menu, idiomas, pausa, fim)
-  jogo/       o jogo em si (jogo.js; arquivos novos do jogo entram aqui: fases, inimigos, arte...)
+  sistemas/   audio.js (som sintetizado), entrada.js (teclado, toque, controle; 2 jogadores)
+  interface/  telas.js (menu, escolha do modo, pausa, continuar; anúncios)
+  jogo/
+    dados/    armas.js (50 armas), cenarios.js (15 cenários), cartas.js (12 cartas + cores)
+    motor/    fisica.js, combate.js (tiros, explosões, itens), bot.js (IA), partida.js (rodadas, queda de braço)
+    arte/     efeitos.js, bolinhas.js, armas.js, cartas.js, cenarios.js, queda.js (só desenho, canvas)
+    desenho.js (junta a arte na ordem certa + HUD)
 ```
 Ordem dos scripts no index.html: nucleo/config, nucleo/util, idiomas/idiomas, nucleo/save, poki/poki, poki/eventos,
-sistemas/audio, sistemas/entrada, jogo/*, interface/telas, nucleo/main.
-O jogo usa `novaPartida()`, `atualizarJogo(dt)`, `desenharJogo(ctx)` e `reviver()`, e chama `abrirFim()` quando acaba.
-Arquivo novo: colocar na pasta certa (criar subpasta em `js/jogo/` se crescer, ex.: `js/jogo/arte/`).
+sistemas/audio, sistemas/entrada, jogo/dados/*, jogo/arte/*, jogo/motor/* (fisica, combate, bot, partida), jogo/desenho,
+interface/telas, nucleo/main.
+Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nunca desenha.
+
+## O jogo atual: Duelo de Bolinhas
+- Duas bolinhas (cores sorteadas). Modos: contra o bot, 2 jogadores no mesmo aparelho, e a demo (bot x bot no fundo dos menus).
+- Partida até 5 pontos. Rodada de 20 s num cenário diferente; últimos 6 s com dano em dobro.
+  Se ninguém morrer: queda de braço (quem clicar mais vence; quem tem mais vida começa na frente).
+- Os dois começam a rodada com a mesma arma sorteada; caixas de arma caem; cartas de habilidade aparecem.
+- Mira assistida igual para jogador e bot. Sem sangue (acerto = faíscas; derrota = estouro em confete).
+- Bot: simula a física para frente e escolhe o melhor movimento; só atira quando a simulação diz que acerta.
+  O nível (save.nivelBot, 0,12 a 0,95) muda depois de cada partida pelo desempenho do jogador (mira em ~50% de vitórias).
+- Anúncio comum: antes de cada partida (menos a 1ª e logo depois de um premiado). Premiados (opcionais):
+  "Partida Lendária" (só armas raras para os dois) e "Continuar" (perdeu para o bot: o bot perde o último ponto).
+- Equilíbrio: `node` + simulação bot x bot (script fora do repositório) — medir % de rodadas na queda de braço (~10–35%)
+  e duração da partida (2–3,5 min). `CONFIG.multDano` é o ajuste geral.
 
 ## Entrega para o Poki
 - Zip com número de versão (ex.: `jogo-v1.zip`):

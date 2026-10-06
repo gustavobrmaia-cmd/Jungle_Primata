@@ -1,7 +1,8 @@
-# Jogo
+# Duelo de Bolinhas
 
-Base do jogo novo para o Poki (HTML5, JS puro, sem build). Abra `index.html` para jogar.
+Jogo HTML5 para o Poki (JS puro, sem build). Duas bolinhas se enfrentam com 50 armas em 15 cenários:
+rodadas de 20 segundos e, se ninguém morrer, queda de braço. Contra o bot (que se ajusta ao jogador) ou 2 jogadores.
 
-Por enquanto `js/jogo.js` é só um EXEMPLO (pegar estrelas e desviar dos blocos), para mostrar a estrutura funcionando. O jogo de verdade entra no lugar dele.
+Abra `index.html` (ou sirva a pasta com qualquer servidor) para jogar.
 
-A estrutura obrigatória (12 idiomas, Game Events, SDK do Poki e regras de leveza) está em [CLAUDE.md](CLAUDE.md).
+Estrutura obrigatória (12 idiomas, Game Events, SDK do Poki, leveza) e o mapa das pastas: [CLAUDE.md](CLAUDE.md).
