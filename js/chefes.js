@@ -5,12 +5,20 @@
 // =========================
 
 // (vida pensada para vencer pulando na cabeça e, depois do Gorila Rei, com o cipó-laço)
+// Escadinha de dificuldade: o Gorila (1º chefe, sem o cipó-laço ainda) é o mais fácil e cada
+// chefe seguinte tem mais vida e ataca mais seguido. ritmo = quanto mais tempo ele espera entre
+// um ataque e outro (1 = normal). No Player Fit Test 79% perdiam para o Gorila.
 const DEF_CHEFES = {
-  gorila:       { hp: 24, margem: [12, 20, 12, 0] },
-  escorpiaoRei: { hp: 27, margem: [10, 54, 10, 0] },
-  yeti:         { hp: 30, margem: [12, 12, 12, 0] },
-  dragao:       { hp: 36, margem: [30, 50, 12, 12], voa: true }
+  gorila:       { hp: 15, ritmo: 1.4,  margem: [12, 20, 12, 0] },
+  escorpiaoRei: { hp: 21, ritmo: 1.25, margem: [10, 54, 10, 0] },
+  yeti:         { hp: 27, ritmo: 1.1,  margem: [12, 12, 12, 0] },
+  dragao:       { hp: 33, ritmo: 1,    margem: [30, 50, 12, 12], voa: true }
 };
+
+// Tempo parado antes do próximo ataque, com o ritmo do chefe
+function esperaChefe(c, raiva, comRaiva, normal) {
+  return Math.round((raiva ? comRaiva : normal) * ((c.def && c.def.ritmo) || 1));
+}
 
 function criarChefe(mundo) {
   const tipo = MUNDOS[mundo].chefe;
@@ -223,7 +231,7 @@ const IA_CHEFES = {
         olharProJogador(c);
         c.vx = Math.abs(alvoX(c) - c.x) > 200 ? aproximar(c.vx, c.dir * 1.2, 0.2) : aproximar(c.vx, 0, 0.3);
         fisicaChefe(c);
-        if (c.t > (raiva ? 40 : 70)) proximoAtaque(c, ["pulo", "cocos", "investida"]);
+        if (c.t > esperaChefe(c, raiva, 40, 70)) proximoAtaque(c, ["pulo", "cocos", "investida"]);
         break;
 
       case "pulo":
@@ -251,7 +259,7 @@ const IA_CHEFES = {
         c.vx = 0;
         olharProJogador(c);
         fisicaChefe(c);
-        if (c.t > 0 && c.t % 16 === 0 && c.t <= (raiva ? 80 : 48)) {
+        if (c.t > 0 && c.t % 16 === 0 && c.t <= (raiva ? 64 : 32)) {
           const p = jogarNoJogador(c.x + c.w / 2 + c.dir * 40, c.y + 30, -11, 0.4, "coco");
           p.vx += (Math.random() - 0.5) * 3;
         }
@@ -264,7 +272,7 @@ const IA_CHEFES = {
           c.vx = 0;
           if (c.t % 10 === 0) tremor = 4;
         } else {
-          c.vx = c.dir * (raiva ? 11 : 9);
+          c.vx = c.dir * (raiva ? 9.5 : 7.5);
           if (tempo % 3 === 0) poeira(c.x + c.w / 2 - c.dir * 50, CHAO, 1);
         }
         fisicaChefe(c);
@@ -281,7 +289,7 @@ const IA_CHEFES = {
       case "tonto":
         c.vx = aproximar(c.vx, 0, 0.2);
         fisicaChefe(c);
-        if (c.t > 110) irPara(c, "parado");
+        if (c.t > 140) irPara(c, "parado");   // tonto mais tempo: dá para pular na cabeça dele
         break;
     }
   },
@@ -293,7 +301,7 @@ const IA_CHEFES = {
         olharProJogador(c);
         c.vx = aproximar(c.vx, 0, 0.3);
         fisicaChefe(c);
-        if (c.t > (raiva ? 35 : 60)) {
+        if (c.t > esperaChefe(c, raiva, 35, 60)) {
           const temTornado = projeteis.some(function(p) { return p.tipo === "tornado"; });
           proximoAtaque(c, temTornado ? ["andar", "enterrar", "ferrao"] : ["andar", "enterrar", "ferrao", "tempestade"]);
         }
@@ -378,7 +386,7 @@ const IA_CHEFES = {
         olharProJogador(c);
         c.vx = aproximar(c.vx, 0, 0.2);
         fisicaChefe(c);
-        if (c.t > (raiva ? 35 : 60)) proximoAtaque(c, ["bolaNeve", "rugido", "deslize", "pulo"]);
+        if (c.t > esperaChefe(c, raiva, 35, 60)) proximoAtaque(c, ["bolaNeve", "rugido", "deslize", "pulo"]);
         break;
 
       case "bolaNeve":
@@ -456,7 +464,7 @@ const IA_CHEFES = {
         c.x += (ax - c.x) * 0.03;
         c.y += (ay - c.y) * 0.05;
         olharProJogador(c);
-        if (c.t > (raiva ? 70 : 100)) proximoAtaque(c, ["sopro", "meteoros", "mergulho", "pousar", "pousar"]);
+        if (c.t > esperaChefe(c, raiva, 70, 100)) proximoAtaque(c, ["sopro", "meteoros", "mergulho", "pousar", "pousar"]);
         break;
       }
 
@@ -546,7 +554,7 @@ const QUADRO_CHEFE = {
       case "pulo":
         return c.noChao ? "pancada" : c.vy < -3 ? "pulo" : "prep";
       case "cocos": {
-        const lim = raiva ? 80 : 48;
+        const lim = raiva ? 64 : 32;
         if (t > lim + 10) return resp;
         const ph = t % 16;
         return ph < 4 && t > 0 && t <= lim ? "jogar1" : ph >= 8 || t < 16 ? "jogar0" : "parado0";
