@@ -1391,7 +1391,7 @@ function atualizarMoedas() {
 // o chefe pega no ar e segura a luta inteira; derrotado, ele solta, ela foge e o macaco vai atrás.
 // =========================
 
-const BANANA_ALTURA = CHAO - 300;
+const BANANA_ALTURA = CHAO - 230;   // na faixa do meio da tela (y ~ 390)
 
 function criarBananaDaFase() {
   if (fase.secreta) return null;
@@ -1437,7 +1437,7 @@ function atualizarBanana() {
     }
     const alvoX = frente + dist - 24;
     b.x += (alvoX - b.x) * (alvoX > b.x ? 0.05 : 0.02);
-    const alvoY = BANANA_ALTURA + Math.sin(b.t * 0.045) * 45 + Math.sin(b.t * 0.017) * 25;
+    const alvoY = BANANA_ALTURA + Math.sin(b.t * 0.045) * 30 + Math.sin(b.t * 0.017) * 15;
     b.y += (alvoY - b.y) * 0.05;
     b.rot = Math.sin(b.t * 0.06) * 0.35;
     brilhoBanana(b);
