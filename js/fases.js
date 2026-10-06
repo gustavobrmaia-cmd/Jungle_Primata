@@ -203,7 +203,9 @@ const CHUNKS = {
   // ---------- Selva ----------
 
   cipo: function(f, x, d, r) {
-    const dois = (f.etapa > 1 || d > 0.45) && r() < 0.6;
+    // na Selva não tem cipó duplo (era onde muita gente caía na 1-4); o r() continua sendo sorteado
+    // na mesma ordem para o resto da fase sair igual
+    const dois = (f.etapa > 1 || d > 0.45) && r() < 0.6 && f.mundo !== 0;
     fChao(f, x, 200);
     const x0 = x + 200;
     // fases de aprendizado: cipó mais perto da beirada, mais comprido e buraco menor
