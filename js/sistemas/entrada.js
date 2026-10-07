@@ -6,18 +6,19 @@
 // e entrada.mira(1) -> para onde o jogador está mirando (ou null = mira assistida automática).
 // Ações: esquerda, direita, pulo, baixo, tiro. Teclas pela posição física (e.code): WASD funciona igual
 // no teclado francês (ZQSD). As teclas podem ser trocadas no menu (save.teclas); estas são as de fábrica:
-//   Jogador 1: A D andar, W / Espaço pular, S descer, F atirar  + MOUSE: mira onde aponta, clique atira
+//   Jogador 1: A D andar, ESPAÇO (ou W) pular, S descer; MOUSE: mira onde aponta, CLIQUE ESQUERDO atira (F também)
 //   Jogador 2: setas andar/pular/descer, L / Enter / 0 do teclado numérico atirar (mira assistida)
 //   Contra o bot (entrada.solo = true) o jogador 1 usa qualquer um dos dois jeitos.
 // Toque (cada jogador tem a sua metade da tela; contra o bot a tela toda é do jogador 1):
 //   lado de fora = analógico de andar (puxar para cima pula, para baixo desce);
-//   lado de dentro = analógico de MIRA: arrastar mira e atira; só tocar e segurar atira com mira assistida.
+//   lado de dentro, metade de BAIXO = analógico de MIRA: arrastar mira e atira; só tocar e segurar atira com mira assistida;
+//   lado de dentro, metade de CIMA = botão de PULO (tocar pula; segurar pula mais alto).
 // Gamepad: 1º controle = jogador 1, 2º = jogador 2. Analógico direito mira e atira; gatilhos atiram.
 // =========================
 
 const ACOES = ["esquerda", "direita", "pulo", "baixo", "tiro"];
 const TECLAS_PADRAO = {
-  1: { esquerda: ["KeyA"], direita: ["KeyD"], pulo: ["KeyW", "Space"], baixo: ["KeyS"], tiro: ["KeyF", "KeyG"] },
+  1: { esquerda: ["KeyA"], direita: ["KeyD"], pulo: ["Space", "KeyW"], baixo: ["KeyS"], tiro: ["KeyF", "KeyG"] },
   2: { esquerda: ["ArrowLeft"], direita: ["ArrowRight"], pulo: ["ArrowUp"], baixo: ["ArrowDown"], tiro: ["KeyL", "Enter", "Numpad0"] }
 };
 
@@ -71,7 +72,6 @@ const entrada = (function() {
     e.preventDefault();
     if (!seg[m[0]][m[1]] && !e.repeat) apertos[quem(m[0])].add(m[1]);
     seg[m[0]][m[1]] = true;
-    if (m[1] === "tiro" && m[0] === 1) mouse.ultimoUso = 0;   // atirou pelo teclado: volta a mira assistida
   });
   window.addEventListener("keyup", function(e) {
     const m = mapa[e.code];
@@ -80,7 +80,8 @@ const entrada = (function() {
   window.addEventListener("blur", soltarTudo);
 
   // ---- mouse (jogador 1): mira livre e clique atira ----
-  const mouse = { x: 0, y: 0, ultimoUso: 0, segurando: false };
+  // depois que o mouse mexe uma vez, o jogador 1 mira SEMPRE com ele (até usar o toque)
+  const mouse = { x: 0, y: 0, ultimoUso: 0, segurando: false, usado: false };
   function canvasEl() { return document.getElementById("canvas"); }
   function posCanvas(cx, cy) {
     const r = canvasEl().getBoundingClientRect();
@@ -89,7 +90,7 @@ const entrada = (function() {
   window.addEventListener("mousemove", function(e) {
     if (performance.now() - ultimoToque < 1000) return;
     const p = posCanvas(e.clientX, e.clientY);
-    if (Math.abs(p.x - mouse.x) + Math.abs(p.y - mouse.y) > 2) mouse.ultimoUso = performance.now();
+    if (Math.abs(p.x - mouse.x) + Math.abs(p.y - mouse.y) > 2) { mouse.ultimoUso = performance.now(); mouse.usado = true; }
     mouse.x = p.x; mouse.y = p.y;
   });
   window.addEventListener("mousedown", function(e) {
@@ -97,14 +98,14 @@ const entrada = (function() {
     if (performance.now() - ultimoToque < 1000) return;   // clique "fantasma" que o celular gera depois do toque
     if (e.button !== 0) return;
     const p = posCanvas(e.clientX, e.clientY);
-    mouse.x = p.x; mouse.y = p.y; mouse.ultimoUso = performance.now();
+    mouse.x = p.x; mouse.y = p.y; mouse.ultimoUso = performance.now(); mouse.usado = true;
     mouse.segurando = true;
     apertos[1].add("tiro");
     apertos[1].add("toque");
   });
   window.addEventListener("mouseup", function() { mouse.segurando = false; });
   window.addEventListener("contextmenu", function(e) { if (api.ativa) e.preventDefault(); });
-  function mouseAtivo() { return mouse.segurando || performance.now() - mouse.ultimoUso < 2500; }
+  function mouseAtivo() { return mouse.usado || mouse.segurando; }
 
   // ---- toque ----
   // dedos: id -> { jogador, tipo: "stick" | "mira", x0, y0, dx, dy, pulou, escala, fx, fy }
@@ -128,17 +129,20 @@ const entrada = (function() {
       const fx = (t2.clientX - r.left) / r.width;
       const fy = (t2.clientY - r.top) / r.height;
       const z = zona(fx);
-      const d = { jogador: z[0], tipo: z[1], x0: t2.clientX, y0: t2.clientY, dx: 0, dy: 0, pulou: false,
+      // lado de dentro: em cima = botão de pulo, embaixo = analógico de mira
+      const tipo = z[1] === "mira" && fy < 0.45 ? "pulo" : z[1];
+      const d = { jogador: z[0], tipo: tipo, x0: t2.clientX, y0: t2.clientY, dx: 0, dy: 0, pulou: false,
                   escala: r.width / CONFIG.largura, fx: fx, fy: fy };
       dedos.set(t2.identifier, d);
-      apertos[d.jogador].add(d.tipo === "mira" ? "tiro" : "toque");
-      if (d.tipo === "mira") apertos[d.jogador].add("toque");
+      if (tipo === "mira") apertos[d.jogador].add("tiro");
+      if (tipo === "pulo") apertos[d.jogador].add("pulo");
+      apertos[d.jogador].add("toque");
     }
   }
   function moveu(e) {
     for (const t2 of e.changedTouches) {
       const d = dedos.get(t2.identifier);
-      if (!d) continue;
+      if (!d || d.tipo === "pulo") continue;
       d.dx = (t2.clientX - d.x0) / d.escala;
       d.dy = (t2.clientY - d.y0) / d.escala;
       const lim = 90;
@@ -220,6 +224,7 @@ const entrada = (function() {
     for (const d of dedos.values()) {
       if (d.jogador !== j) continue;
       if (d.tipo === "mira") { if (a === "tiro") return true; continue; }
+      if (d.tipo === "pulo") { if (a === "pulo") return true; continue; }
       if (a === "esquerda" && d.dx < -16) return true;
       if (a === "direita" && d.dx > 16) return true;
       if (a === "baixo" && d.dy > 55) return true;

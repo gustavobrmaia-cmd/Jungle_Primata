@@ -12,7 +12,7 @@
 // Modos: "bot" (jogador 1 contra o bot), "2p" (dois no mesmo aparelho), "demo" (bot contra bot no fundo do menu)
 // =========================
 
-const RODADA = { intro: 1.3, introPrimeira: 1.7, luta: 20, fim: 1.8, quedaIntro: 1.1, quedaMax: 6, quedaFim: 1.6, fimPartida: 2.6, danoDobro: 6 };
+const RODADA = { intro: 1.3, introPrimeira: 1.7, luta: 45, fim: 1.8, quedaIntro: 1.1, quedaMax: 6, quedaFim: 1.6, fimPartida: 2.6, danoDobro: 10 };
 
 let jogo = null;   // a partida atual (de verdade ou a de demonstração)
 
@@ -145,6 +145,7 @@ function iniciarRodada() {
   if (!j.demo) {
     if (j.modo === "bot") Poki.medir("arena", cen.id, "start");
     som("rodada");
+    if (estado === "jogo") Poki.jogando(true);   // a gameplay volta com a rodada nova
   }
 }
 
@@ -178,6 +179,7 @@ function atualizarJogo(dt) {
       const vivos = M.bolinhas.filter(function(b) { return b.viva; });
       j.vencedorRodada = vivos.length === 1 ? vivos[0].lado : 0;
       j.fase = "fimRodada"; j.tempoFase = 0;
+      if (!j.demo) Poki.jogando(false);      // pausa natural: a gameplay para até a próxima rodada
       return;
     }
     if (j.relogio <= 0) comecarQueda(j);
@@ -393,6 +395,7 @@ function atualizarQueda(j) {
     q.pos = limitar(q.pos, -1, 1);
     q.vencedor = q.pos < 0 ? 1 : q.pos > 0 ? 2 : (Math.random() < 0.5 ? 1 : 2);
     j.tempoFase = 0;
+    if (!j.demo) Poki.jogando(false);
     if (!j.demo) som("vitoria_rodada");
     if (typeof Efeitos !== "undefined") Efeitos.tremer(8);
   }
@@ -412,7 +415,7 @@ function desempenhoDoJogador(j) {
 // O bot da próxima partida: se o jogador foi bem, fica BEM mais forte; se foi mal, mais fraco.
 // Mira em ~50% de vitórias. Vai de 0,1 (nível 1) a 1 (nível 10).
 function proximoNivelBot(nivel, desempenho, venceu) {
-  return limitar(nivel + (desempenho - 0.5) * 0.9 + (venceu ? 0.06 : -0.04), 0.1, 1);
+  return limitar(nivel + (desempenho - 0.5) * 0.6 + (venceu ? 0.04 : -0.05), 0.08, 1);
 }
 function nivelBotTexto(nivel) { return Math.round(nivel * 9) + 1; }   // 1 a 10, para mostrar
 

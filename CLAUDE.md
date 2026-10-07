@@ -65,7 +65,7 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
 
 ## O jogo atual: Crazy Balls Duel
 - Duas bolinhas (cores sorteadas). Modos: contra o bot, 2 jogadores no mesmo aparelho, e a demo (bot x bot no fundo dos menus).
-- Partida até 5 pontos. Rodada de 20 s num cenário diferente; últimos 6 s com dano em dobro.
+- Partida até 5 pontos. Rodada de 45 s num cenário diferente; últimos 10 s com dano em dobro.
   Se ninguém morrer: queda de braço (quem clicar mais vence; quem tem mais vida começa na frente).
 - Os dois começam a rodada com a mesma arma sorteada; caixas de arma caem; cartas de habilidade aparecem.
 - Mira assistida igual para jogador e bot. Sem sangue (acerto = faíscas; derrota = estouro em confete).
@@ -75,8 +75,11 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   o Poki decide se mostra; nas 2 primeiras rodadas da 1ª partida não pede). Premiados (opcionais): "Partida Lendária"
   (só armas raras para os dois), "Continuar" (perdeu para o bot: o bot perde o último ponto) e "Dobrar moedas" (menu).
 - Plataformas: andares a cada <= 120 px (o pulo normal alcança ~143 px). Conferir com a simulação de alcance ao mudar mapa.
-- Controles: Espaço/W pula; mouse mira e atira (jogador 1); teclas trocáveis (save.teclas); toque = analógico de andar +
-  analógico de mira; controle = analógico direito mira. Bot também mira livre (com erro que cai com o nível).
+- Controles (PC): ESPAÇO pula (W também), mouse mira o tempo todo, CLIQUE ESQUERDO atira (F também); teclas trocáveis
+  (save.teclas) e todos os textos mostram as teclas escolhidas. Toque: esquerda = analógico de andar; direita em cima = PULO,
+  direita embaixo = analógico de mira/tiro. Controle: analógico direito mira. Bot também mira livre.
+- Bot: 5 personalidades sorteadas por partida (agressivo, atirador, saltitante, cauteloso, colecionador), aparece no HUD.
+- gameplayStop no fim de cada rodada e gameplayStart quando a próxima começa (além de pausa, menus e anúncios).
 - Progresso (js/jogo/progresso): moedas, 3 missões, 4 desafios da semana (skin exclusiva), 27 conquistas, 30 skins,
   XP/nível do jogador, baús (normal no fim da partida, de nível ao subir, lendário no 7º dia) e recompensa diária (7 dias).
 - Fim da partida: tela de recompensa (interface/recompensa.js): XP, baú para abrir, "▶ abrir outro baú" (premiado) e REVANCHE.

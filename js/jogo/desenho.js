@@ -260,7 +260,8 @@ function retRedondo(ctx, x, y, w, h, r) {
 function nomeJogador(j, lado) {
   if (j.modo === "bot" || j.modo === "sobrevivencia") {
     const nivel = j.bots[1] ? j.bots[1].nivel : j.nivelBot;
-    return lado === 1 ? t("voce") : t("bot") + " · " + t("nivel_curto", nivelBotTexto(nivel));
+    const estilo = j.bots[1] ? " · " + t("estilo_" + j.bots[1].estilo) : "";
+    return lado === 1 ? t("voce") : t("bot") + " · " + t("nivel_curto", nivelBotTexto(nivel)) + estilo;
   }
   if (j.modo === "demo") return lado === 1 ? "BOT 1" : "BOT 2";
   return t("jogador_n", lado);
@@ -412,8 +413,9 @@ function desenharQueda(ctx, j, H) {
   const q2 = {
     b1: d1, b2: d2, pos: q.pos, t: j.tempoFase, toques1: q.toques1, toques2: q.toques2, vencedor: q.vencedor,
     nome1: nomeJogador(j, 1), nome2: nomeJogador(j, 2),
-    dica1: j.modo === "bot" ? (toque ? t("queda_dica_toque") : t("queda_dica_bot")) : (toque ? t("queda_dica_toque_esq") : t("queda_dica_p1")),
-    dica2: j.modo === "bot" ? "" : (toque ? t("queda_dica_toque_dir") : t("queda_dica_p2"))
+    dica1: j.modo !== "2p" ? (toque ? t("queda_dica_toque") : t("queda_clique", nomeTecla(entrada.teclas()[1].tiro[0])))
+                           : (toque ? t("queda_dica_toque_esq") : t("queda_aperte", nomeTecla(entrada.teclas()[1].tiro[0]))),
+    dica2: j.modo !== "2p" ? "" : (toque ? t("queda_dica_toque_dir") : t("queda_aperte", nomeTecla(entrada.teclas()[2].tiro[0])))
   };
   if (temArte.queda) ArteQueda.desenhar(ctx, q2, CONFIG.largura, H);
   else {
@@ -439,25 +441,30 @@ function desenharQueda(ctx, j, H) {
 function desenharControlesToque(ctx, j, H) {
   if (!entrada.toque || j.fase === "queda" || j.fase === "fimPartida") return;
   ctx.save();
-  const zonas = j.modo === "2p"
-    ? [{ x: 0.13, tipo: "stick", j: 1 }, { x: 0.39, tipo: "mira", j: 1 }, { x: 0.61, tipo: "mira", j: 2 }, { x: 0.87, tipo: "stick", j: 2 }]
-    : [{ x: 0.14, tipo: "stick", j: 1 }, { x: 0.86, tipo: "mira", j: 1 }];
   const emPe = H > FIS.altura + 200;
-  const y = H - (emPe ? 330 : 130);
   const k = emPe ? 1.8 : 1;
+  const yBaixo = H - (emPe ? 330 : 130);          // analógicos (andar / mirar)
+  const yCima = H * (emPe ? 0.3 : 0.32);          // botão de pulo (metade de cima do lado de dentro)
+  const zonas = j.modo === "2p"
+    ? [{ x: 0.13, y: yBaixo, tipo: "stick", j: 1 }, { x: 0.39, y: yBaixo, tipo: "mira", j: 1 }, { x: 0.39, y: yCima, tipo: "pulo", j: 1 },
+       { x: 0.61, y: yBaixo, tipo: "mira", j: 2 }, { x: 0.61, y: yCima, tipo: "pulo", j: 2 }, { x: 0.87, y: yBaixo, tipo: "stick", j: 2 }]
+    : [{ x: 0.14, y: yBaixo, tipo: "stick", j: 1 }, { x: 0.86, y: yBaixo, tipo: "mira", j: 1 }, { x: 0.86, y: yCima, tipo: "pulo", j: 1 }];
   const abertos = entrada.analogicos();
+  const nomes = { stick: "toque_mover", mira: "toque_mira", pulo: "toque_pulo" };
   zonas.forEach(function(z) {
     const cor = j.cores[z.j - 1];
     const x = z.x * CONFIG.largura;
     const usando = abertos.some(function(d) { return d.jogador === z.j && d.tipo === z.tipo; });
-    ctx.globalAlpha = usando ? 0.12 : 0.28;
-    ctx.lineWidth = 5; ctx.strokeStyle = cor; ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.beginPath(); ctx.arc(x, y, (z.tipo === "mira" ? 76 : 84) * k, 0, 7); ctx.fill(); ctx.stroke();
-    ctx.globalAlpha = usando ? 0.2 : 0.55;
-    textoContorno(ctx, z.tipo === "mira" ? t("toque_mira") : t("toque_mover"), x, y + 8 * k, Math.round(20 * k), "#fff");
+    const r = (z.tipo === "stick" ? 84 : z.tipo === "mira" ? 76 : 62) * k;
+    ctx.globalAlpha = z.tipo === "pulo" && usando ? 0.45 : usando ? 0.12 : 0.28;
+    ctx.lineWidth = 5; ctx.strokeStyle = cor; ctx.fillStyle = z.tipo === "pulo" && usando ? cor : "rgba(255,255,255,0.12)";
+    ctx.beginPath(); ctx.arc(x, z.y, r, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.globalAlpha = usando ? 0.3 : 0.55;
+    textoContorno(ctx, t(nomes[z.tipo]), x, z.y + 8 * k, Math.round(20 * k), "#fff");
   });
   // analógicos que estão sendo usados
   abertos.forEach(function(d) {
+    if (d.tipo === "pulo") return;
     const cor = j.cores[d.jogador - 1];
     const bx = d.fx * CONFIG.largura, by = d.fy * H;
     ctx.globalAlpha = 0.35; ctx.fillStyle = "#fff";

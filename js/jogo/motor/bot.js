@@ -18,24 +18,37 @@
 
 function lerp(a, b, k) { return a + (b - a) * k; }
 
-function criarBot(lado, nivel) {
+// Personalidades: cada partida o bot ganha um jeito de jogar (variedade)
+const ESTILOS_BOT = {
+  agressivo:    { dist: 0.6, pressiona: 1.4, coleta: 0.7, tatica: 0.7, pulo: 0.15, perigo: 0.85 },
+  atirador:     { dist: 1.45, pressiona: 1.0, coleta: 0.9, tatica: 1.3, pulo: 0.05, perigo: 1.0 },
+  saltitante:   { dist: 1.0, pressiona: 1.0, coleta: 1.1, tatica: 0.8, pulo: 0.7, perigo: 1.0 },
+  cauteloso:    { dist: 1.2, pressiona: 0.8, coleta: 1.0, tatica: 1.2, pulo: 0.2, perigo: 1.4 },
+  colecionador: { dist: 1.0, pressiona: 0.9, coleta: 1.7, tatica: 0.9, pulo: 0.25, perigo: 1.0 }
+};
+
+function criarBot(lado, nivel, estilo) {
   const d = limitar(nivel, 0, 1);
+  const nomes = Object.keys(ESTILOS_BOT);
+  const nomeEstilo = estilo || nomes[Math.floor(Math.random() * nomes.length)];
+  const e = ESTILOS_BOT[nomeEstilo];
   return {
     lado: lado,
     nivel: d,
-    reacao: lerp(0.40, 0.05, d),           // atraso para perceber (s)
-    intervalo: lerp(0.22, 0.05, d),        // tempo entre decisões (s)
-    horizonte: Math.round(lerp(28, 50, d)),// passos simulados
-    enxerga: lerp(0.5, 1, d),              // chance de notar cada tiro vindo
-    hesita: lerp(0.35, 0, d),              // chance de não atirar num tiro bom
-    chuta: lerp(0.02, 0.002, d),           // chance por passo de atirar "no chute"
-    pressiona: lerp(0.08, 0.4, d),         // chance por passo de atirar quando está mais ou menos na mira
-    tolerancia: lerp(1.4, 1.0, d),         // folga para achar que o tiro acerta
-    erroMira: lerp(0.2, 0.015, d),         // erro de mira (radianos) — muda devagar, como a mão de um humano
-    coleta: lerp(0.6, 1, d),               // quanto liga para caixas e cartas
-    tatica: lerp(0.3, 1, d),               // quanto usa o cenário (beirada, altura, esconderijo)
-    ruido: lerp(8, 0.8, d),                // bagunça na escolha do movimento
-    cliques: lerp(5.2, 10.2, d),           // cliques por segundo na queda de braço
+    estilo: nomeEstilo, e: e,
+    reacao: lerp(0.5, 0.08, d),            // atraso para perceber (s)
+    intervalo: lerp(0.26, 0.06, d),        // tempo entre decisões (s)
+    horizonte: Math.round(lerp(24, 46, d)),// passos simulados
+    enxerga: lerp(0.35, 0.95, d),          // chance de notar cada tiro vindo
+    hesita: lerp(0.45, 0.03, d),           // chance de não atirar num tiro bom
+    chuta: lerp(0.02, 0.003, d),           // chance por passo de atirar "no chute"
+    pressiona: lerp(0.05, 0.3, d) * e.pressiona,   // chance por passo de atirar quando está mais ou menos na mira
+    tolerancia: lerp(1.5, 1.05, d),        // folga para achar que o tiro acerta
+    erroMira: lerp(0.32, 0.035, d),        // erro de mira (radianos) — muda devagar, como a mão de um humano
+    coleta: lerp(0.5, 1, d) * e.coleta,    // quanto liga para caixas e cartas
+    tatica: lerp(0.2, 0.9, d) * e.tatica,  // quanto usa o cenário (beirada, altura, esconderijo)
+    ruido: lerp(10, 1.2, d),               // bagunça na escolha do movimento
+    cliques: lerp(4.6, 9.4, d),            // cliques por segundo na queda de braço
     historico: [],                          // posições passadas do oponente (para o atraso de reação)
     plano: null, proxDecisao: 0, passosPlano: 0,
     proxClique: 0.3 + Math.random() * 0.3,
@@ -268,7 +281,7 @@ function decidir(bot, M, b, o, perc) {
   const danos = lista.map(function(a) { return a.dano; });
   const arma = ARMA[b.arma];
   const armaO = ARMA[o.arma];
-  const pref = distanciaBoa(arma);
+  const pref = distanciaBoa(arma) * (arma.tipo === "melee" ? 1 : bot.e.dist);
   const aguaOuEspaco = cen.agua || cen.semGravidade;
   const bumpers = M.bumpers ? M.bumpers.map(function(u) { return { x: u.x, y: u.y, r: u.r, flash: 0 }; }) : null;
   const lava = cen.lava ? lavaY(cen, M.t + 1.5) : Infinity;
@@ -316,7 +329,8 @@ function decidir(bot, M, b, o, perc) {
     }
     let nota = 0;
     if (caiu) nota -= 1000;
-    nota -= perigo * 3;
+    nota -= perigo * 3 * bot.e.perigo;
+    if (c.pulo > 0 && c.pulo !== 4) nota += bot.e.pulo * Math.random() * 8;   // estilo saltitante
     // distância boa até o oponente (onde ele vai estar)
     const fx = perc.x + perc.vx * H * 0.5, fy = perc.y;
     const dx = fx - s.x, dy = fy - s.y;

@@ -87,6 +87,10 @@ function quadro(agora) {
 // ---------- começo ----------
 (function iniciar() {
   carregarSave();
+  if (save.teclas && save.teclas[1] && save.teclas[1].pulo && save.teclas[1].pulo[0] === "KeyW" && save.teclas[1].pulo[1] === "Space") {
+    save.teclas[1].pulo = ["Space", "KeyW"]; salvar();
+  }
+  entrada.refazerMapa();
   Progresso.preparar();
   ajustarTela();
   montarTelas();
