@@ -63,6 +63,7 @@ const Progresso = (function() {
 
   function valorStat(chave) {
     if (chave === "armasVistas" || chave === "cartasVistas" || chave === "cenariosVencidos") return save[chave].length;
+    if (chave === "recordeOnda") return save.recordeOnda || 0;
     return save.stats[chave] || 0;
   }
 
@@ -201,8 +202,73 @@ const Progresso = (function() {
   // Moedas de uma partida (contra o bot: mais se vencer; 2 jogadores: fixo)
   function moedasDaPartida(j) {
     if (j.modo === "2p") return 20;
+    if (j.modo === "sobrevivencia") return 10 + (j.onda - 1) * 12;
     const rodadas = j.total.rodadas.filter(function(v) { return v === 1; }).length;
     return 15 + rodadas * 6 + (j.vencedorPartida === 1 ? 25 : 0);
+  }
+
+  // ---------- XP e nível do jogador ----------
+  function xpParaSubir(nivel) { return 80 + 40 * (nivel - 1); }
+  // Dá XP e devolve o que aconteceu (para a barra animar): { nivelAntes, xpAntes, nivel, xp, subiu }
+  function ganharXP(n) {
+    const r = { nivelAntes: save.nivel, xpAntes: save.xp, ganho: n, subiu: 0 };
+    save.xp += n;
+    while (save.xp >= xpParaSubir(save.nivel)) { save.xp -= xpParaSubir(save.nivel); save.nivel++; r.subiu++; }
+    r.nivel = save.nivel; r.xp = save.xp;
+    if (r.subiu) Poki.medir("player", "level-" + save.nivel, "reached");
+    salvar();
+    return r;
+  }
+  // XP de uma partida: rodadas vencidas, vitória e ondas da sobrevivência
+  function xpDaPartida(j) {
+    if (j.modo === "sobrevivencia") return 20 + (j.onda - 1) * 25;
+    const rodadas = j.total.rodadas.filter(function(v) { return v === 1; }).length;
+    return 30 + rodadas * 15 + (j.vencedorPartida === 1 ? 40 : 0);
+  }
+
+  // ---------- baús ----------
+  // "normal" (todo fim de partida), "nivel" (subiu de nível), "lendario" (7º dia da recompensa diária)
+  function skinSorteada(raridadeMax) {
+    const lista = SKINS_CORPO.concat(SKINS_ACESSORIO).filter(function(s) {
+      return s.preco && !temSkin(s.id) && s.raridade <= raridadeMax;
+    });
+    return lista.length ? lista[Math.floor(Math.random() * lista.length)].id : null;
+  }
+  function abrirBau(tipo) {
+    const regra = { normal: [15, 40, 0.08, 2], nivel: [80, 150, 0.35, 3], lendario: [250, 400, 1, 4] }[tipo] || [15, 40, 0, 1];
+    const premio = { tipo: tipo, moedas: Math.round(regra[0] + Math.random() * (regra[1] - regra[0])), skin: null };
+    if (Math.random() < regra[2]) premio.skin = skinSorteada(regra[3]);
+    ganharMoedas(premio.moedas);
+    if (premio.skin) ganharSkin(premio.skin);
+    salvar();
+    Poki.medir("chest", tipo, "interact");
+    return premio;
+  }
+
+  // ---------- recompensa diária (sequência de 7 dias) ----------
+  const DIARIAS = [
+    { moedas: 50 }, { moedas: 75 }, { moedas: 60, bau: "normal" }, { moedas: 125 },
+    { moedas: 150 }, { moedas: 200 }, { moedas: 100, bau: "lendario" }
+  ];
+  function hoje() { return Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000); }   // dia local
+  // Qual dia da sequência a pessoa pode pegar hoje (1..7), ou 0 se já pegou
+  function diaDisponivel() {
+    const d = save.diario || { ultimo: 0, seq: 0 };
+    const h = hoje();
+    if (d.ultimo === h) return 0;
+    const continua = d.ultimo === h - 1;
+    return continua ? (d.seq % 7) + 1 : 1;
+  }
+  function pegarDiaria() {
+    const dia = diaDisponivel();
+    if (!dia) return null;
+    save.diario = { ultimo: hoje(), seq: dia };
+    const r = DIARIAS[dia - 1];
+    ganharMoedas(r.moedas);
+    const premio = { dia: dia, moedas: r.moedas, bau: r.bau ? abrirBau(r.bau) : null };
+    salvar();
+    Poki.medir("daily", "day-" + dia, "interact");
+    return premio;
   }
 
   function atualizarAvisos(dt) {
@@ -214,6 +280,8 @@ const Progresso = (function() {
     resgatarMissao: resgatarMissao, trocarMissao: trocarMissao, resgatarDesafio: resgatarDesafio,
     semanaCompleta: semanaCompleta, resgatarPremioSemana: resgatarPremioSemana, resgatarConquista: resgatarConquista,
     temSkin: temSkin, comprarSkin: comprarSkin, equipar: equipar, pendentes: pendentes,
-    moedasDaPartida: moedasDaPartida, ganharMoedas: ganharMoedas, avisos: avisos, atualizarAvisos: atualizarAvisos
+    moedasDaPartida: moedasDaPartida, ganharMoedas: ganharMoedas, avisos: avisos, atualizarAvisos: atualizarAvisos,
+    xpParaSubir: xpParaSubir, ganharXP: ganharXP, xpDaPartida: xpDaPartida, abrirBau: abrirBau,
+    DIARIAS: DIARIAS, diaDisponivel: diaDisponivel, pegarDiaria: pegarDiaria
   };
 })();

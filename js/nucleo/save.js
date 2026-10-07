@@ -27,7 +27,10 @@ function saveNovo() {
     conquistas: {},   // id -> "feita" | "resgatada"
     armasVistas: [], cartasVistas: [], cenariosVencidos: [],
     trocaDia: 0,      // dia em que trocou uma missão (1 troca grátis por dia)
-    dobrar: 0         // moedas da última partida que ainda dá para dobrar com anúncio
+    dobrar: 0,        // (antigo, não usado)
+    xp: 0, nivel: 1,  // nível do jogador
+    diario: null,     // recompensa diária: { ultimo: dia, seq: 1..7 }
+    recordeOnda: 0    // modo sobrevivência
   };
 }
 

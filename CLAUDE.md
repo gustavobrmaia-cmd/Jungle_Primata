@@ -55,7 +55,7 @@ js/
     dados/    armas.js (50 armas), cenarios.js (15 cenários), cartas.js (12 cartas + cores), skins.js (corpos e acessórios)
     progresso/ dados.js (missões, desafios, conquistas), progresso.js (moedas, contadores, prêmios)
     motor/    fisica.js, combate.js (tiros, explosões, itens), bot.js (IA), partida.js (rodadas, queda de braço)
-    arte/     efeitos.js, skins.js, bolinhas.js, armas.js, cartas.js, cenarios.js, queda.js (só desenho, canvas)
+    arte/     efeitos.js, skins.js, bolinhas.js, armas.js, cartas.js, cenarios.js, queda.js, bau.js (só desenho, canvas)
     desenho.js (junta a arte na ordem certa + HUD)
 ```
 Ordem dos scripts no index.html: nucleo/config, nucleo/util, idiomas/idiomas, nucleo/save, poki/poki, poki/eventos,
@@ -77,7 +77,11 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
 - Plataformas: andares a cada <= 120 px (o pulo normal alcança ~143 px). Conferir com a simulação de alcance ao mudar mapa.
 - Controles: Espaço/W pula; mouse mira e atira (jogador 1); teclas trocáveis (save.teclas); toque = analógico de andar +
   analógico de mira; controle = analógico direito mira. Bot também mira livre (com erro que cai com o nível).
-- Progresso (js/jogo/progresso): moedas, 3 missões, 4 desafios da semana (skin exclusiva), 25 conquistas, 30 skins.
+- Progresso (js/jogo/progresso): moedas, 3 missões, 4 desafios da semana (skin exclusiva), 27 conquistas, 30 skins,
+  XP/nível do jogador, baús (normal no fim da partida, de nível ao subir, lendário no 7º dia) e recompensa diária (7 dias).
+- Fim da partida: tela de recompensa (interface/recompensa.js): XP, baú para abrir, "▶ abrir outro baú" (premiado) e REVANCHE.
+- Modos: contra o bot, 2 jogadores, SOBREVIVÊNCIA (ondas de bots cada vez mais fortes; vida passa de uma onda para outra,
+  +35 entre ondas; recorde em save.recordeOnda; "Continuar" premiado volta na mesma onda com vida cheia).
 - Equilíbrio: `node` + simulação bot x bot (script fora do repositório) — medir % de rodadas na queda de braço (~10–35%)
   e duração da partida (2–3,5 min). `CONFIG.multDano` é o ajuste geral.
 

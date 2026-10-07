@@ -21,7 +21,8 @@ let lendariaPronta = false;     // assistiu o anúncio da Partida Lendária
 let pendente = null;            // partida que acabou e espera a resposta do "continuar"
 
 const TELAS = ["telaMenu", "telaModo", "telaIdiomas", "telaPausa", "telaContinuar",
-  "telaOpcoes", "telaControles", "telaMissoes", "telaSkins"];
+  "telaOpcoes", "telaControles", "telaMissoes", "telaSkins", "telaRecompensa", "telaDiaria"];
+let diariaVista = false;     // a recompensa diária abre sozinha uma vez por visita
 
 function mostrarTela(id) {
   TELAS.forEach(function(t2) { el(t2).classList.toggle("aberta", t2 === id); });
@@ -70,6 +71,8 @@ function irParaMenu(textoResultado) {
   garantirDemo();
   atualizarTextos();
   mostrarTela("telaMenu");
+  // recompensa diária (depois da 1ª partida, uma vez por visita)
+  if (!diariaVista && save.partidas > 0 && Progresso.diaDisponivel()) { diariaVista = true; abrirDiaria(); }
 }
 
 function abrirModo() {
@@ -92,7 +95,7 @@ function comecarPartida(modo) {
   ocupado = true;
   const primeira = save.partidas === 0;
   const lendaria = lendariaPronta;
-  Eventos.botao(modo === "bot" ? "mode-bot" : "mode-2p");
+  Eventos.botao("mode-" + (modo === "2p" ? "2p" : modo === "sobrevivencia" ? "survival" : "bot"));
   mostrarTela(null);
   // sem anúncio comum na 1ª partida e logo depois de um premiado
   (primeira || lendaria ? Promise.resolve() : Poki.intervalo()).then(function() {
@@ -107,7 +110,7 @@ function comecarPartida(modo) {
     entrada.limparApertos();
     mostrarTela(null);
     Poki.jogando(true);
-    Poki.medir("match", modo, "start");
+    Poki.medir("match", modo === "sobrevivencia" ? "survival" : modo, "start");
     if (modo === "bot") Poki.medir("bot", "level-" + Math.round(save.nivelBot * 10), "start");
     if (save.partidas <= 10) Eventos.marco("match-" + save.partidas);
   });
@@ -117,11 +120,13 @@ function comecarPartida(modo) {
 function aoTerminarPartida(j) {
   entrada.ativa = false;
   Poki.jogando(false);
-  if (j.modo === "bot" && j.vencedorPartida === 2 && !j.continuou && Poki.premiadoDisponivel()) {
+  if ((j.modo === "bot" || j.modo === "sobrevivencia") && j.vencedorPartida === 2 && !j.continuou && Poki.premiadoDisponivel()) {
     // perdeu para o bot: oferece continuar (opcional)
     pendente = j;
     estado = "continuar";
-    el("contPlacar").textContent = j.pontos[0] + " – " + j.pontos[1];
+    const surv = j.modo === "sobrevivencia";
+    el("contPlacar").textContent = surv ? t("onda_n", j.onda) : j.pontos[0] + " – " + j.pontos[1];
+    el("contExplica").textContent = surv ? t("continuar_vida") : t("continuar_explica");
     el("contAviso").textContent = "";
     Eventos.oferta("continue", "visible");
     atualizarTextos();
@@ -133,11 +138,13 @@ function aoTerminarPartida(j) {
 
 function finalizarPartida(j) {
   pendente = null;
-  let texto;
+  let texto, extra = "";
   // progresso: moedas da partida e contadores das missões/conquistas
   const ganho = Progresso.moedasDaPartida(j);
   Progresso.ganharMoedas(ganho);
-  save.dobrar = ganho;
+  save.dobrar = 0;
+  let novoRecorde = false;
+  if (j.modo === "sobrevivencia" && j.onda > save.recordeOnda) { save.recordeOnda = j.onda; novoRecorde = true; }
   Progresso.registrar("partidas", 1);
   if (j.modo === "2p") Progresso.registrar("partidas2p", 1);
   if (j.lendaria) Progresso.registrar("lendarias", 1);
@@ -157,13 +164,20 @@ function finalizarPartida(j) {
     Poki.medir("bot", save.nivelBot > antes ? "harder" : "easier", "interact");
     texto = (venceu ? t("voce_venceu") : t("bot_venceu")) + "  " + j.pontos[0] + " – " + j.pontos[1];
     const n0 = nivelBotTexto(antes), n1 = nivelBotTexto(save.nivelBot);
-    if (n1 > n0) texto += "  ·  " + t("bot_subiu", n1);
-    else if (n1 < n0) texto += "  ·  " + t("bot_desceu", n1);
+    if (n1 > n0) extra = t("bot_subiu", n1);
+    else if (n1 < n0) extra = t("bot_desceu", n1);
+  } else if (j.modo === "sobrevivencia") {
+    salvar();
+    Poki.medir("match", "survival", "complete");
+    Poki.medir("survival", "best-" + j.onda, "reached");
+    texto = t("fim_sobrevivencia", j.onda);
+    extra = novoRecorde ? t("novo_recorde") : t("recorde_onda", save.recordeOnda);
   } else {
     Poki.medir("match", "2p", "complete");
     texto = t("jogador_venceu", j.vencedorPartida) + "  " + j.pontos[0] + " – " + j.pontos[1];
   }
-  irParaMenu(texto);
+  el("menuResultado").textContent = texto;
+  abrirRecompensa(j, texto, "+" + ganho + " 🪙" + (extra ? "   ·   " + extra : ""));
 }
 
 function continuarPartida() {
@@ -174,10 +188,11 @@ function continuarPartida() {
   Poki.premiado("medium").then(function(assistiu) {
     ocupado = false;
     if (!assistiu) { el("contAviso").textContent = t("anuncio_falhou"); return; }
-    // o bot perde o último ponto e a partida continua
+    // o bot perde o último ponto e a partida continua (na sobrevivência: volta na mesma onda com vida cheia)
     pendente = null;
     j.continuou = true;
-    j.pontos[1] = j.alvo - 1;
+    if (j.modo === "sobrevivencia") j.vidaJogador = 100;
+    else j.pontos[1] = j.alvo - 1;
     j.vencedorPartida = 0;
     if (typeof Efeitos !== "undefined") Efeitos.limpar();
     iniciarRodada();
@@ -230,18 +245,6 @@ function sairDaPartida() {
   irParaMenu("");
 }
 
-// ---------- dobrar as moedas da última partida (premiado) ----------
-function dobrarMoedas() {
-  if (ocupado || !(save.dobrar > 0)) return;
-  ocupado = true;
-  Eventos.oferta("double-coins", "interact");
-  Poki.premiado("small").then(function(assistiu) {
-    ocupado = false;
-    if (assistiu && save.dobrar > 0) { Progresso.ganharMoedas(save.dobrar); save.dobrar = 0; salvar(); som("pegar"); }
-    atualizarTextos();
-  });
-}
-
 // moedas no topo, selo de prêmios esperando e o botão de dobrar
 function atualizarMenuProgresso() {
   const txt = "🪙 " + save.moedas;
@@ -251,11 +254,9 @@ function atualizarMenuProgresso() {
   const n = Progresso.pendentes();
   el("seloMissoes").textContent = n;
   el("seloMissoes").classList.toggle("escondido", n === 0);
-  const pode = save.dobrar > 0 && Poki.premiadoDisponivel();
-  el("menuGanho").classList.toggle("escondido", !(save.dobrar > 0));
-  el("menuGanhoTexto").textContent = "+" + save.dobrar + " 🪙";
-  el("btnDobrar").classList.toggle("escondido", !pode);
-  el("btnDobrar").textContent = "▶ " + t("dobrar_moedas");
+  el("menuNivelNum").textContent = t("nivel_jogador", save.nivel);
+  el("menuXp").style.width = Math.min(100, 100 * save.xp / Progresso.xpParaSubir(save.nivel)) + "%";
+  el("dicaSurv").textContent = t("sobrevivencia_dica") + (save.recordeOnda ? "\n" + t("recorde_onda", save.recordeOnda) : "");
 }
 
 // ---------- opções ----------
@@ -299,7 +300,13 @@ function montarTelas() {
     teclasPadrao: teclasDeFabrica,
     missoes: function() { abrirMissoes("missoes"); },
     skins: function() { abrirSkins("corpo"); },
-    dobrar: dobrarMoedas,
+    modoSurv: function() { comecarPartida("sobrevivencia"); },
+    abrirBau: abrirBauDaVez,
+    outroBau: outroBau,
+    revanche: revanche,
+    recMenu: recompensaParaMenu,
+    pegarDiaria: pegarDiaria,
+    fecharDiaria: fecharDiaria,
     som: trocarSom,
     pausar: pausar,
     continuar: continuar,

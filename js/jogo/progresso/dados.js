@@ -65,5 +65,7 @@ const CONQUISTAS = [
   { id: "dois_jogadores_10", stat: "partidas2p", meta: 10, moedas: 200 },
   { id: "missoes_10", stat: "missoes", meta: 10, moedas: 150 },
   { id: "missoes_50", stat: "missoes", meta: 50, moedas: 200, skin: "aureola" },
-  { id: "semana_completa", stat: "semanais", meta: 1, moedas: 300 }
+  { id: "semana_completa", stat: "semanais", meta: 1, moedas: 300 },
+  { id: "onda_5", stat: "recordeOnda", meta: 5, moedas: 150 },
+  { id: "onda_10", stat: "recordeOnda", meta: 10, moedas: 400 }
 ];

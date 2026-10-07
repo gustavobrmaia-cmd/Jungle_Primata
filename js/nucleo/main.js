@@ -79,6 +79,8 @@ function quadro(agora) {
   }
   protegido(desenharJogo, ctx);
   if (estado === "skins") protegido(desenharPreviaSkin, agora / 1000);
+  if (estado === "recompensa") protegido(desenharRecompensa, agora / 1000);
+  if (estado === "diaria") protegido(desenharDiaria, agora / 1000);
   requestAnimationFrame(quadro);
 }
 

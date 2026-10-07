@@ -20,12 +20,9 @@
     <!-- Menu principal (a luta de demonstração roda no fundo) -->
     <div id="telaMenu" class="tela">
       <div class="moedas" id="menuMoedas"></div>
+      <div class="nivelJogador"><span id="menuNivelNum"></span><div class="barraXp"><div id="menuXp"></div></div></div>
       <h1 data-t="titulo"></h1>
       <p class="resultado" id="menuResultado"></p>
-      <div class="ganho escondido" id="menuGanho">
-        <span id="menuGanhoTexto"></span>
-        <button class="premiado pequeno" data-acao="dobrar" id="btnDobrar"></button>
-      </div>
       <div class="botoes">
         <button class="grande" data-acao="jogar" data-t="jogar"></button>
         <div class="linha">
@@ -102,6 +99,11 @@
           <span class="nome" data-t="dois_jogadores"></span>
           <span class="dica" id="dica2p"></span>
         </button>
+        <button class="modo surv" data-acao="modoSurv">
+          <span class="icone">🔥</span>
+          <span class="nome" data-t="sobrevivencia"></span>
+          <span class="dica" id="dicaSurv"></span>
+        </button>
       </div>
       <button class="premiado" data-acao="lendaria" id="btnLendaria"></button>
       <button data-acao="voltar" data-t="voltar" id="btnVoltarModo"></button>
@@ -124,13 +126,41 @@
       </div>
     </div>
 
+    <!-- Fim da partida: XP, baú e revanche -->
+    <div id="telaRecompensa" class="tela">
+      <h2 id="recTitulo"></h2>
+      <p class="resultado" id="recSub"></p>
+      <div class="xpLinha"><span id="recNivel"></span><div class="barraXp grande"><div id="recXp"></div></div><span id="recXpTxt"></span></div>
+      <canvas id="canvasBau" width="460" height="290"></canvas>
+      <p class="premioTxt" id="recPremio"></p>
+      <div class="linha">
+        <button class="grande" data-acao="abrirBau" id="btnAbrirBau"></button>
+        <button class="premiado" data-acao="outroBau" id="btnOutroBau"></button>
+      </div>
+      <div class="linha">
+        <button class="grande" data-acao="revanche" data-t="revanche"></button>
+        <button data-acao="recMenu" data-t="menu"></button>
+      </div>
+    </div>
+
+    <!-- Recompensa diária -->
+    <div id="telaDiaria" class="tela">
+      <h2 data-t="diaria"></h2>
+      <p class="info pequena" data-t="diaria_explica"></p>
+      <div id="gradeDiaria"></div>
+      <canvas id="canvasDiaria" width="320" height="200" class="escondido"></canvas>
+      <p class="premioTxt" id="diariaPremio"></p>
+      <button class="grande" data-acao="pegarDiaria" id="btnPegarDiaria" data-t="pegar"></button>
+      <button data-acao="fecharDiaria" id="btnFecharDiaria" data-t="fechar"></button>
+    </div>
+
     <!-- Perdeu para o bot: oferta opcional de continuar assistindo um anúncio -->
     <div id="telaContinuar" class="tela">
       <h2 data-t="bot_venceu"></h2>
       <p class="info" id="contPlacar"></p>
       <div class="botoes">
         <button class="premiado grande" data-acao="continuarPartida" data-t="continuar_anuncio"></button>
-        <p class="info pequena" data-t="continuar_explica"></p>
+        <p class="info pequena" id="contExplica"></p>
         <button data-acao="naoContinuar" data-t="nao_obrigado"></button>
       </div>
       <p class="aviso" id="contAviso"></p>
@@ -156,6 +186,7 @@
   <script src="js/jogo/arte/cartas.js"></script>
   <script src="js/jogo/arte/cenarios.js"></script>
   <script src="js/jogo/arte/queda.js"></script>
+  <script src="js/jogo/arte/bau.js"></script>
   <script src="js/jogo/motor/fisica.js"></script>
   <script src="js/jogo/motor/combate.js"></script>
   <script src="js/jogo/motor/bot.js"></script>
@@ -165,6 +196,7 @@
   <script src="js/jogo/desenho.js"></script>
   <script src="js/interface/telas.js"></script>
   <script src="js/interface/menus.js"></script>
+  <script src="js/interface/recompensa.js"></script>
   <script src="js/nucleo/main.js"></script>
 </body>
 </html>

@@ -403,6 +403,7 @@ function causarDano(M, b, dano, atacante, nx, ny, empurra, fx, fy) {
   if (!b.viva || dano <= 0 && !empurra) return;
   if (atacante && atacante !== b && atacante.efeitos.furia > 0) dano *= 2;
   if (atacante && atacante !== b && M.multDano) dano *= M.multDano;
+  if (atacante && atacante.lado === 2 && M.multBot) dano *= M.multBot;
   const mult = (M.cen.empurrao || 1);
   b.vx += nx * empurra * mult;
   b.vy += ny * empurra * mult * 0.8 - (empurra > 3 ? 1.5 : 0);

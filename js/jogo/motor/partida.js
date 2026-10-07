@@ -96,6 +96,13 @@ function novaPartida(modo, opcoes) {
     setTimeout(function() { try { ArteQueda.preparar(cores[0], cores[1], CONFIG.largura, alturaTela); } catch (e) { /* sem queda pronta: faz na hora */ } }, 50);
   }
   if (modo === "bot") jogo.bots[1] = criarBot(2, jogo.nivelBot);
+  // Sobrevivência: ondas de bots cada vez mais fortes; a vida do jogador passa de uma onda para a outra
+  if (modo === "sobrevivencia") {
+    jogo.onda = 1;
+    jogo.alvo = 999;
+    jogo.vidaJogador = 100;
+    jogo.bots[1] = criarBot(2, nivelDaOnda(1));
+  }
   if (modo === "demo") { jogo.bots[0] = criarBot(1, 0.75); jogo.bots[1] = criarBot(2, 0.75); jogo.alvo = 99; }
   entrada.solo = modo !== "2p";
   if (typeof Efeitos !== "undefined") Efeitos.limpar();
@@ -121,6 +128,10 @@ function iniciarRodada() {
   // os dois começam com a mesma arma (justo) e ela muda a cada rodada
   const arma = sortearArma(M, true);
   equipar(b1, arma); equipar(b2, arma);
+  if (j.modo === "sobrevivencia") {
+    b1.vida = j.vidaJogador;
+    M.multBot = 1 + Math.max(0, j.onda - 12) * 0.1;   // depois da onda 12 o bot também bate mais forte
+  }
   b1.mira = 0; b2.mira = Math.PI;
   j.M = M;
   j.fase = "intro";
@@ -267,10 +278,12 @@ function animarBolinha(b, vyAntes) {
   b.piscar = Math.max(0, b.piscar - FIS.dt * 8);
 }
 
+function nivelDaOnda(n) { return Math.min(1, 0.12 + (n - 1) * 0.075); }
+
 function fecharRodada(j) {
   const M = j.M;
   const v = j.vencedorRodada;
-  if (v) j.pontos[v - 1]++;
+  if (v && j.modo !== "sobrevivencia") j.pontos[v - 1]++;
   for (let k = 0; k < 2; k++) {
     j.total.dano[k] += M.stats.dano[k];
     j.total.tiros[k] += M.stats.tiros[k];
@@ -292,6 +305,23 @@ function fecharRodada(j) {
   // maior desvantagem do jogador 1 na partida (para a conquista da virada)
   j.piorDiferenca = Math.max(j.piorDiferenca || 0, j.pontos[1] - j.pontos[0]);
   if (!j.demo && j.modo === "bot") Poki.medir("arena", M.cen.id, v === 1 ? "complete" : "fail");
+  if (j.modo === "sobrevivencia") {
+    if (v === 1) {
+      // venceu a onda: recupera um pouco de vida e vem um bot mais forte
+      j.onda++;
+      j.pontos[0] = j.onda - 1;
+      j.vidaJogador = Math.min(100, Math.max(1, M.bolinhas[0].vida) + 35);
+      j.bots[1] = criarBot(2, nivelDaOnda(j.onda));
+      Poki.medir("survival", "wave-" + j.onda, "start");
+      if (j.onda <= 30) Eventos.marco("wave-" + j.onda);
+      proximaRodadaComIntervalo(j);
+    } else {
+      j.vencedorPartida = 2;
+      j.fase = "fimPartida"; j.tempoFase = 0;
+      som("derrota");
+    }
+    return;
+  }
   if (j.pontos[0] >= j.alvo || j.pontos[1] >= j.alvo) {
     j.vencedorPartida = j.pontos[0] > j.pontos[1] ? 1 : 2;
     j.fase = "fimPartida"; j.tempoFase = 0;

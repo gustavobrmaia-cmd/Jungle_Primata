@@ -258,7 +258,10 @@ function retRedondo(ctx, x, y, w, h, r) {
 }
 
 function nomeJogador(j, lado) {
-  if (j.modo === "bot") return lado === 1 ? t("voce") : t("bot") + " · " + t("nivel_curto", nivelBotTexto(j.nivelBot));
+  if (j.modo === "bot" || j.modo === "sobrevivencia") {
+    const nivel = j.bots[1] ? j.bots[1].nivel : j.nivelBot;
+    return lado === 1 ? t("voce") : t("bot") + " · " + t("nivel_curto", nivelBotTexto(nivel));
+  }
   if (j.modo === "demo") return lado === 1 ? "BOT 1" : "BOT 2";
   return t("jogador_n", lado);
 }
@@ -285,7 +288,7 @@ function desenharHud(ctx, j, M, dy) {
   ctx.beginPath(); ctx.arc(cx, cy, 33, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * (tempo / RODADA.luta)); ctx.stroke();
   const pulso = dobro ? 1 + 0.12 * Math.abs(Math.sin(M.t * 8)) : 1;
   textoContorno(ctx, String(Math.ceil(tempo)), cx, cy + 12 * pulso, Math.round(34 * pulso), dobro ? "#ff8787" : "#fff");
-  textoContorno(ctx, t("rodada_n", j.rodada), cx, cy + 64, 18, "#e9ecef");
+  textoContorno(ctx, j.modo === "sobrevivencia" ? t("onda_n", j.onda) : t("rodada_n", j.rodada), cx, cy + 64, 18, j.modo === "sobrevivencia" ? "#ffd43b" : "#e9ecef");
   if (dobro) textoContorno(ctx, t("dano_dobro"), cx, cy + 90, 20, "#ff6b6b");
   ctx.restore();
   ctx.restore();
@@ -299,6 +302,7 @@ function desenharHud(ctx, j, M, dy) {
     textoContorno(ctx, t("c_" + M.cen.id), cx, meio - 20, 76, cor);
     textoContorno(ctx, t("r_" + M.cen.id), cx, meio + 30, 30, "#fff");
     if (j.lendaria) textoContorno(ctx, "✨ " + t("lendaria") + " ✨", cx, meio + 74, 26, "#ffd43b");
+    if (j.modo === "sobrevivencia") textoContorno(ctx, t("onda_n", j.onda), cx, meio - 96, 44, "#ffd43b");
     ctx.globalAlpha = 1;
   } else if (j.fase === "luta" && j.tempoFase < 0.7) {
     const k = j.tempoFase / 0.7;
@@ -307,15 +311,19 @@ function desenharHud(ctx, j, M, dy) {
     ctx.globalAlpha = 1;
   } else if (j.fase === "fimRodada" && j.tempoFase > 0.4) {
     const v = j.vencedorRodada;
-    const txt = !v ? t("empate") : j.modo === "bot" ? (v === 1 ? t("voce_venceu_rodada") : t("bot_venceu_rodada")) : t("jogador_venceu_rodada", v);
+    const surv = j.modo === "sobrevivencia";
+    const txt = surv ? (v === 1 ? t("onda_concluida", j.onda) : t("bot_venceu_rodada")) :
+      !v ? t("empate") : j.modo === "bot" ? (v === 1 ? t("voce_venceu_rodada") : t("bot_venceu_rodada")) : t("jogador_venceu_rodada", v);
     textoContorno(ctx, txt, cx, meio, 58, v ? j.cores[v - 1] : "#fff");
-    placarGrande(ctx, j, cx, meio + 60);
+    if (!surv) placarGrande(ctx, j, cx, meio + 60);
   } else if (j.fase === "fimPartida") {
     const v = j.vencedorPartida;
-    const txt = j.modo === "bot" ? (v === 1 ? t("voce_venceu") : t("bot_venceu")) : t("jogador_venceu", v);
+    const surv = j.modo === "sobrevivencia";
+    const txt = surv ? t("fim_sobrevivencia", j.onda) : j.modo === "bot" ? (v === 1 ? t("voce_venceu") : t("bot_venceu")) : t("jogador_venceu", v);
     const esc = 1 + 0.06 * Math.sin(j.tempoFase * 6);
-    textoContorno(ctx, txt, cx, meio, Math.round(84 * esc), j.cores[v - 1]);
-    placarGrande(ctx, j, cx, meio + 70);
+    textoContorno(ctx, txt, cx, meio, Math.round((surv ? 64 : 84) * esc), j.cores[v - 1]);
+    if (surv) textoContorno(ctx, t("recorde_onda", Math.max(save.recordeOnda, j.onda)), cx, meio + 64, 34, "#fff");
+    else placarGrande(ctx, j, cx, meio + 70);
   }
   // primeira partida: lembrete dos controles nos primeiros segundos
   if (save.partidas <= 1 && j.rodada <= 2 && (j.fase === "intro" || j.fase === "luta" && j.tempoFase < 7)) {
@@ -372,7 +380,7 @@ function painelJogador(ctx, j, b, x, y, lado) {
   fill(vida, vida < 0.25 ? "#ff4d5e" : b.cor);
   if (b.escudoHP > 0 && b.efeitos.escudo > 0) fill(b.escudoHP / 100, "rgba(77,171,247,0.75)");
   // pontos da partida
-  for (let i = 0; i < j.alvo && i < 9; i++) {
+  for (let i = 0; i < j.alvo && i < 9 && j.modo !== "sobrevivencia"; i++) {
     const px = lado > 0 ? x0 + 12 + i * 26 : x0 + w - 12 - i * 26;
     ctx.beginPath(); ctx.arc(px, by + bh + 18, 9, 0, 7);
     ctx.fillStyle = i < j.pontos[b.lado - 1] ? "#ffd43b" : "rgba(12,8,30,0.6)";

@@ -186,3 +186,48 @@ body.retrato .loja { flex-direction: column; }
 body.retrato .previa { width: 100%; min-height: 360px; }
 body.retrato #gradeTeclas { grid-template-columns: 180px 1fr 1fr; }
 body.retrato button.tecla { min-width: 100px; font-size: 26px; }
+
+/* ---------- Nível do jogador e XP ---------- */
+.nivelJogador {
+  position: absolute; top: 18px; left: 22px; display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px; border-radius: 999px; background: rgba(20, 14, 50, 0.75); border: 2px solid rgba(116, 143, 252, 0.6);
+  font-size: 22px; font-weight: 900;
+}
+.barraXp { width: 160px; height: 14px; border-radius: 7px; background: rgba(0, 0, 0, 0.4); overflow: hidden; }
+.barraXp div { height: 100%; width: 0; border-radius: 7px; background: linear-gradient(90deg, #4c6ef5, #cc5de8); }
+.barraXp.grande { width: 420px; height: 22px; border-radius: 11px; }
+.xpLinha { display: flex; align-items: center; gap: 14px; font-size: 24px; font-weight: 900; }
+#recXpTxt { color: #b197fc; }
+.premioTxt { font-size: 30px; font-weight: 900; color: #ffe066; min-height: 38px; text-shadow: 0 3px 0 #1b1030; }
+#canvasBau { width: 400px; height: 252px; }
+#telaRecompensa { gap: 10px; }
+#telaRecompensa h2 { font-size: 50px; }
+#telaRecompensa .resultado { font-size: 26px; }
+
+/* ---------- Escolha do modo com 3 cartões ---------- */
+button.modo { width: 370px; min-height: 250px; }
+button.modo.surv { background: linear-gradient(#ff922b, #e8590c); border-bottom-color: #8a3407; }
+
+/* ---------- Recompensa diária ---------- */
+#gradeDiaria { display: grid; grid-template-columns: repeat(7, 140px); gap: 12px; }
+.diaCard {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  height: 170px; padding: 12px 6px; border-radius: 16px; background: rgba(36, 30, 80, 0.9); border: 2px solid rgba(255, 255, 255, 0.08);
+}
+.diaCard.hoje { border-color: #ffd43b; box-shadow: 0 0 0 4px rgba(255, 212, 59, 0.3); transform: translateY(-6px); }
+.diaCard.pego { opacity: 0.55; }
+.diaCard.grande { background: linear-gradient(rgba(252, 196, 25, 0.45), rgba(36, 30, 80, 0.9)); }
+.diaNum { font-size: 18px; font-weight: 900; }
+.diaValor { font-size: 17px; font-weight: 800; color: #ffe066; text-align: center; }
+.diaIcone { width: 110px; height: 80px; }
+.diaOk { position: absolute; top: 6px; right: 10px; color: #69db7c; font-size: 26px; font-weight: 900; }
+.moedaGrande {
+  width: 54px; height: 54px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3bf 0 18%, #fcc419 19% 62%, #e67700 63% 100%);
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18);
+}
+#canvasDiaria { width: 320px; height: 200px; }
+
+body.retrato #gradeDiaria { grid-template-columns: repeat(4, 170px); }
+body.retrato .barraXp.grande { width: 520px; }
+body.retrato button.modo { width: 760px; min-height: 240px; }
