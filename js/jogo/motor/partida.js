@@ -74,7 +74,7 @@ function novaPartida(modo, opcoes) {
     modo: modo,
     demo: modo === "demo",
     pontos: [0, 0],
-    alvo: CONFIG.pontosParaVencer,
+    alvo: opcoes.primeiraVez && modo === "bot" ? CONFIG.pontosPrimeira : CONFIG.pontosParaVencer,
     rodada: 0,
     cores: sortearCores(),
     ordem: ordem,
@@ -117,7 +117,7 @@ function iniciarRodada() {
     cen: cen, plats: prepararPlataformas(cen), t: 0, passo: 0,
     bumpers: cen.bumpers ? cen.bumpers.map(function(u) { return { x: u.x, y: u.y, r: u.r, flash: 0 }; }) : null,
     proj: [], feixes: [], avisos: [], caixas: [], cartas: [],
-    proxCaixa: 3, proxCarta: 6 + Math.random() * 1.5, proxMeteoro: 3,
+    proxCaixa: 1.5, proxCarta: 4 + Math.random() * 1.5, proxMeteoro: 3,
     lendaria: j.lendaria, mudo: j.demo, multDano: 1,
     stats: { dano: [0, 0], tiros: [0, 0], acertos: [0, 0] },
     morreu: null, pegou: null, ultimaCarta: null
@@ -336,10 +336,11 @@ function fecharRodada(j) {
 }
 
 // Entre as rodadas é uma pausa natural: pede o intervalo comercial ao Poki (ele decide se mostra; na
-// maioria das vezes não mostra, por causa do limite de frequência dele). Nas 2 primeiras rodadas da primeira
-// partida não pede nada (a pessoa acabou de chegar). O jogo fica parado e mudo enquanto o anúncio estiver na tela.
+// maioria das vezes não mostra, por causa do limite de frequência dele). Nas 2 primeiras partidas da pessoa
+// não pede nada entre as rodadas (nos testes, quem acabou de chegar saía no 1º anúncio). O jogo fica parado e mudo
+// enquanto o anúncio estiver na tela.
 function proximaRodadaComIntervalo(j) {
-  const novato = save.partidas <= 1 && j.rodada < 2;
+  const novato = save.partidas <= 2;
   if (novato || j.esperandoAnuncio) { iniciarRodada(); return; }
   j.esperandoAnuncio = true;
   j.fase = "intervalo";

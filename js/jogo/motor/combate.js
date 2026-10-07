@@ -284,6 +284,16 @@ function acertouBolinha(M, p, b, k) {
   else p.vivo = false;
 }
 
+// O ponto (com o raio do tiro) está dentro de uma plataforma grossa? (usado pela linha da mira)
+function dentroDeSolida(M, x, y, raio) {
+  const r = raio * 0.5;
+  for (let k = 0; k < M.plats.length; k++) {
+    const pl = M.plats[k];
+    if (!pl.fina && x + r >= pl.x && x - r <= pl.x + pl.w && y + r >= pl.y && y - r <= pl.y + pl.h) return true;
+  }
+  return false;
+}
+
 function colidirProjetil(M, p, xa, ya, sinal) {
   const a = p.a;
   for (let k = 0; k < M.plats.length; k++) {
@@ -318,6 +328,8 @@ function colidirProjetil(M, p, xa, ya, sinal) {
 }
 
 function impactoParede(M, p) {
+  // tiro do jogador batendo na parede: som de "tec" para ele perceber que a plataforma está segurando
+  if (M.bolinhas[p.dono - 1] && M.bolinhas[p.dono - 1].humano && (M.passo & 3) === 0) somJogo(M, "quique");
   if (typeof Efeitos === "undefined") return;
   if (p.visual === "chama" || p.visual === "vento" || p.visual === "agua" || p.visual === "confete") return;
   Efeitos.impacto(p.x, p.y, Math.atan2(p.vy, p.vx), p.cor);
@@ -661,9 +673,9 @@ function pontoSobrePlataforma(M, folgaY) {
 }
 
 function atualizarItens(M) {
-  // caixas: a primeira aos 3 s, depois a cada ~4,5 s (no máximo 2 no mapa)
+  // caixas: a primeira aos 1,5 s, depois a cada ~4 s (no máximo 2 no mapa)
   if (M.t >= M.proxCaixa) {
-    M.proxCaixa = M.t + 4 + Math.random() * 1.5;
+    M.proxCaixa = M.t + 3.2 + Math.random() * 1.5;
     if (M.caixas.length < 2) {
       const p = pontoSobrePlataforma(M, 20);
       const id = sortearArma(M, false);
@@ -701,9 +713,9 @@ function atualizarItens(M) {
     }
   }
 
-  // cartas: aos ~6 s e ~13 s; somem se ninguém pegar em 6 s
+  // cartas: a primeira aos ~4 s, depois ~6 s depois que a anterior some ou é pega; somem se ninguém pegar em 6,5 s
   if (M.t >= M.proxCarta && M.cartas.length === 0) {
-    M.proxCarta = M.t + 6.5 + Math.random() * 1.5;
+    M.proxCarta = M.t + 5.5 + Math.random() * 1.5;
     const p = pontoSobrePlataforma(M, 70);
     const id = CARTAS[Math.floor(Math.random() * CARTAS.length)].id;
     M.cartas.push({ x: p.x, y: p.y, id: id, t: 0, vida: 6.5 });

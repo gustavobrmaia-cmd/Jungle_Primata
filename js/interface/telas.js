@@ -34,6 +34,8 @@ function atualizarTextos() {
   const somTxt = save.mudo ? t("som_off") : t("som_on");
   el("btnSom").textContent = somTxt;
   el("btnSomPausa").textContent = somTxt;
+  el("btnQualidade").textContent = t("qualidade_" + save.qualidade);
+  document.body.classList.toggle("toque", !!entrada.toque);
   el("listaIdiomas").querySelectorAll("button").forEach(function(b) {
     b.classList.toggle("ativo", b.dataset.idioma === IDIOMA);
   });
@@ -95,7 +97,7 @@ function comecarPartida(modo) {
   ocupado = true;
   const primeira = save.partidas === 0;
   const lendaria = lendariaPronta;
-  Eventos.botao("mode-" + (modo === "2p" ? "2p" : modo === "sobrevivencia" ? "survival" : "bot"));
+  if (!primeira) Eventos.botao("mode-" + (modo === "2p" ? "2p" : modo === "sobrevivencia" ? "survival" : "bot"));
   mostrarTela(null);
   // sem anúncio comum na 1ª partida e logo depois de um premiado
   (primeira || lendaria ? Promise.resolve() : Poki.intervalo()).then(function() {
@@ -150,7 +152,7 @@ function finalizarPartida(j) {
   if (j.lendaria) Progresso.registrar("lendarias", 1);
   if (j.modo === "bot" && j.vencedorPartida === 1) {
     Progresso.registrar("vitorias", 1);
-    if (j.pontos[1] === 0) Progresso.registrar("placar5x0", 1);
+    if (j.pontos[1] === 0 && j.alvo >= 5) Progresso.registrar("placar5x0", 1);
     if (save.nivelBot >= 0.85) Progresso.registrar("botMestre", 1);
     if ((j.piorDiferenca || 0) >= 3) Progresso.registrar("virada", 1);
   }
@@ -308,6 +310,14 @@ function montarTelas() {
     pegarDiaria: pegarDiaria,
     fecharDiaria: fecharDiaria,
     som: trocarSom,
+    qualidade: function() {
+      const ordem = ["auto", "alta", "leve"];
+      save.qualidade = ordem[(ordem.indexOf(save.qualidade) + 1) % ordem.length];
+      salvar();
+      aplicarQualidade();
+      atualizarTextos();
+      Poki.medir("button", "quality", save.qualidade);
+    },
     pausar: pausar,
     continuar: continuar,
     sair: sairDaPartida,

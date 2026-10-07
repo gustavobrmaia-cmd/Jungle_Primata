@@ -179,6 +179,7 @@ function escolherNavegacao(bot, M, b, valorAtual) {
     const nota = 45 * bot.coleta - dist * 0.04;
     if (nota > melhor) { melhor = nota; alvo = { x: c.x, y: c.y + 50 }; }
   }
+  if (!alvo) alvo = pontoComVisao(bot, M, b);
   if (!alvo) return;
   bot.nav = { x: alvo.x, y: alvo.y, final: true };
   if (!grafo) return;
@@ -189,6 +190,29 @@ function escolherNavegacao(bot, M, b, valorAtual) {
     const p = M.plats[prox];
     bot.nav = { x: limitar(b.x, p.x + 24, p.x + p.w - 24), y: p.y - b.r, plat: p, final: false };
   }
+}
+
+// Sem linha de tiro (oponente escondido embaixo de plataforma, por exemplo): escolhe um ponto em cima
+// de alguma plataforma de onde dá para enxergar o oponente, perto do bot e na distância boa da arma.
+function pontoComVisao(bot, M, b) {
+  const o = oponente(M, b);
+  if (!o.viva) return null;
+  if (linhaLivre(b.x, b.y, o.x, o.y, M.plats, M.t) && !bot.impaciente) return null;
+  const pref = distanciaBoa(ARMA[b.arma]) * (bot.impaciente ? 0.6 : 1);
+  let melhor = null, nota = Infinity;
+  for (let i = 0; i < M.plats.length; i++) {
+    const p = M.plats[i];
+    if (p.y < 80 || p.w < 40) continue;
+    for (let k = 0; k < 5; k++) {
+      const x = p.x + (k + 0.5) / 5 * p.w, y = p.y - b.r;
+      if (y + b.r > lavaY(M.cen, M.t + 1) - 20) continue;
+      if (!linhaLivre(x, y, o.x, o.y, M.plats, M.t)) continue;
+      const dOp = Math.sqrt((x - o.x) * (x - o.x) + (y - o.y) * (y - o.y));
+      const v = Math.abs(x - b.x) + Math.abs(y - b.y) * 1.3 + Math.abs(dOp - pref) * 0.8;
+      if (v < nota) { nota = v; melhor = { x: x, y: y + 40 }; }
+    }
+  }
+  return melhor;
 }
 
 // ---------- decisão de movimento ----------
@@ -330,7 +354,11 @@ function decidir(bot, M, b, o, perc) {
     let nota = 0;
     if (caiu) nota -= 1000;
     nota -= perigo * 3 * bot.e.perigo;
-    if (c.pulo > 0 && c.pulo !== 4) nota += bot.e.pulo * Math.random() * 8;   // estilo saltitante
+    if (c.pulo > 0 && c.pulo !== 4) {
+      const parado = Math.abs(perc.vx) < 0.8 && perc.noChao;
+      nota += bot.e.pulo * Math.random() * (parado ? 2 : 8);   // estilo saltitante
+      if (!perigo && !nav) nota -= parado ? 4 : 1.5;            // pular gasta: sem motivo, não pula
+    }
     // distância boa até o oponente (onde ele vai estar)
     const fx = perc.x + perc.vx * H * 0.5, fy = perc.y;
     const dx = fx - s.x, dy = fy - s.y;
@@ -352,10 +380,13 @@ function decidir(bot, M, b, o, perc) {
     if (pegaCarta) nota += 30 * bot.coleta;
     // caminho até o alvo (pelo mapa de plataformas)
     if (nav) {
+      const peso = Math.max(bot.coleta, 0.6) * (bot.impaciente ? 1.6 : 1);
       const nd = Math.abs(nav.x - s.x) + Math.abs(nav.y - s.y) * 1.4;
-      nota -= nd * 0.05 * bot.coleta;
-      if (chegou) nota += 14 * bot.coleta;
+      nota -= nd * 0.05 * peso;
+      if (chegou) nota += 14 * peso;
     }
+    // impaciente: chega mais perto
+    if (bot.impaciente) nota -= Math.max(0, dist - pref * 0.6) * 0.03;
     // perigos e truques do cenário
     if (s.y + s.r > lava - 40) nota -= 18;
     if (cen.queda) {
@@ -406,10 +437,12 @@ function mirarBot(bot, M, b, perc) {
     const angCanvas = th === null ? -0.75 * sinal : -th * sinal;
     ang = tx >= b.x ? angCanvas : Math.PI - angCanvas;
   } else ang = Math.atan2(ty - b.y, tx - b.x);
-  // erro de mira que muda devagar (não é tremedeira)
+  // erro de mira que muda devagar (não é tremedeira). Guarda a mira ideal para DECIDIR se atira;
+  // o erro só entra no tiro de verdade (antes ele não atirava porque a simulação já contava o erro)
   bot.trocaRuido -= FIS.dt;
   if (bot.trocaRuido <= 0) { bot.trocaRuido = 0.35 + Math.random() * 0.4; bot.alvoRuido = (Math.random() + Math.random() - 1) * bot.erroMira * 1.7; }
   bot.ruidoMira += (bot.alvoRuido - bot.ruidoMira) * 0.08;
+  bot.angIdeal = ang;
   return ang + bot.ruidoMira;
 }
 
@@ -479,6 +512,11 @@ function pensarBot(bot, M, b) {
   const ent = { esq: false, dir: false, pulo: false, segPulo: false, baixo: false, tiro: false };
   if (!b.viva) return ent;
   const perc = oponentePercebido(bot, o, M);
+  // relógio de paciência: se ninguém causou dano há 3 s, o bot parte para cima / procura ângulo
+  const danoAgora = M.stats.dano[0] + M.stats.dano[1];
+  if (danoAgora !== bot.ultimoDano) { bot.ultimoDano = danoAgora; bot.semDano = 0; }
+  else bot.semDano = (bot.semDano || 0) + FIS.dt;
+  bot.impaciente = bot.semDano > 3;
 
   bot.proxDecisao -= FIS.dt;
   if (bot.proxDecisao <= 0 || !bot.plano) {
@@ -495,13 +533,13 @@ function pensarBot(bot, M, b) {
   const a = ARMA[b.arma];
   if (!o.viva || M.t < bot.hesitouAte) return ent;
   const fantasma = o.efeitos.fantasma > 0;
-  const bom = !fantasma && tiroAcerta(bot, M, b, perc, ang);
+  const bom = !fantasma && tiroAcerta(bot, M, b, perc, bot.angIdeal);
   if (bom) {
     if (b.cad <= 0 && Math.random() < bot.hesita) { bot.hesitouAte = M.t + 0.15; return ent; }
     ent.tiro = true;
-  } else if (a.tipo !== "mina" && a.tipo !== "melee" && (b.municao === Infinity || b.municao > (a.municao || 1) * 0.3) && alinhado(M, b, perc, ang)) {
-    // na direção certa e com munição sobrando: atira "pressionando" (como um humano faz)
-    if (Math.random() < bot.pressiona * (fantasma ? 0.4 : 1)) ent.tiro = true;
+  } else if (a.tipo !== "mina" && a.tipo !== "melee" && (b.municao === Infinity || b.municao > (a.municao || 1) * 0.3) && alinhado(M, b, perc, bot.angIdeal)) {
+    // na direção certa e com munição sobrando: atira "pressionando" (como um humano faz); impaciente atira mais
+    if (Math.random() < bot.pressiona * (fantasma ? 0.4 : 1) * (bot.impaciente ? 2 : 1)) ent.tiro = true;
   } else if (Math.random() < bot.chuta && a.tipo !== "mina") ent.tiro = true;
   return ent;
 }

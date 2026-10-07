@@ -30,7 +30,8 @@ function saveNovo() {
     dobrar: 0,        // (antigo, não usado)
     xp: 0, nivel: 1,  // nível do jogador
     diario: null,     // recompensa diária: { ultimo: dia, seq: 1..7 }
-    recordeOnda: 0    // modo sobrevivência
+    recordeOnda: 0,   // modo sobrevivência
+    qualidade: "auto" // "auto" | "alta" | "leve"
   };
 }
 

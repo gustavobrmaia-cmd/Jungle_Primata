@@ -47,9 +47,9 @@ const CENARIOS = [
     spawn: [[180, 500], [1100, 500]],
     plataformas: [
       { x: 40, y: 560, w: 280, h: 30 }, { x: 960, y: 560, w: 280, h: 30 },
-      { x: 470, y: 520, w: 340, h: 30 },
-      { x: 200, y: 430, w: 200, h: 26 }, { x: 880, y: 430, w: 200, h: 26 },
-      { x: 540, y: 310, w: 200, h: 26 },
+      { x: 470, y: 520, w: 340, h: 30, fina: true },
+      { x: 200, y: 430, w: 200, h: 26, fina: true }, { x: 880, y: 430, w: 200, h: 26, fina: true },
+      { x: 540, y: 310, w: 200, h: 26, fina: true },
       { x: 240, y: 200, w: 160, h: 22, fina: true }, { x: 880, y: 200, w: 160, h: 22, fina: true }] },
 
   { id: "espaco", semGravidade: true,
@@ -116,17 +116,17 @@ const CENARIOS = [
     plataformas: [
       { x: 0, y: 660, w: 640, h: 60, esteira: -2.2 }, { x: 640, y: 660, w: 640, h: 60, esteira: 2.2 },
       { x: 130, y: 540, w: 300, h: 24, esteira: 2.8 }, { x: 850, y: 540, w: 300, h: 24, esteira: -2.8 },
-      { x: 490, y: 420, w: 300, h: 24 },
+      { x: 490, y: 420, w: 300, h: 24, fina: true },
       { x: 150, y: 300, w: 200, h: 22, fina: true }, { x: 930, y: 300, w: 200, h: 22, fina: true },
       { x: 560, y: 300, w: 160, h: 20, move: { dx: 0, dy: -120, periodo: 4 } }] },
 
   { id: "oceano", agua: true, gravidade: 0.35,
     spawn: [[250, 600], [1030, 600]],
     plataformas: [CHAO,
-      { x: 150, y: 540, w: 200, h: 30 }, { x: 930, y: 540, w: 200, h: 30 },
-      { x: 520, y: 430, w: 240, h: 30 },
-      { x: 280, y: 300, w: 180, h: 24 }, { x: 820, y: 300, w: 180, h: 24 },
-      { x: 560, y: 180, w: 160, h: 24 }] },
+      { x: 150, y: 540, w: 200, h: 30, fina: true }, { x: 930, y: 540, w: 200, h: 30, fina: true },
+      { x: 520, y: 430, w: 240, h: 30, fina: true },
+      { x: 280, y: 300, w: 180, h: 24, fina: true }, { x: 820, y: 300, w: 180, h: 24, fina: true },
+      { x: 560, y: 180, w: 160, h: 24, fina: true }] },
 
   { id: "templo", atravessaLados: true,
     spawn: [[300, 600], [980, 600]],
@@ -140,10 +140,10 @@ const CENARIOS = [
   { id: "castelo", meteoros: 2.4,
     spawn: [[230, 600], [1050, 600]],
     plataformas: [CHAO,
-      { x: 100, y: 540, w: 220, h: 30 }, { x: 960, y: 540, w: 220, h: 30 },
-      { x: 500, y: 420, w: 280, h: 30 },
-      { x: 230, y: 300, w: 180, h: 24 }, { x: 870, y: 300, w: 180, h: 24 },
-      { x: 560, y: 180, w: 160, h: 24 }] }
+      { x: 100, y: 540, w: 220, h: 30, fina: true }, { x: 960, y: 540, w: 220, h: 30, fina: true },
+      { x: 420, y: 420, w: 440, h: 30, fina: true },
+      { x: 230, y: 300, w: 180, h: 24, fina: true }, { x: 870, y: 300, w: 180, h: 24, fina: true },
+      { x: 560, y: 180, w: 160, h: 24, fina: true }] }
 ];
 
 const CENARIO = {};

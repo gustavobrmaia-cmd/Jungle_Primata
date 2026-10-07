@@ -86,6 +86,11 @@ button.modo + button.modo { background: linear-gradient(#f06595, #c2255c); borde
 .modo .icone { font-size: 84px; line-height: 1; }
 .modo .nome { font-size: 40px; }
 .modo .dica { font-size: 18px; font-weight: 700; opacity: 0.9; white-space: pre-line; line-height: 1.35; }
+.modo .selo { font-size: 17px; font-weight: 800; background: rgba(0,0,0,0.25); border-radius: 999px; padding: 4px 14px; }
+/* celular: o "2 jogadores" (no mesmo aparelho) vai por último e menor; contra o bot é o destaque */
+body.toque button.modo[data-acao="modo2p"] { order: 3; width: 300px; min-height: 200px; }
+body.toque button.modo[data-acao="modo2p"] .icone { font-size: 56px; }
+body.toque button.modo[data-acao="modo2p"] .nome { font-size: 30px; }
 
 #listaIdiomas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 #listaIdiomas button { min-width: 0; width: 280px; font-size: 24px; padding: 12px; }
@@ -106,6 +111,10 @@ body.retrato .modos { flex-direction: column; }
 body.retrato button.modo { width: 760px; min-height: 300px; }
 body.retrato .modo .nome { font-size: 54px; }
 body.retrato .modo .dica { font-size: 26px; }
+body.retrato .modo .selo { font-size: 24px; }
+body.retrato.toque button.modo[data-acao="modo2p"] { width: 760px; min-height: 0; padding: 18px; }
+body.retrato.toque button.modo[data-acao="modo2p"] .icone { font-size: 48px; }
+body.retrato.toque button.modo[data-acao="modo2p"] .nome { font-size: 40px; }
 body.retrato .linha { flex-direction: column; }
 body.retrato #listaIdiomas { grid-template-columns: repeat(2, 1fr); }
 body.retrato #listaIdiomas button { width: 420px; font-size: 34px; }

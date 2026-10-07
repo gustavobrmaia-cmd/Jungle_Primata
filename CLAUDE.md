@@ -26,7 +26,7 @@ Combinado com o dono do jogo. Qualquer versão nova TEM que manter isto:
 - `gameplayStart`: só depois da 1ª interação. `gameplayStop`: em pausa, menu, fim, anúncio e aba escondida.
 - `commercialBreak` (`Poki.intervalo()`) antes de TODA volta ao jogo: começar, próxima fase, recomeçar.
   - O Poki decide se mostra. Sem timer, sorteio ou limite nosso.
-  - Exceção: a primeira partida de quem acabou de chegar.
+  - Exceção: a primeira partida de quem acabou de chegar (e, entre as rodadas, as 2 primeiras partidas).
 - `rewardedBreak` (`Poki.premiado(tamanho)`) só quando o jogador escolhe. Nunca soltar comercial comum logo depois de um premiado.
 - Durante anúncio: jogo parado e mudo.
 - Rede de segurança: o anúncio tem que começar em 4 s (comercial) ou 8 s (premiado), com limite de 60 s.
@@ -38,6 +38,9 @@ Combinado com o dono do jogo. Qualquer versão nova TEM que manter isto:
 - Arte desenhada no canvas ou pixel art pequena.
 - Loop de passo fixo (1/60 s). Resolução lógica 1280x720 escalada.
 - Celular em pé suportado (tela mais alta, sem pedir para girar).
+- Modo leve (`CONFIG.leve`; Opções > Gráficos: automático/altos/leves, `save.qualidade`): automático em aparelho de toque
+  ou com pouca memória/poucos núcleos. Menos partículas (300) e a luta do fundo dos menus desenhada a 30 qps.
+- Sprites de armas, cartas e efeitos são preparados logo no começo, em pedaços (evita engasgo no 1º uso).
 - Teclado, toque e controle viram as mesmas ações (`js/entrada.js`).
 - Save em localStorage dentro de try/catch.
 - Meta: abrir em ~1 s.
@@ -65,19 +68,26 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
 
 ## O jogo atual: Crazy Balls Duel
 - Duas bolinhas (cores sorteadas). Modos: contra o bot, 2 jogadores no mesmo aparelho, e a demo (bot x bot no fundo dos menus).
-- Partida até 5 pontos. Rodada de 45 s num cenário diferente; últimos 10 s com dano em dobro.
+- Partida até 5 pontos (a 1ª partida da vida, contra o bot, vai até 3: `CONFIG.pontosPrimeira`). Rodada de 45 s num cenário diferente; últimos 10 s com dano em dobro.
   Se ninguém morrer: queda de braço (quem clicar mais vence; quem tem mais vida começa na frente).
-- Os dois começam a rodada com a mesma arma sorteada; caixas de arma caem; cartas de habilidade aparecem.
+- Os dois começam a rodada com a mesma arma sorteada; caixas de arma caem (1ª aos 1,5 s, depois a cada ~4 s);
+  cartas de habilidade aparecem (1ª aos ~4 s).
+- 1ª visita: cai direto numa partida contra o bot (sem tela de modo). "2 jogadores" tem o selo "mesmo aparelho · não é
+  online" (no playtest acharam que era online) e, no celular, fica por último e menor.
+- Plataformas finas (`fina: true`) deixam o tiro passar; nas grossas a linha da mira para e mostra um X vermelho,
+  e o tiro que bate na parede faz som (só para o humano). Muitos mapas usam plataformas finas no meio.
 - Mira assistida igual para jogador e bot. Sem sangue (acerto = faíscas; derrota = estouro em confete).
 - Bot: simula a física para frente e escolhe o melhor movimento; só atira quando a simulação diz que acerta.
   O nível (save.nivelBot, 0,12 a 0,95) muda depois de cada partida pelo desempenho do jogador (mira em ~50% de vitórias).
 - Anúncio comum: antes de cada partida (menos a 1ª e logo depois de um premiado) E entre as rodadas (pausa natural;
-  o Poki decide se mostra; nas 2 primeiras rodadas da 1ª partida não pede). Premiados (opcionais): "Partida Lendária"
+  o Poki decide se mostra; nas 2 primeiras partidas não pede entre as rodadas — no playtest, gente saía nessa hora). Premiados (opcionais): "Partida Lendária"
   (só armas raras para os dois), "Continuar" (perdeu para o bot: o bot perde o último ponto) e "Dobrar moedas" (menu).
 - Plataformas: andares a cada <= 120 px (o pulo normal alcança ~143 px). Conferir com a simulação de alcance ao mudar mapa.
 - Controles (PC): ESPAÇO pula (W também), mouse mira o tempo todo, CLIQUE ESQUERDO atira (F também); teclas trocáveis
   (save.teclas) e todos os textos mostram as teclas escolhidas. Toque: esquerda = analógico de andar; direita em cima = PULO,
   direita embaixo = analógico de mira/tiro. Controle: analógico direito mira. Bot também mira livre.
+- Bot: decide atirar pela mira ideal (sem o ruído), tem "paciência" (3 s sem dano → fica impaciente: procura um ponto com
+  linha de visão até o jogador, chega mais perto e atira mais), quase não pula à toa quando está parado.
 - Bot: 5 personalidades sorteadas por partida (agressivo, atirador, saltitante, cauteloso, colecionador), aparece no HUD.
 - gameplayStop no fim de cada rodada e gameplayStart quando a próxima começa (além de pausa, menus e anúncios).
 - Progresso (js/jogo/progresso): moedas, 3 missões, 4 desafios da semana (skin exclusiva), 27 conquistas, 30 skins,

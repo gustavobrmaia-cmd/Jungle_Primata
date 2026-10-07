@@ -196,18 +196,38 @@ function desenharGuiaMira(ctx, M, b, ang) {
   const boca = pontaDoCano(b, ang);
   const g = (a.grav || 0) * gravidadeDe(M.cen) * gravSinal(M.cen, M.t);
   const v = (a.vel || 18) * (M.cen.agua ? 0.7 : 1);
+  const atravessa = a.atravessa || a.perfuraParede;
   let x = boca.x, y = boca.y, vx = Math.cos(ang) * v, vy = Math.sin(ang) * v;
+  const passos = g ? 46 : 26, cada = g ? 3 : 2;
+  let bateu = !atravessa && dentroDeSolida(M, x, y, a.raio || 4) ? { x: x, y: y } : null;   // cano já dentro da plataforma
   ctx.save();
   ctx.fillStyle = b.cor;
-  const passos = g ? 46 : 12, cada = g ? 3 : 1;
-  for (let k = 1; k <= passos; k++) {
+  for (let k = 1; k <= passos && !bateu; k++) {
     if (g) vy += g;
-    x += vx * (g ? 1 : 0.9); y += vy * (g ? 1 : 0.9);
+    const nx = x + vx * (g ? 1 : 0.9), ny = y + vy * (g ? 1 : 0.9);
+    // o tiro bate numa plataforma grossa? a linha para ali e mostra um X vermelho
+    // (mesma conta do tiro de verdade: ponto final e meio do caminho)
+    if (!atravessa) {
+      const r = a.raio || 4, mx = (x + nx) / 2, my = (y + ny) / 2;
+      if (dentroDeSolida(M, mx, my, r)) { bateu = { x: mx, y: my }; break; }
+      if (dentroDeSolida(M, nx, ny, r)) { bateu = { x: nx, y: ny }; break; }
+    }
+    x = nx; y = ny;
     if (k % cada) continue;
     const alfa = 0.75 * (1 - k / passos);
     if (alfa <= 0.05) break;
     ctx.globalAlpha = alfa;
     ctx.beginPath(); ctx.arc(x, y, g ? 3.2 : 2.6, 0, 7); ctx.fill();
+  }
+  if (bateu) {
+    // X que pulsa, com borda escura para aparecer em qualquer cenário
+    const r = 10 + Math.sin(M.t * 10) * 2;
+    ctx.globalAlpha = 0.95; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(bateu.x - r, bateu.y - r); ctx.lineTo(bateu.x + r, bateu.y + r);
+    ctx.moveTo(bateu.x + r, bateu.y - r); ctx.lineTo(bateu.x - r, bateu.y + r);
+    ctx.strokeStyle = "#3a0a14"; ctx.lineWidth = 8; ctx.stroke();
+    ctx.strokeStyle = "#ff4d5e"; ctx.lineWidth = 4.5; ctx.stroke();
   }
   ctx.restore();
 }

@@ -32,6 +32,16 @@ function ajustarTela() {
 window.addEventListener("resize", ajustarTela);
 window.addEventListener("orientationchange", function() { setTimeout(ajustarTela, 150); });
 
+// ---------- qualidade ----------
+// "auto": leve em aparelho de toque ou com pouca memória/poucos núcleos (a maioria dos celulares).
+function aplicarQualidade() {
+  const q = save.qualidade;
+  const fraco = entrada.toque || (navigator.deviceMemory && navigator.deviceMemory <= 4) ||
+    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+  CONFIG.leve = q === "leve" || (q !== "alta" && !!fraco);
+  document.body.classList.toggle("toque", !!entrada.toque);
+}
+
 // ---------- loop ----------
 let ultimo = performance.now();
 let acumulado = 0;
@@ -77,7 +87,9 @@ function quadro(agora) {
   } else {
     acumulado = 0;
   }
-  protegido(desenharJogo, ctx);
+  // modo leve: a luta de fundo dos menus é desenhada a 30 qps (metade do trabalho)
+  quadro.par = !quadro.par;
+  if (!(CONFIG.leve && estado !== "jogo" && jogo && jogo.demo && quadro.par)) protegido(desenharJogo, ctx);
   if (estado === "skins") protegido(desenharPreviaSkin, agora / 1000);
   if (estado === "recompensa") protegido(desenharRecompensa, agora / 1000);
   if (estado === "diaria") protegido(desenharDiaria, agora / 1000);
@@ -91,12 +103,13 @@ function quadro(agora) {
     save.teclas[1].pulo = ["Space", "KeyW"]; salvar();
   }
   entrada.refazerMapa();
+  aplicarQualidade();
   Progresso.preparar();
   ajustarTela();
   montarTelas();
   carregarIdioma(detectarIdioma(save.idioma)).then(function() {
-    // 1ª visita: vai direto escolher o modo e jogar; depois: menu
-    if (save.partidas === 0) abrirModo();
+    // 1ª visita: cai direto numa partida contra o bot (sem escolher modo); depois: menu
+    if (save.partidas === 0) comecarPartida("bot");
     else irParaMenu("");
     requestAnimationFrame(quadro);
     // o SDK carrega em paralelo; o jogo não espera por ele para aparecer
@@ -105,11 +118,13 @@ function quadro(agora) {
       Eventos.inicioDaVisita();
       atualizarTextos();   // o botão do anúncio premiado aparece quando o SDK fica pronto
     });
-    // prepara os desenhos das armas e cartas ainda no menu (evita engasgo na 1ª vez que aparecem)
-    setTimeout(function() {
-      if (typeof ArteArmas !== "undefined" && ArteArmas.aquecer) ArteArmas.aquecer();
-      if (typeof ArteCartas !== "undefined" && ArteCartas.aquecer) ArteCartas.aquecer();
-      if (typeof Efeitos !== "undefined" && Efeitos.preparar) Efeitos.preparar();
-    }, 400);
+    // prepara os desenhos das armas, cartas e efeitos antes de aparecerem (evita engasgo no 1º uso),
+    // em pedaços separados para nenhum quadro travar muito (no celular cada pedaço custa mais)
+    const aquecer = [
+      function() { if (typeof ArteArmas !== "undefined" && ArteArmas.aquecer) ArteArmas.aquecer(); },
+      function() { if (typeof ArteCartas !== "undefined" && ArteCartas.aquecer) ArteCartas.aquecer(); },
+      function() { if (typeof Efeitos !== "undefined" && Efeitos.preparar) Efeitos.preparar(); }
+    ];
+    aquecer.forEach(function(f, i) { setTimeout(function() { protegido(f); }, 300 + i * 250); });
   });
 })();

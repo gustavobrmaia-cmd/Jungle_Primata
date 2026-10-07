@@ -208,7 +208,8 @@ const Efeitos = (function() {
   // ---------- criação de partículas ----------
   function nova(tipo, x, y, vx, vy, vida, tam, tamf, c, grav, arr, alfa, rot, vrot, estilo, pico) {
     var i;
-    if (n < MAX) i = n++; else i = (rnd() * MAX) | 0;        // pool cheio: sobrescreve uma qualquer
+    var lim = (typeof CONFIG !== "undefined" && CONFIG.leve) ? 300 : MAX;   // modo leve: bem menos partículas
+    if (n < lim) i = n++; else i = (rnd() * lim) | 0;        // pool cheio: sobrescreve uma qualquer
     X[i] = x; Y[i] = y; VX[i] = vx; VY[i] = vy; VIDA[i] = VMAX[i] = vida; TAM[i] = tam; TAMF[i] = tamf;
     PICO[i] = pico === undefined ? -1 : pico; ROT[i] = rot || 0; VROT[i] = vrot || 0; GRAV[i] = grav || 0; ARR[i] = arr || 0;
     ALFA[i] = alfa === undefined ? 1 : alfa; TIPO[i] = tipo; CID[i] = c || 0; ESTILO[i] = estilo || 0;
