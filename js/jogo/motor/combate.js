@@ -27,6 +27,20 @@ function equipar(b, id) {
 // na frente (igual para o jogador e para o bot). Armas com gravidade calculam o arco para cair nele.
 function calcularMira(M, b) {
   const a = ARMA[b.arma];
+  // mira livre do jogador: vai exatamente para onde ele aponta (e a bolinha vira para esse lado)
+  if (b.miraLivre !== null && b.miraLivre !== undefined) {
+    b.dir = Math.cos(b.miraLivre) >= 0 ? 1 : -1;
+    if (a.tipo === "melee" || a.tipo === "mina" || a.tipo === "ceu") return b.dir > 0 ? 0 : Math.PI;
+    // "ímã" leve para o jogador: se a mira passa quase em cima do oponente (tiro reto), vai certinho nele
+    const o2 = oponente(M, b);
+    if (b.humano && o2.viva && !(o2.efeitos.fantasma > 0) && !(a.grav > 0.05)) {
+      const alvo = Math.atan2(o2.y - b.y, o2.x - b.x);
+      const dist = Math.sqrt((o2.x - b.x) * (o2.x - b.x) + (o2.y - b.y) * (o2.y - b.y)) || 1;
+      const ima = Math.min(0.14, Math.atan2(o2.r * 0.9, dist));
+      if (Math.abs(difAng(alvo, b.miraLivre)) < ima) return alvo;
+    }
+    return b.miraLivre;
+  }
   const o = oponente(M, b);
   const base = b.dir > 0 ? 0 : Math.PI;
   const sinal = gravSinal(M.cen, M.t);
@@ -401,6 +415,8 @@ function causarDano(M, b, dano, atacante, nx, ny, empurra, fx, fy) {
     if (dano <= 0) return;
   }
   b.vida -= dano;
+  b.danoRecebido = (b.danoRecebido || 0) + dano;
+  if (atacante && atacante !== b) { b.ultimoAtacante = atacante.lado; b.ultimaArmaAtk = atacante.arma; }
   b.flash = 1;
   b.dor = 0.35;
   if (atacante && atacante !== b) {

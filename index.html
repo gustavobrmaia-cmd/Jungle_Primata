@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Duelo de Bolinhas</title>
+  <title>Crazy Balls Duel</title>
   <!-- SDK do Poki no <head>, como pede a documentação (sem ele o jogo funciona igual, só sem anúncios) -->
   <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
   <link rel="stylesheet" href="estilo.css">
@@ -19,15 +19,73 @@
 
     <!-- Menu principal (a luta de demonstração roda no fundo) -->
     <div id="telaMenu" class="tela">
+      <div class="moedas" id="menuMoedas"></div>
       <h1 data-t="titulo"></h1>
       <p class="resultado" id="menuResultado"></p>
+      <div class="ganho escondido" id="menuGanho">
+        <span id="menuGanhoTexto"></span>
+        <button class="premiado pequeno" data-acao="dobrar" id="btnDobrar"></button>
+      </div>
       <div class="botoes">
         <button class="grande" data-acao="jogar" data-t="jogar"></button>
         <div class="linha">
-          <button data-acao="idiomas" data-t="idioma"></button>
-          <button data-acao="som" id="btnSom"></button>
+          <button data-acao="missoes"><span data-t="missoes"></span><span class="selo escondido" id="seloMissoes"></span></button>
+          <button data-acao="skins" data-t="skins"></button>
+          <button data-acao="opcoes" data-t="opcoes"></button>
         </div>
       </div>
+    </div>
+
+    <!-- Opções -->
+    <div id="telaOpcoes" class="tela">
+      <h2 data-t="opcoes"></h2>
+      <div class="botoes">
+        <button data-acao="idiomas" data-t="idioma"></button>
+        <button data-acao="som" id="btnSom"></button>
+        <button data-acao="controles" data-t="controles"></button>
+        <button data-acao="voltar" data-t="voltar"></button>
+      </div>
+    </div>
+
+    <!-- Troca de teclas -->
+    <div id="telaControles" class="tela">
+      <h2 data-t="controles"></h2>
+      <div id="gradeTeclas"></div>
+      <p class="info pequena" data-t="controles_mouse"></p>
+      <div class="linha">
+        <button data-acao="teclasPadrao" data-t="teclas_padrao"></button>
+        <button data-acao="voltarOpcoes" data-t="voltar"></button>
+      </div>
+    </div>
+
+    <!-- Missões, desafios da semana e conquistas -->
+    <div id="telaMissoes" class="tela painel">
+      <div class="topo">
+        <div class="abas">
+          <button data-aba="missoes" data-t="missoes"></button>
+          <button data-aba="semana" data-t="semana"></button>
+          <button data-aba="conquistas" data-t="conquistas"></button>
+        </div>
+        <div class="moedas" id="missoesMoedas"></div>
+      </div>
+      <div class="lista" id="listaMissoes"></div>
+      <button data-acao="voltar" data-t="voltar"></button>
+    </div>
+
+    <!-- Skins: guarda-roupa e loja -->
+    <div id="telaSkins" class="tela painel">
+      <div class="topo">
+        <div class="abas">
+          <button data-aba="corpo" data-t="skins_corpo"></button>
+          <button data-aba="acessorio" data-t="skins_acessorio"></button>
+        </div>
+        <div class="moedas" id="skinsMoedas"></div>
+      </div>
+      <div class="loja">
+        <div class="previa"><canvas id="previaSkin" width="300" height="300"></canvas><p id="previaNome"></p></div>
+        <div class="grade" id="gradeSkins"></div>
+      </div>
+      <button data-acao="voltar" data-t="voltar"></button>
     </div>
 
     <!-- Escolha do modo: contra o bot ou 2 jogadores -->
@@ -53,7 +111,7 @@
     <div id="telaIdiomas" class="tela">
       <h2 data-t="idioma"></h2>
       <div id="listaIdiomas"></div>
-      <button data-acao="voltar" data-t="voltar"></button>
+      <button data-acao="voltarOpcoes" data-t="voltar"></button>
     </div>
 
     <!-- Pausa -->
@@ -90,7 +148,9 @@
   <script src="js/jogo/dados/armas.js"></script>
   <script src="js/jogo/dados/cenarios.js"></script>
   <script src="js/jogo/dados/cartas.js"></script>
+  <script src="js/jogo/dados/skins.js"></script>
   <script src="js/jogo/arte/efeitos.js"></script>
+  <script src="js/jogo/arte/skins.js"></script>
   <script src="js/jogo/arte/bolinhas.js"></script>
   <script src="js/jogo/arte/armas.js"></script>
   <script src="js/jogo/arte/cartas.js"></script>
@@ -100,8 +160,11 @@
   <script src="js/jogo/motor/combate.js"></script>
   <script src="js/jogo/motor/bot.js"></script>
   <script src="js/jogo/motor/partida.js"></script>
+  <script src="js/jogo/progresso/dados.js"></script>
+  <script src="js/jogo/progresso/progresso.js"></script>
   <script src="js/jogo/desenho.js"></script>
   <script src="js/interface/telas.js"></script>
+  <script src="js/interface/menus.js"></script>
   <script src="js/nucleo/main.js"></script>
 </body>
 </html>

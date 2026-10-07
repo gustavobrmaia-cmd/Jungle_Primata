@@ -16,10 +16,39 @@ const RODADA = { intro: 1.3, introPrimeira: 1.7, luta: 20, fim: 1.8, quedaIntro:
 
 let jogo = null;   // a partida atual (de verdade ou a de demonstração)
 
+// Progresso conta só o jogador 1 (o dono do aparelho), e nunca na demonstração
+function registrar(j, lado, chave, n, extra) {
+  if (j.demo || lado !== 1 || typeof Progresso === "undefined") return;
+  Progresso.registrar(chave, n, extra);
+}
+
 function embaralhar(lista) {
   const l = lista.slice();
   for (let i = l.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const x = l[i]; l[i] = l[j]; l[j] = x; }
   return l;
+}
+
+// Skins: o jogador 1 usa a que escolheu; o oponente (bot ou jogador 2) ganha uma sorteada.
+// Skins de cor própria (ouro, galáxia...) trocam a cor da bolinha, e a do oponente sempre fica bem diferente.
+function escolherSkins(j) {
+  const sorteio = function() {
+    const c = SKINS_CORPO[Math.floor(Math.random() * SKINS_CORPO.length)].id;
+    const a = Math.random() < 0.5 ? "nenhum" : SKINS_ACESSORIO[1 + Math.floor(Math.random() * (SKINS_ACESSORIO.length - 1))].id;
+    return { corpo: c, acessorio: a };
+  };
+  const s1 = j.demo ? sorteio() : { corpo: save.skinCorpo || "classico", acessorio: save.skinAcessorio || "nenhum" };
+  let s2 = sorteio();
+  if (SKIN[s1.corpo] && SKIN[s1.corpo].cor !== "jogador") j.cores[0] = SKIN[s1.corpo].cor;
+  const fixa2 = SKIN[s2.corpo].cor !== "jogador" ? SKIN[s2.corpo].cor : null;
+  if (fixa2 && distanciaCor(fixa2, j.cores[0]) > 140) j.cores[1] = fixa2;
+  else {
+    if (fixa2) s2.corpo = "classico";
+    if (distanciaCor(j.cores[1], j.cores[0]) <= 140) {
+      const alt = CORES_BOLINHAS.filter(function(c) { return distanciaCor(c, j.cores[0]) > 140; });
+      j.cores[1] = alt[Math.floor(Math.random() * alt.length)] || "#4dabf7";
+    }
+  }
+  j.skins = [s1, s2];
 }
 
 function sortearCores() {
@@ -60,6 +89,12 @@ function novaPartida(modo, opcoes) {
     banner: null,
     tempoReal: 0
   };
+  escolherSkins(jogo);
+  // prepara a cena da queda de braço já no começo da partida (as cores não mudam até o fim)
+  if (modo !== "demo" && typeof ArteQueda !== "undefined" && ArteQueda.preparar) {
+    const cores = jogo.cores;
+    setTimeout(function() { try { ArteQueda.preparar(cores[0], cores[1], CONFIG.largura, alturaTela); } catch (e) { /* sem queda pronta: faz na hora */ } }, 50);
+  }
   if (modo === "bot") jogo.bots[1] = criarBot(2, jogo.nivelBot);
   if (modo === "demo") { jogo.bots[0] = criarBot(1, 0.75); jogo.bots[1] = criarBot(2, 0.75); jogo.alvo = 99; }
   entrada.solo = modo !== "2p";
@@ -160,7 +195,7 @@ function passoMundo(j, M, controles, lento) {
     const bot = j.bots[k];
     if (!controles || !b.viva) ent = PARADO;
     else if (bot) ent = pensarBot(bot, M, b);
-    else ent = entradaHumana(b.lado);
+    else ent = entradaHumana(b.lado, b);
     b.ent = ent;
     const yAntes = b.vy;
     moverBolinha(b, ent, M.cen, M.plats, M.t, M.bumpers);
@@ -189,18 +224,26 @@ function passoMundo(j, M, controles, lento) {
       const b = M.bolinhas[p.lado - 1];
       if (typeof Efeitos !== "undefined") Efeitos.texto(b.x, b.y - b.r - 34, t("a_" + p.arma), ["#ffffff", "#ffffff", "#d0bfff", "#ffd43b"][ARMA[p.arma].raridade]);
       if (!j.demo && (p.lado === 1 || j.modo === "2p")) Poki.medir("weapon", p.arma, "interact");
+      registrar(j, p.lado, "caixas", 1, { arma: p.arma });
     });
     M.pegou = null;
   }
   if (!j.demo && M.ultimaCarta && !M.ultimaCarta.medida) {
     M.ultimaCarta.medida = true;
     if (M.ultimaCarta.lado === 1 || j.modo === "2p") Poki.medir("card", M.ultimaCarta.id, "interact");
+    registrar(j, M.ultimaCarta.lado, "cartas", 1, { carta: M.ultimaCarta.id });
   }
 }
 const PARADO = { esq: false, dir: false, pulo: false, segPulo: false, baixo: false, tiro: false, apertouTiro: false };
 
-function entradaHumana(j) {
+function entradaHumana(j, b) {
   const apertouTiro = entrada.apertou(j, "tiro");
+  entrada.apertou(j, "toque");
+  // mira livre (mouse, analógico de mira no toque, analógico direito do controle) ou assistida (null)
+  const m = entrada.mira(j);
+  if (!m) b.miraLivre = null;
+  else if (m.ang !== undefined) b.miraLivre = m.ang;
+  else b.miraLivre = Math.atan2(m.y - deslocMundo() - b.y, m.x - b.x);
   return {
     esq: entrada.segurando(j, "esquerda"),
     dir: entrada.segurando(j, "direita"),
@@ -234,6 +277,20 @@ function fecharRodada(j) {
     j.total.acertos[k] += M.stats.acertos[k];
   }
   j.total.rodadas.push(v);
+  registrar(j, 1, "dano", Math.round(M.stats.dano[0]));
+  if (v === 1) {
+    const [b1, b2] = M.bolinhas;
+    registrar(j, 1, "rodadas", 1, { cenario: M.cen.id });
+    if (!(b1.danoRecebido > 0)) registrar(j, 1, "perfeitas", 1);
+    if (!b2.viva && b2.ultimoAtacante === 1 && b2.ultimaArmaAtk) {
+      const a = ARMA[b2.ultimaArmaAtk];
+      if (a.explode || a.tipo === "ceu") registrar(j, 1, "abatesExpl", 1);
+      if (a.tipo === "melee") registrar(j, 1, "abatesMelee", 1);
+    }
+    if (j.queda && j.queda.vencedor === 1) registrar(j, 1, "quedas", 1);
+  }
+  // maior desvantagem do jogador 1 na partida (para a conquista da virada)
+  j.piorDiferenca = Math.max(j.piorDiferenca || 0, j.pontos[1] - j.pontos[0]);
   if (!j.demo && j.modo === "bot") Poki.medir("arena", M.cen.id, v === 1 ? "complete" : "fail");
   if (j.pontos[0] >= j.alvo || j.pontos[1] >= j.alvo) {
     j.vencedorPartida = j.pontos[0] > j.pontos[1] ? 1 : 2;
@@ -242,7 +299,25 @@ function fecharRodada(j) {
     return;
   }
   if (j.demo && j.rodada > 40) { novaPartida("demo"); return; }
+  if (!j.demo) { proximaRodadaComIntervalo(j); return; }
   iniciarRodada();
+}
+
+// Entre as rodadas é uma pausa natural: pede o intervalo comercial ao Poki (ele decide se mostra; na
+// maioria das vezes não mostra, por causa do limite de frequência dele). Nas 2 primeiras rodadas da primeira
+// partida não pede nada (a pessoa acabou de chegar). O jogo fica parado e mudo enquanto o anúncio estiver na tela.
+function proximaRodadaComIntervalo(j) {
+  const novato = save.partidas <= 1 && j.rodada < 2;
+  if (novato || j.esperandoAnuncio) { iniciarRodada(); return; }
+  j.esperandoAnuncio = true;
+  j.fase = "intervalo";
+  Poki.jogando(false);
+  Poki.intervalo().then(function() {
+    j.esperandoAnuncio = false;
+    if (jogo !== j) return;               // saiu da partida enquanto isso
+    iniciarRodada();
+    if (estado === "jogo") Poki.jogando(true);
+  });
 }
 
 // ---------- queda de braço ----------
@@ -256,7 +331,6 @@ function comecarQueda(j) {
   j.total.quedas++;
   entrada.limparApertos();
   if (!j.demo) { Eventos.marco("arm-wrestling"); som("apito"); }
-  if (typeof ArteQueda !== "undefined" && ArteQueda.preparar) ArteQueda.preparar(j.cores[0], j.cores[1], CONFIG.largura, alturaTela);
   j.bots.forEach(function(bot) { if (bot) bot.proxClique = 0.25 + Math.random() * 0.3; });
 }
 
@@ -275,7 +349,11 @@ function atualizarQueda(j) {
     const bot = j.bots[k - 1];
     let clicou;
     if (bot) clicou = botClica(bot, q.t);
-    else clicou = entrada.apertou(k, "tiro") || entrada.apertou(k, "toque") || entrada.apertou(k, "pulo");
+    else {
+      // um clique/toque pode chegar como "tiro" e "toque" ao mesmo tempo: conta uma vez só
+      const a = entrada.apertou(k, "tiro"), b2 = entrada.apertou(k, "toque"), c = entrada.apertou(k, "pulo");
+      clicou = a || b2 || c;
+    }
     if (!clicou) continue;
     if (k === 1) { q.toques1++; q.pos -= PASSO_QUEDA; q.pulso1 = 1; }
     else { q.toques2++; q.pos += PASSO_QUEDA; q.pulso2 = 1; }
@@ -301,11 +379,12 @@ function desempenhoDoJogador(j) {
   return rodadas * 0.55 + dano * 0.45;
 }
 
-// O bot da próxima partida: se o jogador foi bem, fica mais forte; se foi mal, mais fraco.
-// Mira em ~50% de vitórias. Nunca abaixo de 0,12 nem acima de 0,95.
-function proximoNivelBot(nivel, desempenho) {
-  return limitar(nivel + (desempenho - 0.5) * 0.5, 0.12, 0.95);
+// O bot da próxima partida: se o jogador foi bem, fica BEM mais forte; se foi mal, mais fraco.
+// Mira em ~50% de vitórias. Vai de 0,1 (nível 1) a 1 (nível 10).
+function proximoNivelBot(nivel, desempenho, venceu) {
+  return limitar(nivel + (desempenho - 0.5) * 0.9 + (venceu ? 0.06 : -0.04), 0.1, 1);
 }
+function nivelBotTexto(nivel) { return Math.round(nivel * 9) + 1; }   // 1 a 10, para mostrar
 
 function terminarPartida() {
   const j = jogo;

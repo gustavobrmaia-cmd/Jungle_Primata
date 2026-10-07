@@ -106,6 +106,9 @@ function desenharJogo(ctx) {
   if (j.fase === "queda") desenharQueda(ctx, j, H);
   else desenharHud(ctx, j, M, dy);
   if (!j.demo) desenharControlesToque(ctx, j, H);
+  const cruz = !j.demo && estado === "jogo" && entrada.mouseAtivo && j.fase !== "queda";
+  if (cruz) desenharCruzMira(ctx, j);
+  if (cruz !== desenharJogo.cruz) { desenharJogo.cruz = cruz; canvas.style.cursor = cruz ? "none" : ""; }
 }
 
 function estadoCenario(j, M, dy) {
@@ -158,6 +161,8 @@ function desenharBolinhaNoMundo(ctx, j, M, b, o, tm) {
   d.escalaX = b.escalaX || 1; d.escalaY = (b.escalaY || 1) * (gravSinal(M.cen, tm) < 0 ? -1 : 1);
   d.flash = b.flash || 0; d.escudo = ef.escudo > 0; d.fantasma = fantasma; d.congelado = ef.congelado > 0;
   d.fogo = ef.fogo > 0; d.furia = ef.furia > 0; d.rapidez = ef.rapidez > 0; d.t = tm;
+  const sk = j.skins && j.skins[b.lado - 1];
+  d.skin = sk ? sk.corpo : "classico"; d.acessorio = sk ? sk.acessorio : "nenhum";
   if (temArte.bola) {
     if (!M.cen.semGravidade && !M.cen.inverte) ArteBolinha.sombra(ctx, b.x, chaoEmbaixo(M, b), b.r, chaoEmbaixo(M, b) - b.y - b.r);
     ArteBolinha.desenhar(ctx, d);
@@ -172,6 +177,7 @@ function desenharBolinhaNoMundo(ctx, j, M, b, o, tm) {
   const ang = a.tipo === "melee" || a.tipo === "mina" || a.tipo === "ceu" ? (b.dir > 0 ? 0 : Math.PI) : (b.mira === undefined ? 0 : b.mira);
   if (temArte.armas) ArteArmas.desenharNaMao(ctx, b.arma, b.x, b.y, ang, b.r, b.recuoAnim || 0, b.golpe > 0 ? 1 - b.golpe : 0);
   ctx.globalAlpha = 1;
+  if (!j.demo && b.miraLivre !== null && b.miraLivre !== undefined && j.fase === "luta") desenharGuiaMira(ctx, M, b, ang);
   // marcador acima da cabeça no modo 2 jogadores (P1 / P2) para ninguém se perder
   if (!j.demo && (j.modo === "2p" || b.lado === 1)) {
     const txt = j.modo === "2p" ? "P" + b.lado : t("voce_curto");
@@ -181,6 +187,47 @@ function desenharBolinhaNoMundo(ctx, j, M, b, o, tm) {
     const yy = b.y - b.r - 16 - (gravSinal(M.cen, tm) < 0 ? -2 * b.r - 32 : 0);
     if (fantasma === 0 || j.modo === "2p") { ctx.strokeText(txt, b.x, yy); ctx.fillText(txt, b.x, yy); }
   }
+}
+
+// Linha pontilhada da mira livre: reta para tiros normais, curva para granadas/flechas (mostra onde cai)
+function desenharGuiaMira(ctx, M, b, ang) {
+  const a = ARMA[b.arma];
+  if (a.tipo === "melee" || a.tipo === "mina" || a.tipo === "ceu") return;
+  const boca = pontaDoCano(b, ang);
+  const g = (a.grav || 0) * gravidadeDe(M.cen) * gravSinal(M.cen, M.t);
+  const v = (a.vel || 18) * (M.cen.agua ? 0.7 : 1);
+  let x = boca.x, y = boca.y, vx = Math.cos(ang) * v, vy = Math.sin(ang) * v;
+  ctx.save();
+  ctx.fillStyle = b.cor;
+  const passos = g ? 46 : 12, cada = g ? 3 : 1;
+  for (let k = 1; k <= passos; k++) {
+    if (g) vy += g;
+    x += vx * (g ? 1 : 0.9); y += vy * (g ? 1 : 0.9);
+    if (k % cada) continue;
+    const alfa = 0.75 * (1 - k / passos);
+    if (alfa <= 0.05) break;
+    ctx.globalAlpha = alfa;
+    ctx.beginPath(); ctx.arc(x, y, g ? 3.2 : 2.6, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Cruz da mira do mouse (jogador 1)
+function desenharCruzMira(ctx, j) {
+  const x = entrada.mouseX, y = entrada.mouseY, cor = j.cores[0];
+  ctx.save();
+  ctx.lineCap = "round";
+  for (let k = 0; k < 2; k++) {
+    ctx.strokeStyle = k ? cor : "rgba(12,8,30,0.85)";
+    ctx.lineWidth = k ? 2.5 : 5.5;
+    ctx.beginPath(); ctx.arc(x, y, 13, 0, 7); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 21, y); ctx.lineTo(x - 8, y); ctx.moveTo(x + 8, y); ctx.lineTo(x + 21, y);
+    ctx.moveTo(x, y - 21); ctx.lineTo(x, y - 8); ctx.moveTo(x, y + 8); ctx.lineTo(x, y + 21);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill();
+  ctx.restore();
 }
 
 function chaoEmbaixo(M, b) {
@@ -211,7 +258,7 @@ function retRedondo(ctx, x, y, w, h, r) {
 }
 
 function nomeJogador(j, lado) {
-  if (j.modo === "bot") return lado === 1 ? t("voce") : t("bot");
+  if (j.modo === "bot") return lado === 1 ? t("voce") : t("bot") + " · " + t("nivel_curto", nivelBotTexto(j.nivelBot));
   if (j.modo === "demo") return lado === 1 ? "BOT 1" : "BOT 2";
   return t("jogador_n", lado);
 }
@@ -272,14 +319,21 @@ function desenharHud(ctx, j, M, dy) {
   }
   // primeira partida: lembrete dos controles nos primeiros segundos
   if (save.partidas <= 1 && j.rodada <= 2 && (j.fase === "intro" || j.fase === "luta" && j.tempoFase < 7)) {
-    const chave = j.modo === "2p" ? (entrada.toque ? "dica_2p_toque" : "dica_2p_teclado") : (entrada.toque ? "dica_bot_toque" : "dica_bot_teclado");
-    const linhas = t(chave).split("\n");
+    const texto = entrada.toque ? t(j.modo === "2p" ? "dica_2p_toque" : "dica_bot_toque") : dicaTeclas(j.modo !== "2p");
+    const linhas = texto.split("\n");
     const tam = em ? 34 : 24;
     const base = em ? dy + FIS.altura + 70 : dy + FIS.altura - 30 - (linhas.length - 1) * 30;
     ctx.globalAlpha = j.fase === "luta" ? Math.min(1, (7 - j.tempoFase) / 1.5) : 1;
     linhas.forEach(function(l, i) { textoContorno(ctx, l, cx, base + i * tam * 1.25, tam, "#fff"); });
     ctx.globalAlpha = 1;
   }
+  // missão / desafio / conquista completada durante a partida
+  if (typeof Progresso !== "undefined") Progresso.avisos.forEach(function(a, i) {
+    const k = Math.min(1, a.t * 5) * Math.min(1, (3 - a.t) * 3);
+    ctx.globalAlpha = Math.max(0, k);
+    textoContorno(ctx, a.texto, cx, dy + FIS.altura - 70 - i * 34, 26, a.cor);
+    ctx.globalAlpha = 1;
+  });
   // carta que alguém acabou de pegar
   const uc = M.ultimaCarta;
   if (uc && M.t - uc.t < 1.8 && j.fase === "luta") {
@@ -378,8 +432,8 @@ function desenharControlesToque(ctx, j, H) {
   if (!entrada.toque || j.fase === "queda" || j.fase === "fimPartida") return;
   ctx.save();
   const zonas = j.modo === "2p"
-    ? [{ x: 0.13, tipo: "stick", j: 1 }, { x: 0.39, tipo: "tiro", j: 1 }, { x: 0.61, tipo: "tiro", j: 2 }, { x: 0.87, tipo: "stick", j: 2 }]
-    : [{ x: 0.14, tipo: "stick", j: 1 }, { x: 0.86, tipo: "tiro", j: 1 }];
+    ? [{ x: 0.13, tipo: "stick", j: 1 }, { x: 0.39, tipo: "mira", j: 1 }, { x: 0.61, tipo: "mira", j: 2 }, { x: 0.87, tipo: "stick", j: 2 }]
+    : [{ x: 0.14, tipo: "stick", j: 1 }, { x: 0.86, tipo: "mira", j: 1 }];
   const emPe = H > FIS.altura + 200;
   const y = H - (emPe ? 330 : 130);
   const k = emPe ? 1.8 : 1;
@@ -387,12 +441,12 @@ function desenharControlesToque(ctx, j, H) {
   zonas.forEach(function(z) {
     const cor = j.cores[z.j - 1];
     const x = z.x * CONFIG.largura;
-    const usando = abertos.some(function(d) { return d.jogador === z.j; });
+    const usando = abertos.some(function(d) { return d.jogador === z.j && d.tipo === z.tipo; });
     ctx.globalAlpha = usando ? 0.12 : 0.28;
     ctx.lineWidth = 5; ctx.strokeStyle = cor; ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.beginPath(); ctx.arc(x, y, (z.tipo === "tiro" ? 70 : 84) * k, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, (z.tipo === "mira" ? 76 : 84) * k, 0, 7); ctx.fill(); ctx.stroke();
     ctx.globalAlpha = usando ? 0.2 : 0.55;
-    textoContorno(ctx, z.tipo === "tiro" ? t("toque_tiro") : t("toque_mover"), x, y + 8 * k, Math.round(20 * k), "#fff");
+    textoContorno(ctx, z.tipo === "mira" ? t("toque_mira") : t("toque_mover"), x, y + 8 * k, Math.round(20 * k), "#fff");
   });
   // analógicos que estão sendo usados
   abertos.forEach(function(d) {

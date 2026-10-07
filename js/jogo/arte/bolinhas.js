@@ -6,6 +6,7 @@
 // Corpo, gelo, escudo, aura e chama ficam em sprites de cache (um por cor + tamanho);
 // por quadro só vão drawImage + olhos (poucas formas simples). Nada de gradiente/blur no quadro.
 // Campos extras opcionais no descritor (usados pela queda de braço):
+//   skin (id do corpo, padrão "classico") e acessorio (id, padrão "nenhum"): ver arte/skins.js (ArteSkins).
 //   faixa (hex) = faixa esportiva na cabeça, faixaLado (-1 nó à esquerda, 1 à direita), faixaInc (inclinação),
 //   faixaListra (cor da listra), vira (-1..1) = vira o rosto para o lado (3/4); expressao extra "smirk" (confiante).
 // =========================
@@ -76,10 +77,14 @@ const ArteBolinha = (function() {
     var k = cor + "|" + R;
     return corpos[k] || (corpos[k] = criarCorpo(cor, R));
   }
-  function branco(cor, R) { // silhueta branca para o flash de dano
-    var k = cor + "|" + R, s = brancos[k];
+  // corpo da skin (ArteSkins, carregada antes); sem ArteSkins ou "classico" = corpo acima
+  function corpoSk(cor, R, sk) {
+    return sk && sk !== "classico" && typeof ArteSkins !== "undefined" && typeof ArteSkins.corpo === "function" ? (ArteSkins.corpo(sk, cor, R) || corpo(cor, R)) : corpo(cor, R);
+  }
+  function branco(cor, R, sk) { // silhueta branca para o flash de dano
+    var k = (sk || "") + "|" + cor + "|" + R, s = brancos[k];
     if (s) return s;
-    var b = corpo(cor, R), c = criarCanvas(b.c.width, b.c.height), g = c.getContext("2d");
+    var b = corpoSk(cor, R, sk), c = criarCanvas(b.c.width, b.c.height), g = c.getContext("2d");
     g.drawImage(b.c, 0, 0); g.globalCompositeOperation = "source-in"; g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
     return (brancos[k] = { c: c, m: b.m });
   }
@@ -231,11 +236,12 @@ const ArteBolinha = (function() {
       g.strokeStyle = p.contorno; g.lineWidth = lw; g.beginPath(); g.moveTo(cx - rx - 2, yb2); g.lineTo(cx + rx + 2, yb2); g.stroke();
     }
     g.restore();
+    if (p.anel) { g.strokeStyle = p.anel; g.lineWidth = lw * 0.9; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, PI2); g.stroke(); }   // skins: anel fino separa o olho do corpo
   }
 
   // rosto completo (olhos + boca) no espaço local do corpo
   function rosto(g, r, p, b) {
-    var exp = EXP[b.expressao] || EXP.normal;
+    var exp = EXP[b.expressao] || EXP.normal, tin = p.tinta || TINTA;     // skins escuras: boca/arcos claros
     var ox = b.olharX || 0, oy = b.olharY || 0, vira = b.vira || 0;
     var fx = (ox * 0.07 + vira * 0.17) * r, fy = oy * 0.04 * r;                       // o rosto acompanha o olhar (3/4)
     var rx = r * 0.2 * exp.olho, ry = r * 0.29 * exp.olho, ey = -r * 0.04 + fy, ex0 = r * 0.30;
@@ -250,7 +256,7 @@ const ArteBolinha = (function() {
       rxx = rx * (1 - 0.16 * vira * s);                      // o olho de trás fica mais estreito (perspectiva)
       cx = s * ex0 * (1 - 0.1 * vira * s) + fx;
       if (feliz || pisc > 0.94) {                             // olho fechado: arco fino
-        g.strokeStyle = TINTA; g.lineWidth = Math.max(1.6, r * 0.085); g.lineCap = "round";
+        g.strokeStyle = tin; g.lineWidth = Math.max(1.6, r * 0.085); g.lineCap = "round";
         g.beginPath();
         if (feliz) g.arc(cx, ey + ry * 0.35, rxx * 0.95, PI * 1.12, PI * 1.88);
         else g.arc(cx, ey - ry * 0.35, rxx * 0.95, PI * 0.12, PI * 0.88);
@@ -261,7 +267,7 @@ const ArteBolinha = (function() {
     }
     // boca discreta
     var my = r * 0.36 + fy, mx = fx * 0.9;
-    g.strokeStyle = TINTA; g.fillStyle = TINTA; g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = Math.max(1.5, r * 0.06);
+    g.strokeStyle = tin; g.fillStyle = tin; g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = Math.max(1.5, r * 0.06);
     g.beginPath();
     switch (exp.boca) {
       case 0: g.arc(mx, my - r * 0.1, r * 0.17, PI * 0.2, PI * 0.8); g.stroke(); break;                        // normal: sorrisinho
@@ -329,28 +335,28 @@ const ArteBolinha = (function() {
   // corpo + faixa + rosto prontos num sprite só (quando a expressão não anima): 1 drawImage por bolinha.
   // Ligue com b.cache = true. Chave: cor, tamanho, expressão, piscada, faixa, olhar e vira.
   var compostos = {}, tmpB = { t: 0 };
-  function composto(b, cor, R) {
+  function composto(b, cor, R, sk, pr) {
     // atalho: se nada mudou desde o quadro anterior deste descritor, reaproveita o sprite (sem montar a chave)
     var u = b.__cu;
-    if (u && u.cor === cor && u.R === R && u.ex === b.expressao && u.pi === (b.piscar > 0.5 ? 1 : 0) && u.fx === b.faixa && u.ox === b.olharX && u.oy === b.olharY &&
+    if (u && u.cor === cor && u.R === R && u.sk === sk && u.ex === b.expressao && u.pi === (b.piscar > 0.5 ? 1 : 0) && u.fx === b.faixa && u.ox === b.olharX && u.oy === b.olharY &&
         u.vi === b.vira && u.li === b.faixaListra && u.la === b.faixaLado && u.inc === b.faixaInc) return u.s;
-    var k = cor + "|" + R + "|" + b.expressao + "|" + (b.piscar > 0.5 ? 1 : 0) + "|" + (b.faixa || "") + "|" + (b.faixaListra || "") + "|" + (b.faixaLado || 0) + "|" +
+    var k = sk + "|" + cor + "|" + R + "|" + b.expressao + "|" + (b.piscar > 0.5 ? 1 : 0) + "|" + (b.faixa || "") + "|" + (b.faixaListra || "") + "|" + (b.faixaLado || 0) + "|" +
       (b.vira || 0).toFixed(1) + "|" + (b.olharX || 0).toFixed(1) + "|" + (b.olharY || 0).toFixed(1) + "|" + (b.faixaInc || 0).toFixed(2);
     var s = compostos[k];
     if (!s) {
       var pad = Math.ceil(R * 0.34) + 4, S = (R + pad) * 2;
       var c = criarCanvas(S * SS, S * SS), g = c.getContext("2d");
       g.scale(SS, SS); g.translate(S / 2, S / 2);
-      var cb = corpo(cor, R);
+      var cb = corpoSk(cor, R, sk);
       g.drawImage(cb.c, -cb.m, -cb.m, cb.c.width / SS, cb.c.height / SS);
       tmpB.faixa = b.faixa; tmpB.faixaListra = b.faixaListra; tmpB.faixaLado = b.faixaLado; tmpB.faixaInc = b.faixaInc;
       if (b.faixa) faixaCorpo(g, R, tmpB);
       tmpB.expressao = b.expressao; tmpB.olharX = b.olharX; tmpB.olharY = b.olharY; tmpB.vira = b.vira; tmpB.piscar = b.piscar > 0.5 ? 1 : 0;
-      rosto(g, R, paleta(cor), tmpB);
+      rosto(g, R, pr, tmpB);
       s = compostos[k] = { c: c, m: S / 2, S: S };
     }
     if (!u) u = b.__cu = {};
-    u.cor = cor; u.R = R; u.ex = b.expressao; u.pi = b.piscar > 0.5 ? 1 : 0; u.fx = b.faixa; u.ox = b.olharX; u.oy = b.olharY; u.vi = b.vira; u.li = b.faixaListra; u.la = b.faixaLado; u.inc = b.faixaInc; u.s = s;
+    u.cor = cor; u.R = R; u.sk = sk; u.ex = b.expressao; u.pi = b.piscar > 0.5 ? 1 : 0; u.fx = b.faixa; u.ox = b.olharX; u.oy = b.olharY; u.vi = b.vira; u.li = b.faixaListra; u.la = b.faixaLado; u.inc = b.faixaInc; u.s = s;
     return s;
   }
 
@@ -362,6 +368,8 @@ const ArteBolinha = (function() {
     var t = b.t || 0;
     var sx = b.escalaX === undefined ? 1 : b.escalaX, sy = b.escalaY === undefined ? 1 : b.escalaY;
     var p = paleta(cor);
+    var sk = b.skin || "classico", ac = b.acessorio || "nenhum";
+    var pr = sk !== "classico" && typeof ArteSkins !== "undefined" && typeof ArteSkins.rosto === "function" ? (ArteSkins.rosto(sk, cor) || p) : p;   // paleta do rosto (pálpebra/anel/tinta da skin)
     ctx.save();
     ctx.translate(Math.round(b.x || 0), Math.round(b.y || 0));
 
@@ -369,7 +377,7 @@ const ArteBolinha = (function() {
     if (b.rapidez) {
       var vx = b.vx || 0, vy = b.vy || 0, vel = Math.sqrt(vx * vx + vy * vy);
       var dx = vel > 0.6 ? vx : (b.olharX >= 0 ? 3 : -3), dy = vel > 0.6 ? vy : 0;
-      var cs = corpo(cor, R), m = cs.m * sc;
+      var cs = corpoSk(cor, R, sk), m = cs.m * sc;
       for (var k = 3; k >= 1; k--) {
         ctx.globalAlpha = 0.2 - k * 0.045;
         ctx.drawImage(cs.c, -dx * k * 2.6 - m, -dy * k * 2.6 - m, m * 2, m * 2);
@@ -394,23 +402,25 @@ const ArteBolinha = (function() {
     ctx.scale(sx, sy);
     var alfa = fan > 0.05 ? Math.max(0.1, 1 - fan * 0.85) : 1;
     ctx.globalAlpha = alfa;
-    var cb = corpo(cor, R), mb = cb.m * sc;
+    var cb = corpoSk(cor, R, sk), mb = cb.m * sc;
     if (b.cache && !(b.flash > 0.02) && fan <= 0.05 && b.expressao !== "tonto") {
       if (b.faixa) faixaPontas(ctx, r, b);                  // pontas atrás da cabeça
-      var cp = composto(b, cor, R), mc = cp.m * sc;
+      var cp = composto(b, cor, R, sk, pr), mc = cp.m * sc;
       ctx.drawImage(cp.c, -mc, -mc, mc * 2, mc * 2);
     } else {
       if (b.faixa) faixaPontas(ctx, r, b);
       ctx.drawImage(cb.c, -mb, -mb, mb * 2, mb * 2);
       if (b.flash > 0.02) {                                 // dano: silhueta branca por cima
         ctx.globalAlpha = alfa * (b.flash > 1 ? 1 : b.flash);
-        var wb = branco(cor, R);
+        var wb = branco(cor, R, sk);
         ctx.drawImage(wb.c, -mb, -mb, mb * 2, mb * 2);
         ctx.globalAlpha = alfa;
       }
       if (b.faixa) faixaCorpo(ctx, r, b);
-      if (!(b.flash > 0.85)) rosto(ctx, r, p, b);
+      if (!(b.flash > 0.85)) rosto(ctx, r, pr, b);
     }
+    if (ac !== "nenhum" && typeof ArteSkins !== "undefined" && typeof ArteSkins.acessorio === "function")      // acessório por cima do rosto (já no espaço escalado/amassado)
+      ArteSkins.acessorio(ctx, ac, 0, 0, r, (b.olharX || 0) + (b.vira || 0) * 2.4, sx, sy, t);
     ctx.globalAlpha = 1;
 
     if (fan > 0.05) {                                       // fantasma: contorno tremido
@@ -454,5 +464,6 @@ const ArteBolinha = (function() {
   }
 
   // ArteBolinha.paleta é extra (usada pela queda de braço)
-  return { desenhar: desenhar, sombra: sombra, paleta: paleta };
+  // corpoBase: corpo clássico em cache (usado pelo ArteSkins para a skin "classico")
+  return { desenhar: desenhar, sombra: sombra, paleta: paleta, corpoBase: corpo };
 })();

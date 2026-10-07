@@ -14,7 +14,20 @@ function saveNovo() {
     partidas: 0,      // quantas partidas já começou (0 = primeira visita)
     vitorias: 0,      // contra o bot
     derrotas: 0,
-    nivelBot: 0.28    // força do bot (0 a 1), ajustada depois de cada partida contra ele
+    nivelBot: 0.28,   // força do bot (0 a 1), ajustada depois de cada partida contra ele
+    teclas: null,     // teclas trocadas pelo jogador (null = as de fábrica)
+    // progresso (js/jogo/progresso/progresso.js)
+    moedas: 0,
+    skinCorpo: "classico",
+    skinAcessorio: "nenhum",
+    donos: [],        // skins que a pessoa tem
+    stats: {},        // contadores de tudo (vitórias, dano, quedas...)
+    missoes: [],      // 3 missões ativas
+    semana: null,     // desafios da semana
+    conquistas: {},   // id -> "feita" | "resgatada"
+    armasVistas: [], cartasVistas: [], cenariosVencidos: [],
+    trocaDia: 0,      // dia em que trocou uma missão (1 troca grátis por dia)
+    dobrar: 0         // moedas da última partida que ainda dá para dobrar com anúncio
   };
 }
 

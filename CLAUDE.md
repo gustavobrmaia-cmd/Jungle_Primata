@@ -52,9 +52,10 @@ js/
   sistemas/   audio.js (som sintetizado), entrada.js (teclado, toque, controle; 2 jogadores)
   interface/  telas.js (menu, escolha do modo, pausa, continuar; anúncios)
   jogo/
-    dados/    armas.js (50 armas), cenarios.js (15 cenários), cartas.js (12 cartas + cores)
+    dados/    armas.js (50 armas), cenarios.js (15 cenários), cartas.js (12 cartas + cores), skins.js (corpos e acessórios)
+    progresso/ dados.js (missões, desafios, conquistas), progresso.js (moedas, contadores, prêmios)
     motor/    fisica.js, combate.js (tiros, explosões, itens), bot.js (IA), partida.js (rodadas, queda de braço)
-    arte/     efeitos.js, bolinhas.js, armas.js, cartas.js, cenarios.js, queda.js (só desenho, canvas)
+    arte/     efeitos.js, skins.js, bolinhas.js, armas.js, cartas.js, cenarios.js, queda.js (só desenho, canvas)
     desenho.js (junta a arte na ordem certa + HUD)
 ```
 Ordem dos scripts no index.html: nucleo/config, nucleo/util, idiomas/idiomas, nucleo/save, poki/poki, poki/eventos,
@@ -62,7 +63,7 @@ sistemas/audio, sistemas/entrada, jogo/dados/*, jogo/arte/*, jogo/motor/* (fisic
 interface/telas, nucleo/main.
 Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nunca desenha.
 
-## O jogo atual: Duelo de Bolinhas
+## O jogo atual: Crazy Balls Duel
 - Duas bolinhas (cores sorteadas). Modos: contra o bot, 2 jogadores no mesmo aparelho, e a demo (bot x bot no fundo dos menus).
 - Partida até 5 pontos. Rodada de 20 s num cenário diferente; últimos 6 s com dano em dobro.
   Se ninguém morrer: queda de braço (quem clicar mais vence; quem tem mais vida começa na frente).
@@ -70,8 +71,13 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
 - Mira assistida igual para jogador e bot. Sem sangue (acerto = faíscas; derrota = estouro em confete).
 - Bot: simula a física para frente e escolhe o melhor movimento; só atira quando a simulação diz que acerta.
   O nível (save.nivelBot, 0,12 a 0,95) muda depois de cada partida pelo desempenho do jogador (mira em ~50% de vitórias).
-- Anúncio comum: antes de cada partida (menos a 1ª e logo depois de um premiado). Premiados (opcionais):
-  "Partida Lendária" (só armas raras para os dois) e "Continuar" (perdeu para o bot: o bot perde o último ponto).
+- Anúncio comum: antes de cada partida (menos a 1ª e logo depois de um premiado) E entre as rodadas (pausa natural;
+  o Poki decide se mostra; nas 2 primeiras rodadas da 1ª partida não pede). Premiados (opcionais): "Partida Lendária"
+  (só armas raras para os dois), "Continuar" (perdeu para o bot: o bot perde o último ponto) e "Dobrar moedas" (menu).
+- Plataformas: andares a cada <= 120 px (o pulo normal alcança ~143 px). Conferir com a simulação de alcance ao mudar mapa.
+- Controles: Espaço/W pula; mouse mira e atira (jogador 1); teclas trocáveis (save.teclas); toque = analógico de andar +
+  analógico de mira; controle = analógico direito mira. Bot também mira livre (com erro que cai com o nível).
+- Progresso (js/jogo/progresso): moedas, 3 missões, 4 desafios da semana (skin exclusiva), 25 conquistas, 30 skins.
 - Equilíbrio: `node` + simulação bot x bot (script fora do repositório) — medir % de rodadas na queda de braço (~10–35%)
   e duração da partida (2–3,5 min). `CONFIG.multDano` é o ajuste geral.
 

@@ -42,10 +42,22 @@ function passo(dt) {
     if (entrada.pausa()) { pausar(); return; }
     atualizarJogo(dt);
     Eventos.passoDeJogo(dt);
+    Progresso.atualizarAvisos(dt / 1000);
   } else if (estado === "pausa") {
     if (entrada.pausa()) continuar();
   } else if (jogo && jogo.demo) {
     atualizarJogo(dt);     // luta de demonstração no fundo dos menus
+  }
+}
+
+// Um erro inesperado (num desenho, por exemplo) nunca pode travar o jogo: registra 1 vez e segue.
+function protegido(fn, arg) {
+  try { fn(arg); } catch (e) {
+    if (!protegido.avisou) {
+      protegido.avisou = true;
+      console.error(e);
+      Poki.medir("error", "loop", String(e && e.message || e).slice(0, 40));
+    }
   }
 }
 
@@ -57,7 +69,7 @@ function quadro(agora) {
     acumulado += dt;
     let n = 0;
     while (acumulado >= CONFIG.passo && n < 5) {
-      passo(CONFIG.passo);
+      protegido(passo, CONFIG.passo);
       acumulado -= CONFIG.passo;
       n++;
     }
@@ -65,13 +77,15 @@ function quadro(agora) {
   } else {
     acumulado = 0;
   }
-  desenharJogo(ctx);
+  protegido(desenharJogo, ctx);
+  if (estado === "skins") protegido(desenharPreviaSkin, agora / 1000);
   requestAnimationFrame(quadro);
 }
 
 // ---------- começo ----------
 (function iniciar() {
   carregarSave();
+  Progresso.preparar();
   ajustarTela();
   montarTelas();
   carregarIdioma(detectarIdioma(save.idioma)).then(function() {

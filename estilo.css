@@ -111,3 +111,78 @@ body.retrato #listaIdiomas { grid-template-columns: repeat(2, 1fr); }
 body.retrato #listaIdiomas button { width: 420px; font-size: 34px; }
 body.retrato .hudBotao { width: 110px; height: 90px; font-size: 40px; }
 body.retrato #hud { bottom: auto; top: 20px; right: 20px; transform: none; }
+
+/* ---------- Moedas, selo e ganho da partida ---------- */
+.moedas {
+  position: absolute; top: 18px; right: 22px;
+  font-size: 28px; font-weight: 900; padding: 8px 18px; border-radius: 999px;
+  background: rgba(20, 14, 50, 0.75); border: 2px solid rgba(255, 212, 59, 0.6); color: #ffe066;
+}
+.painel .topo .moedas { position: static; }
+.selo {
+  display: inline-block; margin-left: 10px; min-width: 30px; padding: 2px 8px; border-radius: 999px;
+  background: #ff4d5e; color: #fff; font-size: 20px; vertical-align: middle;
+}
+.ganho { display: flex; align-items: center; gap: 16px; font-size: 30px; font-weight: 900; color: #ffe066; }
+button.pequeno { font-size: 20px; min-width: 0; padding: 8px 16px; border-bottom-width: 4px; }
+
+/* ---------- Painéis (missões, skins) ---------- */
+.tela.painel { justify-content: flex-start; padding: 26px 40px; gap: 16px; }
+.painel .topo { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+.abas { display: flex; gap: 10px; }
+.abas button { min-width: 0; font-size: 24px; padding: 10px 22px; background: #2b2d55; }
+.abas button.ativo { background: linear-gradient(#748ffc, #4c6ef5); outline: none; }
+.lista {
+  width: 100%; max-width: 1080px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  padding-right: 6px; touch-action: pan-y;
+}
+.cartao {
+  display: flex; align-items: center; gap: 18px; padding: 14px 18px; border-radius: 16px; text-align: left;
+  background: rgba(36, 30, 80, 0.88); border: 2px solid rgba(255, 255, 255, 0.08);
+}
+.cartao.pronto { border-color: #69db7c; box-shadow: 0 0 0 3px rgba(105, 219, 124, 0.25); }
+.cartao.feito { opacity: 0.55; }
+.cartao.especial { background: linear-gradient(90deg, rgba(95, 61, 196, 0.9), rgba(36, 30, 80, 0.9)); }
+.cartao .texto { flex: 1; }
+.cartao .titulo { font-size: 24px; font-weight: 800; }
+.cartao .sub { font-size: 17px; opacity: 0.8; margin-top: 2px; }
+.cartao .barra { position: relative; height: 22px; margin-top: 8px; border-radius: 11px; background: rgba(0, 0, 0, 0.35); overflow: hidden; }
+.cartao .barra div { height: 100%; background: linear-gradient(90deg, #4c6ef5, #69db7c); border-radius: 11px; }
+.cartao .barra span { position: absolute; inset: 0; font-size: 15px; font-weight: 800; line-height: 22px; text-align: center; }
+.cartao .premio { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 150px; }
+.cartao .valor { font-size: 20px; font-weight: 900; color: #ffe066; text-align: center; }
+.cartao .ok { font-size: 34px; color: #69db7c; font-weight: 900; }
+.cartao canvas.mini { width: 96px; height: 96px; }
+
+/* ---------- Skins ---------- */
+.loja { display: flex; gap: 22px; width: 100%; flex: 1; min-height: 0; }
+.previa { width: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 45%, rgba(116, 143, 252, 0.35), rgba(20, 14, 50, 0.85) 70%); border-radius: 22px; }
+.previa p { font-size: 22px; font-weight: 800; margin-top: 6px; padding: 0 12px; }
+.grade { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; overflow-y: auto; align-content: start; touch-action: pan-y; }
+button.skin {
+  min-width: 0; padding: 8px 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: rgba(36, 30, 80, 0.9); border-bottom-color: rgba(0, 0, 0, 0.4);
+}
+button.skin canvas { width: 110px; height: 110px; }
+button.skin .nome { font-size: 17px; }
+button.skin .status { font-size: 14px; font-weight: 700; color: #ffe066; min-height: 18px; }
+button.skin.r2 { background: linear-gradient(rgba(51, 154, 240, 0.55), rgba(36, 30, 80, 0.9)); }
+button.skin.r3 { background: linear-gradient(rgba(151, 117, 250, 0.6), rgba(36, 30, 80, 0.9)); }
+button.skin.r4 { background: linear-gradient(rgba(252, 196, 25, 0.55), rgba(36, 30, 80, 0.9)); }
+button.skin.usando { outline: 4px solid #69db7c; }
+button.skin.bloqueada canvas { filter: saturate(0.25) brightness(0.7); }
+
+/* ---------- Troca de teclas ---------- */
+#gradeTeclas { display: grid; grid-template-columns: 200px 1fr 1fr; gap: 8px 22px; align-items: center; }
+#gradeTeclas .cab { font-size: 22px; font-weight: 900; color: #ffe066; }
+#gradeTeclas .acao { font-size: 22px; font-weight: 800; text-align: right; }
+#gradeTeclas .teclas { display: flex; gap: 8px; }
+button.tecla { min-width: 120px; font-size: 20px; padding: 8px 12px; background: #2b2d55; border-bottom-width: 4px; }
+button.tecla.esperando { background: #f59f00; color: #2a1a00; }
+
+body.retrato .grade { grid-template-columns: repeat(3, 1fr); }
+body.retrato .loja { flex-direction: column; }
+body.retrato .previa { width: 100%; min-height: 360px; }
+body.retrato #gradeTeclas { grid-template-columns: 180px 1fr 1fr; }
+body.retrato button.tecla { min-width: 100px; font-size: 26px; }

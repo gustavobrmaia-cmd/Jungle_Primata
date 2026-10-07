@@ -2,7 +2,7 @@
 
 // =========================
 // TELAS e o "estado" do jogo
-// estado: "menu" | "modo" | "idiomas" | "jogo" | "pausa" | "continuar"
+// estado: "menu" | "modo" | "idiomas" | "opcoes" | "controles" | "missoes" | "skins" | "jogo" | "pausa" | "continuar"
 // Fluxo:
 //   1ª visita: escolhe o modo (bot / 2 jogadores) e a luta começa na hora (sem anúncio).
 //   Fim da partida: volta para o MENU (com o placar). Jogar -> escolhe o modo -> anúncio comum -> luta.
@@ -10,7 +10,8 @@
 //   comum    (Poki.intervalo): antes de cada partida, menos a primeira e menos logo depois de um premiado;
 //   premiado (Poki.premiado):  só quando o jogador escolhe:
 //     - "Partida Lendária": só armas raras e lendárias, para OS DOIS jogadores (justo no modo 2 jogadores);
-//     - "Continuar": perdeu para o bot -> continua a partida (o bot volta um ponto). Uma vez por partida.
+//     - "Continuar": perdeu para o bot -> continua a partida (o bot volta um ponto). Uma vez por partida;
+//     - "Dobrar moedas": no menu, depois de uma partida (uma vez por partida).
 // Enquanto está nos menus, uma luta de demonstração (bot contra bot) roda no fundo.
 // =========================
 
@@ -19,7 +20,8 @@ let ocupado = false;            // esperando anúncio: ignora cliques repetidos
 let lendariaPronta = false;     // assistiu o anúncio da Partida Lendária
 let pendente = null;            // partida que acabou e espera a resposta do "continuar"
 
-const TELAS = ["telaMenu", "telaModo", "telaIdiomas", "telaPausa", "telaContinuar"];
+const TELAS = ["telaMenu", "telaModo", "telaIdiomas", "telaPausa", "telaContinuar",
+  "telaOpcoes", "telaControles", "telaMissoes", "telaSkins"];
 
 function mostrarTela(id) {
   TELAS.forEach(function(t2) { el(t2).classList.toggle("aberta", t2 === id); });
@@ -35,9 +37,10 @@ function atualizarTextos() {
     b.classList.toggle("ativo", b.dataset.idioma === IDIOMA);
   });
   const toque = entrada.toque;
-  el("dicaBot").textContent = toque ? t("dica_bot_toque") : t("dica_bot_teclado");
-  el("dica2p").textContent = toque ? t("dica_2p_toque") : t("dica_2p_teclado");
+  el("dicaBot").textContent = t("nivel_bot", nivelBotTexto(save.nivelBot)) + "\n" + (toque ? t("dica_bot_toque") : dicaTeclas(true));
+  el("dica2p").textContent = toque ? t("dica_2p_toque") : dicaTeclas(false);
   atualizarBotaoLendaria();
+  atualizarMenuProgresso();
 }
 
 function atualizarBotaoLendaria() {
@@ -49,6 +52,16 @@ function atualizarBotaoLendaria() {
 }
 
 // ---------- menus ----------
+// Dica dos controles com as teclas que a pessoa escolheu
+function dicaTeclas(solo) {
+  const tk = entrada.teclas();
+  const n = function(j, a) { return nomeTecla(tk[j][a][0]); };
+  const n2 = function(j, a) { return tk[j][a][1] ? " / " + nomeTecla(tk[j][a][1]) : ""; };
+  if (solo) return t("dica_bot_v2", n(1, "esquerda") + " " + n(1, "direita"), n(1, "pulo") + n2(1, "pulo"), n(1, "tiro"));
+  return t("dica_2p_v2", n(1, "esquerda") + " " + n(1, "direita") + " " + n(1, "pulo") + " + " + n(1, "tiro"),
+    n(2, "esquerda") + " " + n(2, "direita") + " " + n(2, "pulo") + " + " + n(2, "tiro"));
+}
+
 function irParaMenu(textoResultado) {
   estado = "menu";
   entrada.ativa = false;
@@ -85,6 +98,7 @@ function comecarPartida(modo) {
   (primeira || lendaria ? Promise.resolve() : Poki.intervalo()).then(function() {
     ocupado = false;
     lendariaPronta = false;
+    save.dobrar = 0;
     save.partidas++;
     salvar();
     novaPartida(modo, { lendaria: lendaria, nivelBot: save.nivelBot, primeiraVez: primeira });
@@ -120,15 +134,31 @@ function aoTerminarPartida(j) {
 function finalizarPartida(j) {
   pendente = null;
   let texto;
+  // progresso: moedas da partida e contadores das missões/conquistas
+  const ganho = Progresso.moedasDaPartida(j);
+  Progresso.ganharMoedas(ganho);
+  save.dobrar = ganho;
+  Progresso.registrar("partidas", 1);
+  if (j.modo === "2p") Progresso.registrar("partidas2p", 1);
+  if (j.lendaria) Progresso.registrar("lendarias", 1);
+  if (j.modo === "bot" && j.vencedorPartida === 1) {
+    Progresso.registrar("vitorias", 1);
+    if (j.pontos[1] === 0) Progresso.registrar("placar5x0", 1);
+    if (save.nivelBot >= 0.85) Progresso.registrar("botMestre", 1);
+    if ((j.piorDiferenca || 0) >= 3) Progresso.registrar("virada", 1);
+  }
   if (j.modo === "bot") {
     const venceu = j.vencedorPartida === 1;
     const antes = save.nivelBot;
-    save.nivelBot = proximoNivelBot(save.nivelBot, desempenhoDoJogador(j));
+    save.nivelBot = proximoNivelBot(save.nivelBot, desempenhoDoJogador(j), venceu);
     if (venceu) save.vitorias++; else save.derrotas++;
     salvar();
     Poki.medir("match", "bot", venceu ? "complete" : "fail");
     Poki.medir("bot", save.nivelBot > antes ? "harder" : "easier", "interact");
     texto = (venceu ? t("voce_venceu") : t("bot_venceu")) + "  " + j.pontos[0] + " – " + j.pontos[1];
+    const n0 = nivelBotTexto(antes), n1 = nivelBotTexto(save.nivelBot);
+    if (n1 > n0) texto += "  ·  " + t("bot_subiu", n1);
+    else if (n1 < n0) texto += "  ·  " + t("bot_desceu", n1);
   } else {
     Poki.medir("match", "2p", "complete");
     texto = t("jogador_venceu", j.vencedorPartida) + "  " + j.pontos[0] + " – " + j.pontos[1];
@@ -200,6 +230,34 @@ function sairDaPartida() {
   irParaMenu("");
 }
 
+// ---------- dobrar as moedas da última partida (premiado) ----------
+function dobrarMoedas() {
+  if (ocupado || !(save.dobrar > 0)) return;
+  ocupado = true;
+  Eventos.oferta("double-coins", "interact");
+  Poki.premiado("small").then(function(assistiu) {
+    ocupado = false;
+    if (assistiu && save.dobrar > 0) { Progresso.ganharMoedas(save.dobrar); save.dobrar = 0; salvar(); som("pegar"); }
+    atualizarTextos();
+  });
+}
+
+// moedas no topo, selo de prêmios esperando e o botão de dobrar
+function atualizarMenuProgresso() {
+  const txt = "🪙 " + save.moedas;
+  el("menuMoedas").textContent = txt;
+  el("missoesMoedas").textContent = txt;
+  el("skinsMoedas").textContent = txt;
+  const n = Progresso.pendentes();
+  el("seloMissoes").textContent = n;
+  el("seloMissoes").classList.toggle("escondido", n === 0);
+  const pode = save.dobrar > 0 && Poki.premiadoDisponivel();
+  el("menuGanho").classList.toggle("escondido", !(save.dobrar > 0));
+  el("menuGanhoTexto").textContent = "+" + save.dobrar + " 🪙";
+  el("btnDobrar").classList.toggle("escondido", !pode);
+  el("btnDobrar").textContent = "▶ " + t("dobrar_moedas");
+}
+
 // ---------- opções ----------
 function trocarSom() {
   save.mudo = !save.mudo;
@@ -215,8 +273,7 @@ function escolherIdioma(id) {
   Poki.medir("settings", "lang-" + id, "interact");
   carregarIdioma(id).then(function() {
     atualizarTextos();
-    estado = "menu";
-    mostrarTela("telaMenu");
+    abrirOpcoes();
   });
 }
 
@@ -235,7 +292,14 @@ function montarTelas() {
     modo2p: function() { comecarPartida("2p"); },
     lendaria: ativarLendaria,
     idiomas: function() { estado = "idiomas"; mostrarTela("telaIdiomas"); },
-    voltar: function() { estado = "menu"; mostrarTela("telaMenu"); },
+    voltar: function() { estado = "menu"; atualizarTextos(); mostrarTela("telaMenu"); },
+    voltarOpcoes: abrirOpcoes,
+    opcoes: abrirOpcoes,
+    controles: abrirControles,
+    teclasPadrao: teclasDeFabrica,
+    missoes: function() { abrirMissoes("missoes"); },
+    skins: function() { abrirSkins("corpo"); },
+    dobrar: dobrarMoedas,
     som: trocarSom,
     pausar: pausar,
     continuar: continuar,

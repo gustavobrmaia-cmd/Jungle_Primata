@@ -2,17 +2,18 @@
 
 // =========================
 // O BOT
-// Ele "imagina o futuro": várias vezes por segundo testa ~15 jeitos de se mexer (andar, pular, pulo duplo,
-// descer...) simulando a MESMA física do jogo uns 0,5–0,8 s para frente, e dá nota para cada um:
-//   - perigo: tiros que vão acertar, explosões, granadas, minas, meteoros, lava, cair do mapa;
-//   - distância boa para a arma que tem (martelo quer colar, sniper quer longe);
-//   - linha de tiro livre até o oponente;
-//   - caixas de arma melhores e cartas;
-//   - não ficar parado na mira do oponente.
-// E só atira quando a simulação do tiro diz que vai acertar (com a mira na frente do alvo).
-//
-// O nível (0 a 1) muda o tempo de reação, quantos tiros ele "enxerga", quanto erra, quanto hesita,
-// a velocidade na queda de braço etc. Assim ele nunca fica impossível nem bobo: é um humano bom ou ruim.
+// 1. MOVIMENTO: várias vezes por segundo testa ~18 jeitos de se mexer (andar, pular, pulo duplo, descer, nadar...)
+//    simulando a MESMA física do jogo ~0,5–0,8 s para frente e dá nota para cada um:
+//      - perigo: tiros que vão acertar, explosões, granadas, minas, meteoros, lava, cair do mapa, martelo/escopeta de perto;
+//      - distância boa para a arma (martelo quer colar, sniper quer longe; arma de longe não fica colada);
+//      - linha de tiro livre; esconder-se atrás de parede quando a arma dele é fraca e a do oponente é forte;
+//      - CAMINHO até caixas/cartas/lugares bons usando um mapa de plataformas (quais se ligam com um pulo);
+//      - usar o cenário: no dojô/cidade empurrar o oponente para a beirada e ficar longe dela; subir quando a lava sobe;
+//        preferir lugar mais alto.
+// 2. MIRA LIVRE: calcula onde o oponente vai estar quando o tiro chegar (e o arco das granadas) e mira lá,
+//    com um erro que diminui com o nível. Só atira quando a simulação do tiro diz que acerta.
+// 3. NÍVEL (0 a 1): reação, decisões por segundo, erro de mira, quantos tiros enxerga, hesitação, tática e
+//    velocidade na queda de braço. Muda depois de cada partida pelo desempenho do jogador.
 // =========================
 
 function lerp(a, b, k) { return a + (b - a) * k; }
@@ -22,22 +23,26 @@ function criarBot(lado, nivel) {
   return {
     lado: lado,
     nivel: d,
-    reacao: lerp(0.42, 0.07, d),           // atraso para perceber (s)
-    intervalo: lerp(0.24, 0.07, d),        // tempo entre decisões (s)
-    horizonte: Math.round(lerp(26, 46, d)),// passos simulados
-    enxerga: lerp(0.45, 1, d),             // chance de notar cada tiro vindo
-    hesita: lerp(0.38, 0.02, d),           // chance de não atirar num tiro bom
-    chuta: lerp(0.025, 0.003, d),          // chance por passo de atirar "no chute"
-    pressiona: lerp(0.08, 0.3, d),         // chance por passo de atirar quando está mais ou menos na mira
-    tolerancia: lerp(1.5, 1.0, d),         // folga para achar que o tiro acerta
-    coleta: lerp(0.55, 1, d),              // quanto liga para caixas e cartas
-    ruido: lerp(9, 1.2, d),                // bagunça na escolha do movimento
-    cliques: lerp(5.2, 9.3, d),            // cliques por segundo na queda de braço
+    reacao: lerp(0.40, 0.05, d),           // atraso para perceber (s)
+    intervalo: lerp(0.22, 0.05, d),        // tempo entre decisões (s)
+    horizonte: Math.round(lerp(28, 50, d)),// passos simulados
+    enxerga: lerp(0.5, 1, d),              // chance de notar cada tiro vindo
+    hesita: lerp(0.35, 0, d),              // chance de não atirar num tiro bom
+    chuta: lerp(0.02, 0.002, d),           // chance por passo de atirar "no chute"
+    pressiona: lerp(0.08, 0.4, d),         // chance por passo de atirar quando está mais ou menos na mira
+    tolerancia: lerp(1.4, 1.0, d),         // folga para achar que o tiro acerta
+    erroMira: lerp(0.2, 0.015, d),         // erro de mira (radianos) — muda devagar, como a mão de um humano
+    coleta: lerp(0.6, 1, d),               // quanto liga para caixas e cartas
+    tatica: lerp(0.3, 1, d),               // quanto usa o cenário (beirada, altura, esconderijo)
+    ruido: lerp(8, 0.8, d),                // bagunça na escolha do movimento
+    cliques: lerp(5.2, 10.2, d),           // cliques por segundo na queda de braço
     historico: [],                          // posições passadas do oponente (para o atraso de reação)
     plano: null, proxDecisao: 0, passosPlano: 0,
     proxClique: 0.3 + Math.random() * 0.3,
     vistos: new WeakMap(),                  // projétil -> notou ou não
-    hesitouAte: 0
+    hesitouAte: 0,
+    ruidoMira: 0, alvoRuido: 0, trocaRuido: 0,
+    grafo: null, grafoM: null, nav: null
   };
 }
 
@@ -68,9 +73,17 @@ function distanciaBoa(a) {
   return 320;
 }
 
+// alcance perigoso do oponente de perto (martelo, espada, escopeta, lança-chamas...)
+function perigoDePerto(a) {
+  if (a.tipo === "melee") return a.alcance + 30;
+  if (a.visual === "chama" || a.visual === "vento") return 170;
+  if ((a.qtd || 1) >= 5) return 190;
+  return 0;
+}
+
 // ---------- percepção ----------
 function lembrar(bot, o) {
-  bot.historico.push({ x: o.x, y: o.y, vx: o.vx, vy: o.vy });
+  bot.historico.push({ x: o.x, y: o.y, vx: o.vx, vy: o.vy, chao: o.noChao });
   if (bot.historico.length > 40) bot.historico.shift();
 }
 // Onde o bot "acha" que o oponente está (com atraso de reação, projetado para frente)
@@ -81,10 +94,91 @@ function oponentePercebido(bot, o, M) {
   const k = Math.min(atraso, h.length);
   let x = s.x + s.vx * k, y = s.y + s.vy * k * 0.5;
   if (o.efeitos.fantasma > 0) { x += Math.sin(M.t * 3.1) * 90; y += Math.cos(M.t * 2.3) * 50; }
-  return { x: x, y: y, vx: s.vx, vy: s.vy, r: o.r };
+  return { x: x, y: y, vx: s.vx, vy: s.vy, r: o.r, noChao: s.chao };
 }
 
-// ---------- decisão ----------
+// ---------- mapa de plataformas (navegação) ----------
+// Liga a plataforma A à B se dá para ir de A até B com um pulo simples (ou caindo).
+function alturaDoPulo(cen) {
+  const g = gravidadeDe(cen);
+  return (FIS.pulo * FIS.pulo) / (2 * g) * 0.9;
+}
+function montarGrafo(M) {
+  const cen = M.cen;
+  if (cen.semGravidade || cen.agua || cen.inverte) return null;   // aí a física já resolve (voar/nadar/virar)
+  const ps = M.plats, h = alturaDoPulo(cen);
+  const viz = ps.map(function() { return []; });
+  for (let a = 0; a < ps.length; a++) for (let c = 0; c < ps.length; c++) {
+    if (a === c) continue;
+    const A = ps[a], B = ps[c];
+    const sobe = A.y0 - B.y0;                       // >0: B mais alta
+    const gap = Math.max(0, Math.max(A.x0, B.x0) - Math.min(A.x0 + A.w, B.x0 + B.w));
+    const ok = sobe > 0 ? (sobe <= h && gap <= 170) : (gap <= 190 + (-sobe) * 0.6);
+    if (ok) viz[a].push(c);
+  }
+  return viz;
+}
+function platDe(M, x, y) {
+  // plataforma onde um ponto (x, y) "está em cima"
+  let melhor = -1, dy = Infinity;
+  for (let i = 0; i < M.plats.length; i++) {
+    const p = M.plats[i];
+    if (x < p.x - 10 || x > p.x + p.w + 10) continue;
+    const d = p.y - y;
+    if (d >= -6 && d < dy) { dy = d; melhor = i; }
+  }
+  return melhor;
+}
+// próximo ponto do caminho até a plataforma alvo (BFS)
+function proximoPasso(grafo, de, ate) {
+  if (de < 0 || ate < 0 || de === ate) return -1;
+  const ant = new Array(grafo.length).fill(-2);
+  ant[de] = -1;
+  const fila = [de];
+  while (fila.length) {
+    const u = fila.shift();
+    if (u === ate) break;
+    for (let i = 0; i < grafo[u].length; i++) { const v = grafo[u][i]; if (ant[v] === -2) { ant[v] = u; fila.push(v); } }
+  }
+  if (ant[ate] === -2) return -1;
+  let v = ate;
+  while (ant[v] !== de && ant[v] >= 0) v = ant[v];
+  return v;
+}
+
+// Escolhe para onde ir (caixa boa, carta) e qual o ponto do próximo passo do caminho
+function escolherNavegacao(bot, M, b, valorAtual) {
+  bot.nav = null;
+  if (bot.grafoM !== M) { bot.grafoM = M; bot.grafo = montarGrafo(M); }
+  const grafo = bot.grafo;
+  let alvo = null, melhor = 0;
+  for (let i = 0; i < M.caixas.length; i++) {
+    const c = M.caixas[i];
+    if (c.paraquedas && c.y < 80) continue;
+    const ganho = VALOR_ARMA[c.idArma] - valorAtual;
+    const dist = Math.abs(c.x - b.x) + Math.abs(c.y - b.y);
+    const nota = ganho * 100 * bot.coleta - dist * 0.04;
+    if (ganho > 0.12 && nota > melhor) { melhor = nota; alvo = { x: c.x, y: c.y }; }
+  }
+  for (let i = 0; i < M.cartas.length; i++) {
+    const c = M.cartas[i];
+    const dist = Math.abs(c.x - b.x) + Math.abs(c.y - b.y);
+    const nota = 45 * bot.coleta - dist * 0.04;
+    if (nota > melhor) { melhor = nota; alvo = { x: c.x, y: c.y + 50 }; }
+  }
+  if (!alvo) return;
+  bot.nav = { x: alvo.x, y: alvo.y, final: true };
+  if (!grafo) return;
+  const de = b.noChao && b.chao ? M.plats.indexOf(b.chao) : platDe(M, b.x, b.y);
+  const ate = platDe(M, alvo.x, alvo.y);
+  const prox = proximoPasso(grafo, de, ate);
+  if (prox >= 0) {
+    const p = M.plats[prox];
+    bot.nav = { x: limitar(b.x, p.x + 24, p.x + p.w - 24), y: p.y - b.r, plat: p, final: false };
+  }
+}
+
+// ---------- decisão de movimento ----------
 const CANDIDATOS_BASE = (function() {
   const lista = [];
   [-1, 0, 1].forEach(function(dx) {
@@ -92,6 +186,7 @@ const CANDIDATOS_BASE = (function() {
     lista.push({ dx: dx, pulo: 1, baixo: false });     // pulo
     lista.push({ dx: dx, pulo: 2, baixo: false });     // pulo duplo
     lista.push({ dx: dx, pulo: 3, baixo: false });     // pulinho
+    lista.push({ dx: dx, pulo: 5, baixo: false });     // anda um pouco e pula (pega a beirada)
     lista.push({ dx: dx, pulo: 0, baixo: true });      // descer da plataforma fina
   });
   lista.push({ dx: -1, pulo: 4, baixo: false }, { dx: 0, pulo: 4, baixo: false }, { dx: 1, pulo: 4, baixo: false }); // nadar/voar
@@ -100,10 +195,11 @@ const CANDIDATOS_BASE = (function() {
 
 function entradaDoPlano(c, k) {
   let pulo = false, seg = false;
-  if (c.pulo === 1) { pulo = k === 0; seg = k < 14; }
-  else if (c.pulo === 2) { pulo = k === 0 || k === 13; seg = k < 26; }
+  if (c.pulo === 1) { pulo = k === 0; seg = k < 16; }
+  else if (c.pulo === 2) { pulo = k === 0 || k === 14; seg = k < 28; }
   else if (c.pulo === 3) { pulo = k === 0; seg = k < 3; }
   else if (c.pulo === 4) { pulo = k % 12 === 0; seg = true; }
+  else if (c.pulo === 5) { pulo = k === 9; seg = k >= 9 && k < 26; }
   return { esq: c.dx < 0, dir: c.dx > 0, pulo: pulo, segPulo: seg, baixo: c.baixo };
 }
 
@@ -124,7 +220,7 @@ function ameacas(bot, M, b, H) {
     const a = p.a;
     const pos = [];
     let x = p.x, y = p.y, vx = p.vx, vy = p.vy;
-    let explodeEm = a.timer ? a.timer - p.passos : -1;
+    const explodeEm = a.timer ? a.timer - p.passos : -1;
     for (let k = 0; k < H; k++) {
       if (a.grav && !p.parado) vy += g * a.grav;
       if (a.arrasto) { vx *= a.arrasto; vy *= a.arrasto; }
@@ -155,7 +251,7 @@ function perigoNoPasso(lista, k, x, y, r) {
     if (a.mina) { if (d2 < 80 * 80) p += a.dano * 0.5; continue; }
     if (a.buraco) { if (d2 < 200 * 200) p += 3; continue; }
     if (a.explodeEm >= 0) {
-      if (k === a.explodeEm || (k === lista.length && false)) { if (d2 < (a.explode + r) * (a.explode + r)) p += a.dano; }
+      if (k === a.explodeEm) { if (d2 < (a.explode + r) * (a.explode + r)) p += a.dano; }
       else if (d2 < (r + 14) * (r + 14)) p += a.dano * 0.4;
       continue;
     }
@@ -171,29 +267,40 @@ function decidir(bot, M, b, o, perc) {
   const lista = ameacas(bot, M, b, H);
   const danos = lista.map(function(a) { return a.dano; });
   const arma = ARMA[b.arma];
+  const armaO = ARMA[o.arma];
   const pref = distanciaBoa(arma);
   const aguaOuEspaco = cen.agua || cen.semGravidade;
   const bumpers = M.bumpers ? M.bumpers.map(function(u) { return { x: u.x, y: u.y, r: u.r, flash: 0 }; }) : null;
   const lava = cen.lava ? lavaY(cen, M.t + 1.5) : Infinity;
   const valorAtual = VALOR_ARMA[b.arma] * (b.municao === Infinity ? 0.6 : limitar(b.municao / (arma.municao || 1), 0.25, 1));
-  const ameacaOponente = VALOR_ARMA[o.arma] || 0.3;
-  const reto = !(ARMA[o.arma].grav > 0.3) && ARMA[o.arma].tipo !== "ceu" && ARMA[o.arma].tipo !== "mina";
+  const ameacaO = VALOR_ARMA[o.arma] || 0.3;
+  const reto = !(armaO.grav > 0.3) && armaO.tipo !== "ceu" && armaO.tipo !== "mina";
+  const alcancePerigo = o.viva ? perigoDePerto(armaO) : 0;
+  const longe = pref >= 240 && arma.tipo !== "melee";
+  // fraco contra forte: melhor se esconder e buscar arma
+  const esconder = valorAtual < 0.35 && ameacaO > 0.6 && bot.tatica > 0.5;
+  escolherNavegacao(bot, M, b, valorAtual);
+  const nav = bot.nav;
 
   let melhor = null, notaMelhor = -Infinity;
   for (let ci = 0; ci < CANDIDATOS_BASE.length; ci++) {
     const c = CANDIDATOS_BASE[ci];
     if (c.pulo === 4 && !aguaOuEspaco) continue;
     if (c.baixo && !(b.noChao && b.chao && b.chao.fina)) continue;
-    // reseta o dano das ameaças (perigoNoPasso diminui depois do 1º acerto)
     for (let i = 0; i < lista.length; i++) lista[i].dano = danos[i];
     const s = copiarBolinha(b);
-    let perigo = 0, caiu = false, pegaCaixa = 0, pegaCarta = 0;
+    let perigo = 0, caiu = false, pegaCaixa = 0, pegaCarta = 0, chegou = false;
     for (let k = 0; k < H; k++) {
       moverBolinha(s, entradaDoPlano(c, k), cen, M.plats, M.t + (k + 1) * FIS.dt, bumpers);
       if (s.evento === "caiu") { caiu = true; break; }
       if (s.evento === "lava") perigo += 35;
       perigo += perigoNoPasso(lista, k, s.x, s.y, s.r) * (1 - k / H * 0.4);
-      // passou pela caixa / carta?
+      // golpe/escopeta do oponente de perto
+      if (alcancePerigo) {
+        const ox = perc.x + perc.vx * k * 0.6, oy = perc.y;
+        const ddx = s.x - ox, ddy = s.y - oy;
+        if (ddx * ddx + ddy * ddy < alcancePerigo * alcancePerigo) perigo += armaO.dano * (armaO.qtd || 1) * 0.012;
+      }
       for (let i = 0; i < M.caixas.length; i++) {
         const cx = M.caixas[i];
         if (Math.abs(cx.x - s.x) < s.r + 24 && Math.abs(cx.y - s.y) < s.r + 24) {
@@ -205,6 +312,7 @@ function decidir(bot, M, b, o, perc) {
         const ct = M.cartas[i];
         if (Math.abs(ct.x - s.x) < s.r + 26 && Math.abs(ct.y - s.y) < s.r + 30) pegaCarta = 1;
       }
+      if (nav && nav.plat && s.noChao && s.chao === nav.plat) chegou = true;
     }
     let nota = 0;
     if (caiu) nota -= 1000;
@@ -214,71 +322,104 @@ function decidir(bot, M, b, o, perc) {
     const dx = fx - s.x, dy = fy - s.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     nota -= Math.abs(dist - pref) * 0.045;
-    // linha de tiro
+    if (longe && dist < 120) nota -= (120 - dist) * 0.3;            // arma de longe: não fica colado
+    // linha de tiro / esconderijo
     const livre = linhaLivre(s.x, s.y, fx, fy, M.plats, M.t);
-    if (livre) {
+    if (esconder) nota += livre ? -9 : 6;
+    else if (livre) {
       if (arma.grav > 0.3 || arma.tipo === "ceu") nota += 6;
-      else if (Math.abs(dy) < 70 || Math.abs(Math.atan2(dy, Math.abs(dx))) < 0.55) nota += 10;
-      // e o perigo de ficar parado na linha do oponente
-      if (reto && Math.abs(dy) < s.r + 8) nota -= 7 * ameacaOponente * (1 - Math.abs(s.vy) / 8);
+      else nota += 10;
+      if (reto && Math.abs(dy) < s.r + 8) nota -= 6 * ameacaO * (1 - Math.abs(s.vy) / 8);   // não ficar parado na linha dele
     }
-    // caixas e cartas (as que pega no caminho valem muito; as perto valem um pouco)
+    // altura: um pouco melhor estar acima
+    nota += limitar(dy, -120, 120) * 0.025 * bot.tatica;
+    // caixas e cartas
     if (pegaCaixa > 0) nota += pegaCaixa * 45 * bot.coleta;
     if (pegaCarta) nota += 30 * bot.coleta;
-    for (let i = 0; i < M.caixas.length; i++) {
-      const cx = M.caixas[i];
-      const ganho = VALOR_ARMA[cx.idArma] - valorAtual;
-      if (ganho <= 0.05 || cx.paraquedas && cx.y < 60) continue;
-      const dd = Math.abs(cx.x - s.x) + Math.abs(cx.y - s.y) * 1.3;
-      nota += ganho * 22 * bot.coleta / (1 + dd / 120);
+    // caminho até o alvo (pelo mapa de plataformas)
+    if (nav) {
+      const nd = Math.abs(nav.x - s.x) + Math.abs(nav.y - s.y) * 1.4;
+      nota -= nd * 0.05 * bot.coleta;
+      if (chegou) nota += 14 * bot.coleta;
     }
-    for (let i = 0; i < M.cartas.length; i++) {
-      const ct = M.cartas[i];
-      const dd = Math.abs(ct.x - s.x) + Math.abs(ct.y - s.y) * 1.3;
-      nota += 14 * bot.coleta / (1 + dd / 120);
-    }
-    // perigos do cenário
+    // perigos e truques do cenário
     if (s.y + s.r > lava - 40) nota -= 18;
     if (cen.queda) {
-      // em cima de algum chão?
-      let temChao = false;
-      for (let i = 0; i < M.plats.length; i++) { const p = M.plats[i]; if (s.x > p.x - 5 && s.x < p.x + p.w + 5 && p.y >= s.y) { temChao = true; break; } }
-      if (!temChao) nota -= 30;
+      let chao = null;
+      for (let i = 0; i < M.plats.length; i++) { const p = M.plats[i]; if (s.x > p.x - 5 && s.x < p.x + p.w + 5 && p.y >= s.y) { chao = p; break; } }
+      if (!chao) nota -= 30;
+      else {
+        const beira = Math.min(s.x - chao.x, chao.x + chao.w - s.x);
+        if (beira < 110) nota -= (110 - beira) * 0.12 * bot.tatica;          // longe da beirada
+        // oponente entre mim e a beirada dele: meus tiros/empurrões jogam ele para fora
+        const po = platDe(M, perc.x, perc.y);
+        if (po >= 0) {
+          const P = M.plats[po];
+          const ladoBeira = perc.x - P.x < P.x + P.w - perc.x ? -1 : 1;
+          if (Math.sign(perc.x - s.x) === ladoBeira) nota += 7 * bot.tatica;
+        }
+      }
     }
-    nota -= Math.abs(s.x - 640) * 0.004;
-    // continuar o plano anterior evita tremedeira
-    if (bot.plano === c) nota += 2.5;
+    nota -= Math.abs(s.x - 640) * 0.003;
+    if (bot.plano === c) nota += 2.5;                                   // evita tremedeira
     nota += Math.random() * bot.ruido;
     if (nota > notaMelhor) { notaMelhor = nota; melhor = c; }
   }
   return melhor || CANDIDATOS_BASE[0];
 }
 
-// ---------- tiro ----------
-// Simula o tiro e diz se acerta onde o bot acha que o oponente vai estar
-function tiroAcerta(bot, M, b, perc) {
+// ---------- mira ----------
+// Onde mirar: posição futura do oponente quando o tiro chegar (e o arco das armas com gravidade)
+function mirarBot(bot, M, b, perc) {
   const a = ARMA[b.arma];
-  const o = oponente(M, b);
+  if (a.tipo === "melee" || a.tipo === "mina" || a.tipo === "ceu") return perc.x >= b.x ? 0 : Math.PI;
+  const agua = M.cen.agua ? 0.7 : 1;
+  const v = (a.vel || 60) * agua;
+  const sinal = gravSinal(M.cen, M.t);
+  const gO = perc.noChao ? 0 : gravidadeDe(M.cen) * sinal;
+  let tx = perc.x, ty = perc.y;
+  if (a.tipo === "bala") {
+    for (let i = 0; i < 3; i++) {
+      const tt = Math.min(45, Math.sqrt((tx - b.x) * (tx - b.x) + (ty - b.y) * (ty - b.y)) / v);
+      tx = perc.x + perc.vx * tt;
+      ty = perc.y + perc.vy * tt + 0.5 * gO * tt * tt;
+    }
+  }
+  let ang;
+  const g = (a.grav || 0) * gravidadeDe(M.cen);
+  if (a.tipo === "bala" && g > 0.05) {
+    const th = anguloBalistico(Math.abs(tx - b.x), -(ty - b.y) * sinal, v, g);
+    const angCanvas = th === null ? -0.75 * sinal : -th * sinal;
+    ang = tx >= b.x ? angCanvas : Math.PI - angCanvas;
+  } else ang = Math.atan2(ty - b.y, tx - b.x);
+  // erro de mira que muda devagar (não é tremedeira)
+  bot.trocaRuido -= FIS.dt;
+  if (bot.trocaRuido <= 0) { bot.trocaRuido = 0.35 + Math.random() * 0.4; bot.alvoRuido = (Math.random() + Math.random() - 1) * bot.erroMira * 1.7; }
+  bot.ruidoMira += (bot.alvoRuido - bot.ruidoMira) * 0.08;
+  return ang + bot.ruidoMira;
+}
+
+// Simula o tiro e diz se acerta onde o bot acha que o oponente vai estar
+function tiroAcerta(bot, M, b, perc, ang) {
+  const a = ARMA[b.arma];
   const dx = perc.x - b.x, dy = perc.y - b.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
   if (a.tipo === "melee") return dist < a.alcance + perc.r + 6;
   if (a.tipo === "ceu") return true;
   if (a.tipo === "mina") return b.noChao && dist < 320 && Math.random() < 0.04;
   if (a.tipo === "raio") return dist < a.alcance - 10 && linhaLivre(b.x, b.y, perc.x, perc.y, M.plats, M.t);
-  const ang = b.mira;
   const boca = pontaDoCano(b, ang);
   if (a.tipo === "laser" || a.tipo === "feixe") {
     const alc = a.tipo === "feixe" ? a.alcance : 1500;
     const x2 = boca.x + Math.cos(ang) * alc, y2 = boca.y + Math.sin(ang) * alc;
-    if (distPontoSegmento(perc.x, perc.y, boca.x, boca.y, x2, y2) > perc.r * bot.tolerancia) return false;
+    if (distPontoSegmento(perc.x, perc.y, boca.x, boca.y, x2, y2) > perc.r * bot.tolerancia + 4) return false;
     return a.perfuraParede || linhaLivre(boca.x, boca.y, perc.x, perc.y, M.plats, M.t);
   }
-  // projétil: simula
   const g = (a.grav || 0) * gravidadeDe(M.cen) * gravSinal(M.cen, M.t);
   const v = a.vel * (M.cen.agua ? 0.7 : 1);
   let x = boca.x, y = boca.y, vx = Math.cos(ang) * v, vy = Math.sin(ang) * v;
   let ox = perc.x, oy = perc.y;
-  const ovx = perc.vx * 0.7, ovy = o.noChao ? 0 : perc.vy * 0.4;
+  const ovx = perc.vx, ovy = perc.noChao ? 0 : perc.vy * 0.6;
   const alcanceMax = a.vida ? a.vida : 90;
   const raio = a.explode ? Math.max(a.explode * 0.55, perc.r) : perc.r * bot.tolerancia + (a.raio || 4);
   const espalha = (a.qtd || 1) > 2 ? 1.6 : 1;
@@ -305,9 +446,16 @@ function tiroAcerta(bot, M, b, perc) {
     }
     if (x < -40 || x > FIS.largura + 40 || y > 760) return false;
   }
-  // teleguiados e bumerangue: basta estar mais ou menos na direção
   if (a.teleguia || a.volta || a.atrai) return dist < 650 && Math.abs(dy) < 160;
   return false;
+}
+
+// Oponente mais ou menos na direção da mira, sem parede no meio
+function alinhado(M, b, perc, ang) {
+  const dx = perc.x - b.x, dy = perc.y - b.y;
+  if (dx * dx + dy * dy > 700 * 700) return false;
+  if (Math.abs(difAng(Math.atan2(dy, dx), ang)) > 0.35) return false;
+  return linhaLivre(b.x, b.y, perc.x, perc.y, M.plats, M.t);
 }
 
 // ---------- o que o bot aperta neste passo ----------
@@ -325,36 +473,23 @@ function pensarBot(bot, M, b) {
     bot.plano = novo;
     bot.proxDecisao = bot.intervalo * (0.8 + Math.random() * 0.4);
   }
-  const e = entradaDoPlano(bot.plano, bot.passosPlano++);
-  Object.assign(ent, e);
+  Object.assign(ent, entradaDoPlano(bot.plano, bot.passosPlano++));
 
-  // virar para o oponente quando dá para atirar (como um humano tocando a seta rapidinho)
+  // mira livre (o motor usa b.miraLivre como a mira do jogador)
+  const ang = mirarBot(bot, M, b, perc);
+  b.miraLivre = o.viva ? ang : null;
   const a = ARMA[b.arma];
-  if (o.viva && b.cad <= 0.05 && !ent.esq && !ent.dir) b.dir = perc.x > b.x ? 1 : -1;
-
-  if (o.viva) {
-    if (M.t < bot.hesitouAte) return ent;
-    const bom = tiroAcerta(bot, M, b, perc);
-    if (bom) {
-      if (b.cad <= 0 && Math.random() < bot.hesita) { bot.hesitouAte = M.t + 0.15; return ent; }
-      ent.tiro = true;
-    } else if (a.tipo !== "mina" && a.tipo !== "melee" && (b.municao === Infinity || b.municao > (a.municao || 1) * 0.3) && alinhado(M, b, perc)) {
-      // na direção certa e com munição sobrando: atira "pressionando" (como um humano faz)
-      if (Math.random() < bot.pressiona) ent.tiro = true;
-    } else if (Math.random() < bot.chuta && a.tipo !== "mina") ent.tiro = true;
-    // feixe: segura enquanto acerta
-    if (a.tipo === "feixe" && bom) ent.tiro = true;
-  }
+  if (!o.viva || M.t < bot.hesitouAte) return ent;
+  const fantasma = o.efeitos.fantasma > 0;
+  const bom = !fantasma && tiroAcerta(bot, M, b, perc, ang);
+  if (bom) {
+    if (b.cad <= 0 && Math.random() < bot.hesita) { bot.hesitouAte = M.t + 0.15; return ent; }
+    ent.tiro = true;
+  } else if (a.tipo !== "mina" && a.tipo !== "melee" && (b.municao === Infinity || b.municao > (a.municao || 1) * 0.3) && alinhado(M, b, perc, ang)) {
+    // na direção certa e com munição sobrando: atira "pressionando" (como um humano faz)
+    if (Math.random() < bot.pressiona * (fantasma ? 0.4 : 1)) ent.tiro = true;
+  } else if (Math.random() < bot.chuta && a.tipo !== "mina") ent.tiro = true;
   return ent;
-}
-
-// Oponente na frente, sem parede no meio e mais ou menos na altura da mira
-function alinhado(M, b, perc) {
-  const dx = perc.x - b.x, dy = perc.y - b.y;
-  if (dx * b.dir < 0) return false;
-  if (Math.abs(Math.atan2(dy, Math.abs(dx))) > 0.5) return false;
-  if (dx * dx + dy * dy > 700 * 700) return false;
-  return linhaLivre(b.x, b.y, perc.x, perc.y, M.plats, M.t);
 }
 
 // Queda de braço: devolve true quando o bot "clica" neste passo
