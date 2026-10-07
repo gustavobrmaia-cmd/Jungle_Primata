@@ -52,6 +52,7 @@ TEXTOS.ro = {
   qualidade_auto: "Grafică: automată",
   qualidade_alta: "Grafică: înaltă",
   qualidade_leve: "Grafică: ușoară",
+  perfeito: "PERFECT!",
   missoes: "Misiuni",
   skins: "Skinuri",
   opcoes: "Opțiuni",

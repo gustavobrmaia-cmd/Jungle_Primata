@@ -52,6 +52,7 @@ TEXTOS.ru = {
   qualidade_auto: "Графика: авто",
   qualidade_alta: "Графика: высокая",
   qualidade_leve: "Графика: лёгкая",
+  perfeito: "ИДЕАЛЬНО!",
   missoes: "Задания",
   skins: "Скины",
   opcoes: "Настройки",

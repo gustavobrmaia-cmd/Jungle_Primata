@@ -52,6 +52,7 @@ TEXTOS.nl = {
   qualidade_auto: "Graphics: automatisch",
   qualidade_alta: "Graphics: hoog",
   qualidade_leve: "Graphics: licht",
+  perfeito: "PERFECT!",
   missoes: "Missies",
   skins: "Skins",
   opcoes: "Opties",

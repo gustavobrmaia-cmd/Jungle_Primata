@@ -11,7 +11,14 @@ const PULSO_PERFURA = 18;         // passos até um tiro que atravessa poder ace
 
 function oponente(M, b) { return M.bolinhas[b.lado === 1 ? 1 : 0]; }
 function difAng(a, b) { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
-function somJogo(M, nome) { if (!M.mudo) som(nome); }
+function somJogo(M, nome, tomMult) { if (!M.mudo) som(nome, tomMult); }
+
+// Reação do bot (balão acima da cabeça): "!" "?!" "♪" ... dura alguns décimos de segundo
+function emote(b, s, dur) {
+  if (b.humano) return;
+  if (b.emote && b.emote.t > 0.4 && b.emote.s === s) return;
+  b.emote = { s: s, t: dur || 1.1, d: dur || 1.1 };
+}
 
 // ---------- arma ----------
 function equipar(b, id) {
@@ -38,6 +45,21 @@ function calcularMira(M, b) {
       const dist = Math.sqrt((o2.x - b.x) * (o2.x - b.x) + (o2.y - b.y) * (o2.y - b.y)) || 1;
       const ima = Math.min(0.14, Math.atan2(o2.r * 0.9, dist));
       if (Math.abs(difAng(alvo, b.miraLivre)) < ima) return alvo;
+    }
+    // arma de arco (estilingue, granada...): quem mira "mais ou menos no bot" (reto ou na curva) acerta a parábola.
+    // Gente mira reto; o bot calcula a curva — sem isso o jogador perdia toda troca de estilingue.
+    if (b.humano && o2.viva && !(o2.efeitos.fantasma > 0) && a.grav > 0.05 && a.tipo === "bala") {
+      const sinalG = gravSinal(M.cen, M.t), g = a.grav * gravidadeDe(M.cen);
+      const dx = o2.x - b.x, dy = o2.y - b.y;
+      const th = anguloBalistico(Math.abs(dx), -dy * sinalG, a.vel * (M.cen.agua ? 0.7 : 1), g);
+      if (th !== null) {
+        const angCanvas = -th * sinalG, arcoCerto = dx >= 0 ? angCanvas : Math.PI - angCanvas;
+        const reto = Math.atan2(dy, dx);
+        // vale se a mira está entre a linha reta e a curva certa (com folga)
+        const lo = Math.min(0, difAng(arcoCerto, reto)) - 0.22, hi = Math.max(0, difAng(arcoCerto, reto)) + 0.22;
+        const d = difAng(b.miraLivre, reto);
+        if (d >= lo && d <= hi) return arcoCerto;
+      }
     }
     return b.miraLivre;
   }
@@ -436,12 +458,35 @@ function causarDano(M, b, dano, atacante, nx, ny, empurra, fx, fy) {
     M.stats.dano[atacante.lado - 1] += dano;
     M.stats.acertos[atacante.lado - 1]++;
   }
+  // ---- sensação de acerto ("juice") ----
+  let tomAcerto = 1;
+  if (atacante && atacante !== b && atacante.humano && !M.mudo) {
+    // combo: acertos seguidos em menos de 1,3 s
+    const c = atacante.combo || (atacante.combo = { n: 0, ate: 0, mostra: 0 });
+    if (dano >= 3) {
+      c.n = M.t < c.ate ? c.n + 1 : 1;
+      c.ate = M.t + 1.3;
+      if (c.n >= 3) { c.mostra = 1; if (c.n === 3 || c.n % 5 === 0) somJogo(M, "combo", 1 + Math.min(c.n, 10) * 0.04); }
+      tomAcerto = 1 + Math.min(c.n - 1, 10) * 0.055;
+      atacante.marca = 0.18;                               // marcador de acerto na mira
+      // micro-pausa no impacto (no máximo a cada 0,12 s, só em acerto que pesa)
+      if (dano >= 6 && M.t - (M.ultimaPausa || -1) > 0.12) { M.pausa = Math.max(M.pausa || 0, dano >= 20 ? 5 : 3); M.ultimaPausa = M.t; }
+    }
+  }
+  if (b.humano && atacante && atacante !== b && !M.mudo && dano >= 3) M.dorTela = Math.min(1, (M.dorTela || 0) + dano / 35);
+  // reações do bot
+  if (atacante && atacante !== b && !b.humano) {
+    if (dano >= 20 || (atacante.combo && atacante.combo.n >= 4)) emote(b, "?!", 0.9);
+    else if (b.vida < 30 && b.vida + dano >= 30) emote(b, "!!", 0.9);
+  }
   if (typeof Efeitos !== "undefined") {
     Efeitos.acerto(fx === undefined ? b.x : fx, fy === undefined ? b.y : fy, b.cor);
-    if (dano >= 4) Efeitos.texto(b.x, b.y - b.r - 8, "-" + Math.round(dano), dano >= 25 ? "#ffd43b" : "#ffffff");
+    if (dano >= 4) Efeitos.texto(b.x, b.y - b.r - 8, "-" + Math.round(dano), dano >= 25 ? "#ffd43b" : "#ffffff", dano >= 25 ? 1.35 : undefined);
     if (dano >= 20) Efeitos.tremer(Math.min(10, dano / 5));
   }
-  somJogo(M, "acerto");
+  if (atacante && atacante !== b && atacante.humano) somJogo(M, "acerto_meu", tomAcerto);
+  else if (b.humano) somJogo(M, "dor");
+  else somJogo(M, "acerto");
   if (b.vida <= 0) matar(M, b);
 }
 
@@ -451,6 +496,15 @@ function matar(M, b) {
   b.viva = false;
   if (typeof Efeitos !== "undefined") { Efeitos.estouro(b.x, b.y, b.cor); Efeitos.tremer(12); }
   somJogo(M, "estouro");
+  // golpe final: pausa maior, K.O. e câmera lenta com zoom em quem caiu (desenho.js)
+  const matador = M.bolinhas[b.lado === 1 ? 1 : 0];
+  if (!M.mudo) {
+    M.pausa = Math.max(M.pausa || 0, 9);
+    M.ko = { x: b.x, y: b.y, humano: !!matador.humano, perfeito: !(matador.danoRecebido > 0) };
+    if (typeof Efeitos !== "undefined") Efeitos.tremer(20);
+    if (matador.humano) somJogo(M, "ko");
+  }
+  if (matador.viva) emote(matador, "♪", 1.6);
   M.morreu = M.morreu || [];
   M.morreu.push(b.lado);
 }

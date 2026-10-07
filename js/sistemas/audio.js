@@ -41,8 +41,10 @@ const Som = (function() {
     else if (!aberto && ctxAudio.state === "suspended") ctxAudio.resume();
   });
 
+  let afinacao = 1;   // multiplicador de tom do som atual (combo)
   function tom(tipo, f1, f2, dur, vol, atraso) {
     const a = ctxAudio;
+    f1 *= afinacao; f2 *= afinacao;
     const t0 = a.currentTime + (atraso || 0);
     const o = a.createOscillator();
     const g = a.createGain();
@@ -88,6 +90,12 @@ const Som = (function() {
     explosao: [["ruido", 900, 0.7, 0.55], ["tom", "sine", 90, 30, 0.5, 0.35]],
     explosao_peq: [["ruido", 1400, 0.35, 0.3], ["tom", "sine", 140, 50, 0.25, 0.15]],
     acerto: [["tom", "square", 300, 150, 0.06, 0.06]],
+    // acerto do jogador: "plim" que sobe de tom no combo
+    acerto_meu: [["tom", "triangle", 880, 1320, 0.07, 0.08], ["tom", "square", 320, 160, 0.05, 0.035]],
+    dor: [["tom", "sawtooth", 180, 90, 0.1, 0.06]],
+    ko: [["ruido", 1100, 0.55, 0.5], ["tom", "sawtooth", 170, 40, 0.5, 0.14], ["tom", "square", 1046, 1046, 0.12, 0.06, 0.18], ["tom", "square", 1568, 1568, 0.3, 0.06, 0.3]],
+    moeda: [["tom", "square", 1318, 1318, 0.04, 0.035], ["tom", "square", 1975, 1975, 0.09, 0.035, 0.04]],
+    combo: [["tom", "triangle", 660, 990, 0.12, 0.07]],
     estouro: [["ruido", 2200, 0.4, 0.4], ["tom", "square", 880, 220, 0.3, 0.08], ["tom", "square", 660, 1320, 0.25, 0.06, 0.12]],
     pulo: [["tom", "square", 300, 620, 0.1, 0.035]],
     mola: [["tom", "sine", 200, 900, 0.18, 0.1]],
@@ -106,18 +114,20 @@ const Som = (function() {
     derrota: [["tom", "triangle", 392, 392, 0.2, 0.08], ["tom", "triangle", 311, 311, 0.2, 0.08, 0.2], ["tom", "triangle", 233, 200, 0.5, 0.08, 0.4]]
   };
 
-  function som(nome) {
+  function som(nome, tomMult) {
     if (save.mudo || pausadoPorAnuncio || !ctxAudio || ctxAudio.state !== "running") return;
     const agora = ctxAudio.currentTime;
     if (ultimo[nome] && agora - ultimo[nome] < 0.045) return;
     ultimo[nome] = agora;
+    afinacao = tomMult || 1;
     (EFEITOS[nome] || []).forEach(function(e) {
       if (e[0] === "tom") tom(e[1], e[2], e[3], e[4], e[5], e[6]);
       else chiado(e[1], e[2], e[3], e[4]);
     });
+    afinacao = 1;
   }
 
   return { som: som };
 })();
 
-function som(nome) { Som.som(nome); }
+function som(nome, tomMult) { Som.som(nome, tomMult); }

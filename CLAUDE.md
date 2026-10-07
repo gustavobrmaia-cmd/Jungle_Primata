@@ -84,6 +84,15 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   Playtest v6: 70% perdiam a 1ª rodada e 76% saíam no meio da 1ª partida — o começo tem que ser vencível.
 - Estado do bot que usa o relógio da rodada (M.t) é zerado a cada rodada nova (pensarBot); antes o bot ficava
   sem atirar no começo das rodadas seguintes.
+- Bot avisa tiro pesado (bazuca, laser, sniper): balão "!" + linha vermelha tracejada por 0,2–0,55 s antes de atirar
+  (só contra humano). Balões de reação: "!" no começo, "?!" quando apanha forte, "!!" com pouca vida, "♪" quando vence;
+  gota de suor com pouca vida.
+- Sensação de acerto (só para quem joga): micro-pausa no impacto (M.pausa, quadros), marcador de acerto na mira,
+  COMBO xN (acertos em menos de 1,3 s) com som subindo de tom, tela vermelha ao levar dano e com pouca vida,
+  K.O.! (e PERFEITO!) com câmera lenta e zoom, moedas voando do bot até o placar. b.humano marca quem é pessoa.
+- Ajuda de mira para armas de arco (estilingue, granada...): se a pessoa mira entre a linha reta e a curva certa,
+  o tiro sai na curva certa (o bot calcula a parábola; gente mira reto).
+- Duração: luta de ~20 s por rodada bot x bot (CONFIG.multDano 0,85). Medir com a simulação ao mexer em dano.
 - Game Events de diagnóstico nas 2 primeiras partidas: round/m1-r1... (start/complete/fail) e
   player/r1-tiros-* e r1-acertos-* (o jogador atira? acerta?).
 - Anúncio comum: antes de cada partida (menos a 1ª e logo depois de um premiado) E entre as rodadas (pausa natural;

@@ -52,6 +52,7 @@ TEXTOS.it = {
   qualidade_auto: "Grafica: automatica",
   qualidade_alta: "Grafica: alta",
   qualidade_leve: "Grafica: leggera",
+  perfeito: "PERFETTO!",
   missoes: "Missioni",
   skins: "Skin",
   opcoes: "Opzioni",

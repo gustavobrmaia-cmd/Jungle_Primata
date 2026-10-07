@@ -52,6 +52,7 @@ TEXTOS.pl = {
   qualidade_auto: "Grafika: automatyczna",
   qualidade_alta: "Grafika: wysoka",
   qualidade_leve: "Grafika: lekka",
+  perfeito: "PERFEKCYJNIE!",
   missoes: "Misje",
   skins: "Skórki",
   opcoes: "Opcje",

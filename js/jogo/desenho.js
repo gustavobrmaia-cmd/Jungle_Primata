@@ -33,6 +33,12 @@ function desenharJogo(ctx) {
   ctx.save();
   if (temArte.fx) { const s = Efeitos.deslocamento(); ctx.translate(s.x, s.y); }
   ctx.translate(0, dy);
+  // K.O.: zoom rápido em quem caiu durante a câmera lenta
+  if (j.fase === "fimRodada" && M.ko && j.tempoFase < 1.4) {
+    const tz = j.tempoFase, k = tz < 0.2 ? tz / 0.2 : Math.max(0, 1 - (tz - 0.2) / 1.2);
+    const z = 1 + 0.13 * k * k * (3 - 2 * k);
+    ctx.translate(M.ko.x, M.ko.y); ctx.scale(z, z); ctx.translate(-M.ko.x, -M.ko.y);
+  }
 
   // 1. fundo fixo (refeito só quando muda o cenário ou o tamanho)
   if (!j.prerender || j.prerenderCen !== cen.id || j.prerenderH !== H) {
@@ -96,7 +102,11 @@ function desenharJogo(ctx) {
 
   // 9. frente do cenário (lava, água, escuridão, vento)
   if (temArte.cen) ArteCenarios.desenharFrente(ctx, cen, est, t);
+  // reações do bot (balões) e suor quando está com pouca vida
+  for (let k = 0; k < 2; k++) desenharReacao(ctx, M, M.bolinhas[k], t);
   ctx.restore();
+
+  if (!j.demo) desenharVinheta(ctx, j, M, H);
 
   // 10. HUD e textos
   if (j.demo) { if (j.fase === "queda") desenharQueda(ctx, j, H); return; }   // fundo dos menus: só a luta
@@ -104,7 +114,7 @@ function desenharJogo(ctx) {
   const naQueda = j.fase === "queda";
   if (naQueda !== desenharJogo.naQueda) { desenharJogo.naQueda = naQueda; el("btnPausa").classList.toggle("escondido", naQueda); }
   if (j.fase === "queda") desenharQueda(ctx, j, H);
-  else desenharHud(ctx, j, M, dy);
+  else { desenharHud(ctx, j, M, dy); desenharSensacoes(ctx, j, M, dy, H); }
   if (!j.demo) desenharControlesToque(ctx, j, H);
   const cruz = !j.demo && estado === "jogo" && entrada.mouseAtivo && j.fase !== "queda";
   if (cruz) desenharCruzMira(ctx, j);
@@ -177,7 +187,15 @@ function desenharBolinhaNoMundo(ctx, j, M, b, o, tm) {
   const ang = a.tipo === "melee" || a.tipo === "mina" || a.tipo === "ceu" ? (b.dir > 0 ? 0 : Math.PI) : (b.mira === undefined ? 0 : b.mira);
   if (temArte.armas) ArteArmas.desenharNaMao(ctx, b.arma, b.x, b.y, ang, b.r, b.recuoAnim || 0, b.golpe > 0 ? 1 - b.golpe : 0);
   ctx.globalAlpha = 1;
-  if (!j.demo && b.miraLivre !== null && b.miraLivre !== undefined && j.fase === "luta") desenharGuiaMira(ctx, M, b, ang);
+  if (!j.demo && b.miraLivre !== null && b.miraLivre !== undefined && j.fase === "luta" && b.humano) desenharGuiaMira(ctx, M, b, ang);
+  // bot avisando um tiro pesado: linha vermelha tracejada na direção da mira
+  if (b.avisando && j.fase === "luta") {
+    const boca = pontaDoCano(b, ang), pis = 0.55 + 0.45 * Math.sin(tm * 30);
+    ctx.save();
+    ctx.globalAlpha = pis; ctx.strokeStyle = "#ff4d5e"; ctx.lineWidth = 3; ctx.setLineDash([14, 10]); ctx.lineDashOffset = -tm * 120;
+    ctx.beginPath(); ctx.moveTo(boca.x, boca.y); ctx.lineTo(boca.x + Math.cos(ang) * 420, boca.y + Math.sin(ang) * 420); ctx.stroke();
+    ctx.restore();
+  }
   // marcador acima da cabeça no modo 2 jogadores (P1 / P2) para ninguém se perder
   if (!j.demo && (j.modo === "2p" || b.lado === 1)) {
     const txt = j.modo === "2p" ? "P" + b.lado : t("voce_curto");
@@ -236,6 +254,19 @@ function desenharGuiaMira(ctx, M, b, ang) {
 function desenharCruzMira(ctx, j) {
   const x = entrada.mouseX, y = entrada.mouseY, cor = j.cores[0];
   ctx.save();
+  // marcador de acerto: 4 tracinhos brancos em X que abrem e somem
+  const b1 = j.M.bolinhas[0];
+  if (b1.marca > 0) {
+    const m = b1.marca / 0.18, r1 = 15 + (1 - m) * 6, r2 = r1 + 9;
+    ctx.globalAlpha = m; ctx.lineCap = "round";
+    for (let p = 0; p < 2; p++) {
+      ctx.strokeStyle = p ? "#fff" : "rgba(12,8,30,0.8)"; ctx.lineWidth = p ? 3 : 6;
+      ctx.beginPath();
+      for (let q = 0; q < 4; q++) { const a = Math.PI / 4 + q * Math.PI / 2; ctx.moveTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.lineTo(x + Math.cos(a) * r2, y + Math.sin(a) * r2); }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
   ctx.lineCap = "round";
   for (let k = 0; k < 2; k++) {
     ctx.strokeStyle = k ? cor : "rgba(12,8,30,0.85)";
@@ -330,7 +361,14 @@ function desenharHud(ctx, j, M, dy) {
     ctx.globalAlpha = 1 - k;
     textoContorno(ctx, t("lute"), cx, meio + 20, Math.round(90 + k * 60), "#ffd43b");
     ctx.globalAlpha = 1;
-  } else if (j.fase === "fimRodada" && j.tempoFase > 0.4) {
+  } else if (j.fase === "fimRodada" && M.ko && M.ko.humano && j.tempoFase <= 1.0) {
+    // golpe final do jogador: K.O.! (e PERFEITO! se não levou dano)
+    const tk = j.tempoFase, pop = tk < 0.18 ? 1.6 - tk / 0.18 * 0.6 : 1 + 0.04 * Math.sin(tk * 18);
+    ctx.globalAlpha = tk > 0.8 ? (1 - tk) / 0.2 : 1;
+    textoContorno(ctx, "K.O.!", cx, meio + 10, Math.round(120 * pop), "#ffd43b");
+    if (M.ko.perfeito) textoContorno(ctx, t("perfeito"), cx, meio + 90, Math.round(44 * pop), "#69db7c");
+    ctx.globalAlpha = 1;
+  } else if (j.fase === "fimRodada" && j.tempoFase > (M.ko && M.ko.humano ? 1.0 : 0.4)) {
     const v = j.vencedorRodada;
     const surv = j.modo === "sobrevivencia";
     const txt = surv ? (v === 1 ? t("onda_concluida", j.onda) : t("bot_venceu_rodada")) :
@@ -493,4 +531,118 @@ function desenharControlesToque(ctx, j, H) {
     ctx.beginPath(); ctx.arc(bx + limitar(d.dx, -80, 80), by + limitar(d.dy, -80, 80), 38, 0, 7); ctx.fill();
   });
   ctx.restore();
+}
+
+// ---------- sensação: reações do bot, combo, tela vermelha, moedas ----------
+// Balão com um símbolo acima do bot ("!", "?!", "!!", "♪") + gota de suor com pouca vida
+function desenharReacao(ctx, M, b, tm) {
+  if (!b.viva || b.humano) return;
+  const inv = gravSinal(M.cen, tm) < 0;
+  if (b.vida < 30) {
+    // gota de suor que escorre
+    const f = (tm * 1.6) % 1, sx = b.x + b.r * 0.78, sy = b.y - b.r * 0.55 + f * 10 * (inv ? -1 : 1);
+    ctx.globalAlpha = 1 - f * 0.7;
+    ctx.fillStyle = "#74c0fc";
+    ctx.beginPath(); ctx.moveTo(sx, sy - 7); ctx.quadraticCurveTo(sx + 5, sy + 1, sx, sy + 4); ctx.quadraticCurveTo(sx - 5, sy + 1, sx, sy - 7); ctx.fill();
+    ctx.fillStyle = "#e7f5ff"; ctx.fillRect(sx - 1.5, sy - 1, 1.6, 2.4);
+    ctx.globalAlpha = 1;
+  }
+  const e = b.emote;
+  if (!e) return;
+  const idade = e.d - e.t;
+  const esc = idade < 0.15 ? 0.4 + idade / 0.15 * 0.75 : idade < 0.25 ? 1.15 - (idade - 0.15) / 0.1 * 0.15 : 1;
+  const alfa = e.t < 0.2 ? e.t / 0.2 : 1;
+  const x = b.x + b.r * 0.6, y = inv ? b.y + b.r + 38 : b.y - b.r - 38;
+  ctx.save();
+  ctx.globalAlpha = alfa;
+  ctx.translate(x, y); ctx.scale(esc, esc);
+  ctx.font = "900 24px system-ui, sans-serif";
+  const w = Math.max(40, ctx.measureText(e.s).width + 20), h = 34;
+  ctx.fillStyle = "rgba(12,8,30,0.35)";
+  arredondado(ctx, -w / 2 + 2, -h / 2 + 3, w, h, 12); ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  arredondado(ctx, -w / 2, -h / 2, w, h, 12); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-10, h / 2 - 1); ctx.lineTo(-18, h / 2 + 10); ctx.lineTo(-1, h / 2 - 1); ctx.fill();
+  ctx.fillStyle = e.s === "♪" ? "#cc5de8" : "#e8590c";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(e.s, 0, 1);
+  ctx.restore();
+}
+
+function arredondado(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+
+// Vinheta vermelha pronta (desenhada uma vez; por quadro é só um drawImage)
+function vinhetaDor(H) {
+  if (vinhetaDor.c && vinhetaDor.h === H) return vinhetaDor.c;
+  const c = document.createElement("canvas"); c.width = 320; c.height = Math.round(H / 4);
+  const g = c.getContext("2d"), w = c.width, h = c.height;
+  const gr = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.32, w / 2, h / 2, Math.max(w, h) * 0.62);
+  gr.addColorStop(0, "rgba(255,30,60,0)"); gr.addColorStop(1, "rgba(255,30,60,0.85)");
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  vinhetaDor.c = c; vinhetaDor.h = H;
+  return c;
+}
+
+// tela vermelha: pulso quando leva dano e batimento com pouca vida (só quem joga contra o bot)
+function desenharVinheta(ctx, j, M, H) {
+  const b1 = M.bolinhas[0];
+  if (j.modo === "2p" || !b1.humano) return;
+  let a = (M.dorTela || 0) * 0.55;
+  if (b1.viva && b1.vida < 30 && j.fase === "luta") a = Math.max(a, 0.22 + 0.14 * Math.sin(M.t * 7));
+  if (a > 0.01) { ctx.globalAlpha = Math.min(0.75, a); ctx.drawImage(vinhetaDor(H), 0, 0, CONFIG.largura, H); ctx.globalAlpha = 1; }
+}
+
+function desenharSensacoes(ctx, j, M, dy, H) {
+  // contador de combo (a partir de 3 acertos seguidos)
+  for (let k = 0; k < 2; k++) {
+    const b = M.bolinhas[k], c = b.combo;
+    if (!c || c.mostra <= 0 || c.n < 3) continue;
+    const novo = Math.max(0, c.ate - M.t - 1.1) / 0.2;           // pulso logo depois de cada acerto
+    const tam = Math.round(34 + novo * 12 + Math.min(c.n, 12));
+    ctx.globalAlpha = Math.min(1, c.mostra);
+    const x = b.lado === 1 ? 250 : CONFIG.largura - 250, y = (dy > 150 ? dy + 60 : 160);
+    textoContorno(ctx, "COMBO x" + c.n, x, y, tam, c.n >= 8 ? "#ff922b" : "#ffd43b");
+    ctx.globalAlpha = 1;
+  }
+  // moedas voando de onde o bot caiu até o placar
+  const ch = j.chuva;
+  if (ch) {
+    const idade = (performance.now() - ch.t0) / 1000;
+    const em = dy > 150, alvoX = em ? 140 : 60, alvoY = em ? dy - 110 : 82;
+    let chegaram = 0;
+    for (let i = 0; i < ch.n; i++) {
+      const ini = 0.25 + i * 0.07, u = (idade - ini) / 0.75;
+      if (u <= 0) {
+        // espalhando no ar antes de voar
+        const a = i / ch.n * Math.PI * 2, r = Math.min(1, idade / 0.25) * 40;
+        moedinha(ctx, ch.x + Math.cos(a) * r, ch.y + dy + Math.sin(a) * r - 10, 1);
+        continue;
+      }
+      if (u >= 1) { chegaram++; continue; }
+      const e = u * u * (3 - 2 * u), a = i / ch.n * Math.PI * 2;
+      const sx = ch.x + Math.cos(a) * 40, sy = ch.y + dy + Math.sin(a) * 40 - 10;
+      const x = sx + (alvoX - sx) * e, y = sy + (alvoY - sy) * e - Math.sin(u * Math.PI) * 120;
+      moedinha(ctx, x, y, 1 - u * 0.35);
+    }
+    if (chegaram > (ch.tocadas || 0)) { ch.tocadas = chegaram; if (!M.mudo) som("moeda", 1 + chegaram * 0.05); }
+    if (chegaram >= ch.n) {
+      const fim = idade - (0.25 + (ch.n - 1) * 0.07 + 0.75);
+      if (fim < 0.9) { ctx.globalAlpha = 1 - fim / 0.9; textoContorno(ctx, "+" + ch.n, alvoX + 70, alvoY - fim * 30, 34, "#ffd43b"); ctx.globalAlpha = 1; }
+      else j.chuva = null;
+    }
+  }
+}
+
+function moedinha(ctx, x, y, esc) {
+  const r = 11 * esc;
+  ctx.fillStyle = "#b8860b"; ctx.beginPath(); ctx.arc(x, y + 1.5, r, 0, 7); ctx.fill();
+  ctx.fillStyle = "#ffd43b"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.fillStyle = "#fff3bf"; ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.32, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#e8a400"; ctx.lineWidth = 2 * esc; ctx.beginPath(); ctx.arc(x, y, r * 0.62, 0, 7); ctx.stroke();
 }

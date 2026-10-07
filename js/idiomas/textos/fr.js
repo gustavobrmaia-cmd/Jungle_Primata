@@ -52,6 +52,7 @@ TEXTOS.fr = {
   qualidade_auto: "Graphismes : auto",
   qualidade_alta: "Graphismes : élevés",
   qualidade_leve: "Graphismes : légers",
+  perfeito: "PARFAIT !",
   missoes: "Missions",
   skins: "Skins",
   opcoes: "Options",

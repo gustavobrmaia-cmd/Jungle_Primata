@@ -12,7 +12,7 @@
 // Modos: "bot" (jogador 1 contra o bot), "2p" (dois no mesmo aparelho), "demo" (bot contra bot no fundo do menu)
 // =========================
 
-const RODADA = { intro: 1.3, introPrimeira: 1.7, luta: 45, fim: 1.8, quedaIntro: 1.1, quedaMax: 6, quedaFim: 1.6, fimPartida: 2.6, danoDobro: 10 };
+const RODADA = { intro: 1.3, introPrimeira: 1.7, luta: 45, fim: 2.1, quedaIntro: 1.1, quedaMax: 6, quedaFim: 1.6, fimPartida: 2.6, danoDobro: 10 };
 
 let jogo = null;   // a partida atual (de verdade ou a de demonstração)
 
@@ -125,6 +125,9 @@ function iniciarRodada() {
   const b1 = novaBolinha(1, cen.spawn[0][0], cen.spawn[0][1], j.cores[0]);
   const b2 = novaBolinha(2, cen.spawn[1][0], cen.spawn[1][1], j.cores[1]);
   M.bolinhas = [b1, b2];
+  // quem é controlado por uma pessoa (ímã da mira, sons e efeitos de acerto, tela vermelha...)
+  b1.humano = !j.demo && !j.bots[0];
+  b2.humano = !j.demo && !j.bots[1];
   // os dois começam com a mesma arma (justo) e ela muda a cada rodada
   const arma = sortearArma(M, true);
   equipar(b1, arma); equipar(b2, arma);
@@ -161,6 +164,14 @@ function atualizarJogo(dt) {
   j.tempoFase += FIS.dt;
   j.tempoReal += FIS.dt;
   if (typeof Efeitos !== "undefined") Efeitos.atualizar(dt);
+  // tempos dos efeitos de tela (balões do bot, marcador de acerto, combo, tela vermelha)
+  for (let k = 0; k < 2; k++) {
+    const b = M.bolinhas[k];
+    if (b.emote) { b.emote.t -= FIS.dt; if (b.emote.t <= 0) b.emote = null; }
+    if (b.marca > 0) b.marca -= FIS.dt;
+    if (b.combo && b.combo.mostra > 0 && M.t > b.combo.ate) b.combo.mostra -= FIS.dt * 2.5;
+  }
+  if (M.dorTela > 0) M.dorTela = Math.max(0, M.dorTela - FIS.dt * 1.6);
   if (j.fase === "queda") { atualizarQueda(j); return; }
   if (j.fase === "fimPartida") {
     passoMundo(j, M, false, 0.5);
@@ -170,7 +181,11 @@ function atualizarJogo(dt) {
 
   if (j.fase === "intro") {
     passoMundo(j, M, false, 1);
-    if (j.tempoFase >= (j.rodada === 1 ? RODADA.introPrimeira : RODADA.intro)) { j.fase = "luta"; j.tempoFase = 0; if (!j.demo) som("lute"); }
+    if (j.tempoFase >= (j.rodada === 1 ? RODADA.introPrimeira : RODADA.intro)) {
+      j.fase = "luta"; j.tempoFase = 0;
+      if (!j.demo) som("lute");
+      if (j.bots[1] && typeof emote === "function") emote(M.bolinhas[1], "!", 0.8);
+    }
     return;
   }
   if (j.fase === "luta") {
@@ -183,6 +198,8 @@ function atualizarJogo(dt) {
       const vivos = M.bolinhas.filter(function(b) { return b.viva; });
       j.vencedorRodada = vivos.length === 1 ? vivos[0].lado : 0;
       j.fase = "fimRodada"; j.tempoFase = 0;
+      // ganhou a rodada contra o bot: moedas saem de onde ele caiu e voam para o placar (desenho.js)
+      if (!j.demo && j.modo !== "2p" && j.vencedorRodada === 1 && M.ko) j.chuva = { x: M.ko.x, y: M.ko.y, n: j.modo === "sobrevivencia" ? 8 : 6, t0: performance.now() };
       if (!j.demo) Poki.jogando(false);      // pausa natural: a gameplay para até a próxima rodada
       return;
     }
@@ -190,14 +207,16 @@ function atualizarJogo(dt) {
     return;
   }
   if (j.fase === "fimRodada") {
-    // câmera lenta no começo do fim da rodada
-    passoMundo(j, M, true, j.tempoFase < 0.7 ? 0.35 : 1);
+    // câmera lenta no começo do fim da rodada (mais longa e mais lenta num K.O.)
+    passoMundo(j, M, true, M.ko ? (j.tempoFase < 1.1 ? 0.25 : 1) : (j.tempoFase < 0.7 ? 0.35 : 1));
     if (j.tempoFase >= RODADA.fim) fecharRodada(j);
   }
 }
 
 // avança o mundo; "lento" < 1 deixa tudo mais devagar (câmera lenta)
 function passoMundo(j, M, controles, lento) {
+  // micro-pausa no impacto (hit-stop): o mundo congela alguns quadros e a tela continua tremendo
+  if (M.pausa > 0) { M.pausa--; return; }
   j.acumLento = (j.acumLento || 0) + lento;
   if (j.acumLento < 1) return;
   j.acumLento -= 1;

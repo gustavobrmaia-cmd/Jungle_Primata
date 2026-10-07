@@ -518,7 +518,7 @@ function pensarBot(bot, M, b) {
     bot.mRodada = M;
     bot.hesitouAte = 0; bot.historico = []; bot.plano = null; bot.passosPlano = 0; bot.proxDecisao = 0;
     bot.nav = null; bot.ultimoDano = 0; bot.semDano = 0; bot.gracaResta = bot.graca;
-    bot.ruidoMira = 0; bot.alvoRuido = 0; bot.trocaRuido = 0;
+    bot.ruidoMira = 0; bot.alvoRuido = 0; bot.trocaRuido = 0; bot.avisoAte = 0; b.avisando = 0;
   }
   lembrar(bot, o);
   const ent = { esq: false, dir: false, pulo: false, segPulo: false, baixo: false, tiro: false };
@@ -558,7 +558,22 @@ function pensarBot(bot, M, b) {
     // na direção certa e com munição sobrando: atira "pressionando" (como um humano faz); impaciente atira mais
     if (Math.random() < bot.pressiona * (fantasma ? 0.4 : 1) * (bot.impaciente ? 2 : 1)) ent.tiro = true;
   } else if (Math.random() < bot.chuta && a.tipo !== "mina") ent.tiro = true;
+  // tiro pesado (bazuca, laser, sniper...): avisa antes com "!" e uma linha vermelha, quando o jogador é humano.
+  // Dá tempo de desviar — e desviar de um tiro avisado é das melhores sensações do jogo.
+  if (ent.tiro && b.cad <= 0 && o.humano && armaPesada(a)) {
+    if (!bot.avisoAte) {
+      bot.avisoAte = M.t + lerp(0.55, 0.2, bot.nivel);
+      b.avisando = 1;
+      emote(b, "!", 0.6);
+    }
+    if (M.t < bot.avisoAte) { ent.tiro = false; return ent; }
+    bot.avisoAte = 0; b.avisando = 0;
+  } else if (bot.avisoAte && M.t > bot.avisoAte + 0.6) { bot.avisoAte = 0; b.avisando = 0; }   // desistiu do tiro
   return ent;
+}
+
+function armaPesada(a) {
+  return a.tipo === "laser" || (a.explode || 0) >= 60 || a.dano * (a.qtd || 1) >= 30;
 }
 
 // Queda de braço: devolve true quando o bot "clica" neste passo

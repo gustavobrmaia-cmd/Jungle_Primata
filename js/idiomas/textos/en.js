@@ -52,6 +52,7 @@ TEXTOS.en = {
   qualidade_auto: "Graphics: auto",
   qualidade_alta: "Graphics: high",
   qualidade_leve: "Graphics: light",
+  perfeito: "PERFECT!",
   missoes: "Missions",
   skins: "Skins",
   opcoes: "Options",

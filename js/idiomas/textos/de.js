@@ -52,6 +52,7 @@ TEXTOS.de = {
   qualidade_auto: "Grafik: automatisch",
   qualidade_alta: "Grafik: hoch",
   qualidade_leve: "Grafik: leicht",
+  perfeito: "PERFEKT!",
   missoes: "Missionen",
   skins: "Skins",
   opcoes: "Optionen",

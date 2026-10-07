@@ -52,6 +52,7 @@ TEXTOS.tr = {
   qualidade_auto: "Grafik: otomatik",
   qualidade_alta: "Grafik: yüksek",
   qualidade_leve: "Grafik: hafif",
+  perfeito: "MÜKEMMEL!",
   missoes: "Görevler",
   skins: "Kostümler",
   opcoes: "Ayarlar",

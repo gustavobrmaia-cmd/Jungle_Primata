@@ -52,6 +52,7 @@ TEXTOS.pt = {
   qualidade_auto: "Gráficos: automático",
   qualidade_alta: "Gráficos: altos",
   qualidade_leve: "Gráficos: leves",
+  perfeito: "PERFEITO!",
   missoes: "Missões",
   skins: "Skins",
   opcoes: "Opções",

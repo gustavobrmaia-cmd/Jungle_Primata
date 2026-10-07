@@ -52,6 +52,7 @@ TEXTOS.id = {
   qualidade_auto: "Grafis: otomatis",
   qualidade_alta: "Grafis: tinggi",
   qualidade_leve: "Grafis: ringan",
+  perfeito: "SEMPURNA!",
   missoes: "Misi",
   skins: "Skin",
   opcoes: "Opsi",
