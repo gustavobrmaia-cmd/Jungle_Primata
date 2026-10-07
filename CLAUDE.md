@@ -78,7 +78,14 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   e o tiro que bate na parede faz som (só para o humano). Muitos mapas usam plataformas finas no meio.
 - Mira assistida igual para jogador e bot. Sem sangue (acerto = faíscas; derrota = estouro em confete).
 - Bot: simula a física para frente e escolhe o melhor movimento; só atira quando a simulação diz que acerta.
-  O nível (save.nivelBot, 0,12 a 0,95) muda depois de cada partida pelo desempenho do jogador (mira em ~50% de vitórias).
+  O nível (save.nivelBot, começa em 0,06 = "nível 2") muda depois de cada partida pelo desempenho do jogador e, um pouco,
+  a cada rodada (perdeu a rodada: bot -0,07; ganhou: +0,03). Bot fraco: bate mais fraco (M.multBot 0,7 no nível mais baixo),
+  erra de propósito os primeiros tiros de cada rodada (tiros de aviso, como em BioShock) e não "caça" o jogador.
+  Playtest v6: 70% perdiam a 1ª rodada e 76% saíam no meio da 1ª partida — o começo tem que ser vencível.
+- Estado do bot que usa o relógio da rodada (M.t) é zerado a cada rodada nova (pensarBot); antes o bot ficava
+  sem atirar no começo das rodadas seguintes.
+- Game Events de diagnóstico nas 2 primeiras partidas: round/m1-r1... (start/complete/fail) e
+  player/r1-tiros-* e r1-acertos-* (o jogador atira? acerta?).
 - Anúncio comum: antes de cada partida (menos a 1ª e logo depois de um premiado) E entre as rodadas (pausa natural;
   o Poki decide se mostra; nas 2 primeiras partidas não pede entre as rodadas — no playtest, gente saía nessa hora). Premiados (opcionais): "Partida Lendária"
   (só armas raras para os dois), "Continuar" (perdeu para o bot: o bot perde o último ponto) e "Dobrar moedas" (menu).

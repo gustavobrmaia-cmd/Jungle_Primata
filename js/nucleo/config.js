@@ -13,7 +13,7 @@ const CONFIG = {
   chaveSave: "duelo-bolinhas-v1",   // (mantido para não apagar o progresso de quem já jogou)
   debugEventos: false,      // true: mostra no console cada Game Event enviado ao Poki
   pontosParaVencer: 5,      // a partida acaba quando alguém faz 5 pontos
-  multDano: 1.5,            // multiplicador geral de dano (calibrado nas simulações bot x bot)
+  multDano: 1.3,            // multiplicador geral de dano (calibrado nas simulações bot x bot)
   pontosPrimeira: 3,        // a 1ª partida da vida é mais curta (até 3): a pessoa chega rápido ao fim e à recompensa
   leve: false               // modo leve (celular/computador fraco): menos partículas e fundo dos menus a 30 qps
 };

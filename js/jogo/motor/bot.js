@@ -49,6 +49,10 @@ function criarBot(lado, nivel, estilo) {
     tatica: lerp(0.2, 0.9, d) * e.tatica,  // quanto usa o cenário (beirada, altura, esconderijo)
     ruido: lerp(10, 1.2, d),               // bagunça na escolha do movimento
     cliques: lerp(4.6, 9.4, d),            // cliques por segundo na queda de braço
+    // iniciante: os primeiros tiros de cada rodada passam raspando de propósito (aviso, como em BioShock),
+    // e o bot fraco não "caça" o jogador (sem relógio de paciência)
+    graca: Math.round(lerp(3, 0, Math.min(1, d / 0.5))),
+    caca: d >= 0.35,
     historico: [],                          // posições passadas do oponente (para o atraso de reação)
     plano: null, proxDecisao: 0, passosPlano: 0,
     proxClique: 0.3 + Math.random() * 0.3,
@@ -508,6 +512,14 @@ function alinhado(M, b, perc, ang) {
 // ---------- o que o bot aperta neste passo ----------
 function pensarBot(bot, M, b) {
   const o = oponente(M, b);
+  // rodada nova: zera o que era da rodada anterior. Os tempos (hesitouAte...) são do relógio da rodada (M.t),
+  // que volta a 0 — sem isso o bot passava vários segundos sem atirar a partir da 2ª rodada.
+  if (bot.mRodada !== M) {
+    bot.mRodada = M;
+    bot.hesitouAte = 0; bot.historico = []; bot.plano = null; bot.passosPlano = 0; bot.proxDecisao = 0;
+    bot.nav = null; bot.ultimoDano = 0; bot.semDano = 0; bot.gracaResta = bot.graca;
+    bot.ruidoMira = 0; bot.alvoRuido = 0; bot.trocaRuido = 0;
+  }
   lembrar(bot, o);
   const ent = { esq: false, dir: false, pulo: false, segPulo: false, baixo: false, tiro: false };
   if (!b.viva) return ent;
@@ -516,7 +528,7 @@ function pensarBot(bot, M, b) {
   const danoAgora = M.stats.dano[0] + M.stats.dano[1];
   if (danoAgora !== bot.ultimoDano) { bot.ultimoDano = danoAgora; bot.semDano = 0; }
   else bot.semDano = (bot.semDano || 0) + FIS.dt;
-  bot.impaciente = bot.semDano > 3;
+  bot.impaciente = bot.caca && bot.semDano > 3;
 
   bot.proxDecisao -= FIS.dt;
   if (bot.proxDecisao <= 0 || !bot.plano) {
@@ -537,6 +549,11 @@ function pensarBot(bot, M, b) {
   if (bom) {
     if (b.cad <= 0 && Math.random() < bot.hesita) { bot.hesitouAte = M.t + 0.15; return ent; }
     ent.tiro = true;
+    // tiro de aviso: passa raspando (por cima ou por baixo), nunca no meio do jogador
+    if (bot.gracaResta > 0 && b.cad <= 0 && a.tipo !== "melee" && a.tipo !== "mina") {
+      bot.gracaResta--;
+      b.miraLivre = ang + (Math.random() < 0.5 ? -1 : 1) * (0.28 + Math.random() * 0.12);
+    }
   } else if (a.tipo !== "mina" && a.tipo !== "melee" && (b.municao === Infinity || b.municao > (a.municao || 1) * 0.3) && alinhado(M, b, perc, bot.angIdeal)) {
     // na direção certa e com munição sobrando: atira "pressionando" (como um humano faz); impaciente atira mais
     if (Math.random() < bot.pressiona * (fantasma ? 0.4 : 1) * (bot.impaciente ? 2 : 1)) ent.tiro = true;

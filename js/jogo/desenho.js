@@ -347,7 +347,7 @@ function desenharHud(ctx, j, M, dy) {
     else placarGrande(ctx, j, cx, meio + 70);
   }
   // primeira partida: lembrete dos controles nos primeiros segundos
-  if (save.partidas <= 1 && j.rodada <= 2 && (j.fase === "intro" || j.fase === "luta" && j.tempoFase < 7)) {
+  if ((save.partidas <= 1 && j.rodada <= 2 || j.dicaRodada === j.rodada) && (j.fase === "intro" || j.fase === "luta" && j.tempoFase < 7)) {
     const texto = entrada.toque ? t(j.modo === "2p" ? "dica_2p_toque" : "dica_bot_toque") : dicaTeclas(j.modo !== "2p");
     const linhas = texto.split("\n");
     const tam = em ? 34 : 24;

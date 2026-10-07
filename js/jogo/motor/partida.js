@@ -132,6 +132,10 @@ function iniciarRodada() {
     b1.vida = j.vidaJogador;
     M.multBot = 1 + Math.max(0, j.onda - 12) * 0.1;   // depois da onda 12 o bot também bate mais forte
   }
+  // contra o bot: o bot fraco também bate mais fraco (nível 1 tira ~70% do dano normal)
+  if (j.modo === "bot" && j.bots[1]) M.multBot = lerp(0.7, 1, Math.min(1, j.bots[1].nivel / 0.45));
+  // primeiras partidas: mede onde a pessoa sai (rodada a rodada)
+  if (j.modo === "bot" && save.partidas <= 2) Poki.medir("round", "m" + save.partidas + "-r" + j.rodada, "start");
   b1.mira = 0; b2.mira = Math.PI;
   j.M = M;
   j.fase = "intro";
@@ -306,7 +310,26 @@ function fecharRodada(j) {
   }
   // maior desvantagem do jogador 1 na partida (para a conquista da virada)
   j.piorDiferenca = Math.max(j.piorDiferenca || 0, j.pontos[1] - j.pontos[0]);
-  if (!j.demo && j.modo === "bot") Poki.medir("arena", M.cen.id, v === 1 ? "complete" : "fail");
+  if (!j.demo && j.modo === "bot") {
+    Poki.medir("arena", M.cen.id, v === 1 ? "complete" : "fail");
+    if (save.partidas <= 2) {
+      Poki.medir("round", "m" + save.partidas + "-r" + j.rodada, v === 1 ? "complete" : "fail");
+      // 1ª rodada: o jogador atira? acerta? (separa "não entendeu o controle" de "atira e erra")
+      if (j.rodada === 1) {
+        const faixa = function(n, lim) { for (let i = 0; i < lim.length; i++) if (n <= lim[i]) return lim[i] === 0 ? "0" : "ate" + lim[i]; return "mais"; };
+        Poki.medir("player", "r1-tiros-" + faixa(M.stats.tiros[0], [0, 5, 20]), "complete");
+        Poki.medir("player", "r1-acertos-" + faixa(M.stats.acertos[0], [0, 2, 5]), "complete");
+      }
+    }
+    // o bot se ajusta já dentro da partida, devagar (sem "elástico" forte): perdeu a rodada -> bot mais fraco
+    const bot = j.bots[1];
+    if (bot && v) {
+      const novo = limitar(bot.nivel + (v === 2 ? -0.07 : 0.03), 0.02, 1);
+      j.bots[1] = criarBot(2, novo, bot.estilo);
+    }
+    // perdeu sem acertar nada: mostra de novo como mirar e atirar na próxima rodada
+    if (v === 2 && M.stats.acertos[0] === 0) j.dicaRodada = j.rodada + 1;
+  }
   if (j.modo === "sobrevivencia") {
     if (v === 1) {
       // venceu a onda: recupera um pouco de vida e vem um bot mais forte
@@ -416,7 +439,7 @@ function desempenhoDoJogador(j) {
 // O bot da próxima partida: se o jogador foi bem, fica BEM mais forte; se foi mal, mais fraco.
 // Mira em ~50% de vitórias. Vai de 0,1 (nível 1) a 1 (nível 10).
 function proximoNivelBot(nivel, desempenho, venceu) {
-  return limitar(nivel + (desempenho - 0.5) * 0.6 + (venceu ? 0.04 : -0.05), 0.08, 1);
+  return limitar(nivel + (desempenho - 0.5) * 0.6 + (venceu ? 0.04 : -0.05), 0.03, 1);
 }
 function nivelBotTexto(nivel) { return Math.round(nivel * 9) + 1; }   // 1 a 10, para mostrar
 
