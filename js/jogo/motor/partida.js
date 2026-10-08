@@ -67,7 +67,13 @@ function distanciaCor(a, b) {
 // opcoes: { lendaria, nivelBot, primeiraVez }
 function novaPartida(modo, opcoes) {
   opcoes = opcoes || {};
-  const ordem = embaralhar(CENARIOS.map(function(c) { return c.id; }));
+  let ordem = embaralhar(CENARIOS.map(function(c) { return c.id; }));
+  // nas 3 primeiras partidas, os mapas mais cruéis para quem está aprendendo (cair da arena, empurrão forte)
+  // ficam por último — no Poki v8 o jogador perdia 58-65% das rodadas neles
+  if (modo === "bot" && save.partidas <= 3) {
+    const dificeis = ["dojo", "castelo", "cidade", "lua"];
+    ordem = ordem.filter(function(id) { return dificeis.indexOf(id) < 0; }).concat(embaralhar(dificeis.slice()));
+  }
   // na primeiríssima partida a 1ª rodada é no campo (o mais simples)
   if (opcoes.primeiraVez) { ordem.splice(ordem.indexOf("campo"), 1); ordem.unshift("campo"); }
   jogo = {
@@ -136,7 +142,7 @@ function iniciarRodada() {
     M.multBot = 1 + Math.max(0, j.onda - 12) * 0.1;   // depois da onda 12 o bot também bate mais forte
   }
   // contra o bot: o bot fraco também bate mais fraco (nível 1 tira ~70% do dano normal)
-  if (j.modo === "bot" && j.bots[1]) M.multBot = lerp(0.7, 1, Math.min(1, j.bots[1].nivel / 0.45));
+  if (j.modo === "bot" && j.bots[1]) M.multBot = lerp(0.45, 1, Math.min(1, j.bots[1].nivel / 0.45));
   // primeiras partidas: mede onde a pessoa sai (rodada a rodada)
   if (j.modo === "bot" && save.partidas <= 2) Poki.medir("round", "m" + save.partidas + "-r" + j.rodada, "start");
   b1.mira = 0; b2.mira = Math.PI;
@@ -343,7 +349,7 @@ function fecharRodada(j) {
     // o bot se ajusta já dentro da partida, devagar (sem "elástico" forte): perdeu a rodada -> bot mais fraco
     const bot = j.bots[1];
     if (bot && v) {
-      const novo = limitar(bot.nivel + (v === 2 ? -0.07 : 0.03), 0.02, 1);
+      const novo = limitar(bot.nivel + (v === 2 ? -0.1 : 0.03), 0, 1);
       j.bots[1] = criarBot(2, novo, bot.estilo);
     }
     // perdeu sem acertar nada: mostra de novo como mirar e atirar na próxima rodada
@@ -457,8 +463,12 @@ function desempenhoDoJogador(j) {
 
 // O bot da próxima partida: se o jogador foi bem, fica BEM mais forte; se foi mal, mais fraco.
 // Mira em ~50% de vitórias. Vai de 0,1 (nível 1) a 1 (nível 10).
-function proximoNivelBot(nivel, desempenho, venceu) {
-  return limitar(nivel + (desempenho - 0.5) * 0.6 + (venceu ? 0.04 : -0.05), 0.03, 1);
+// partidas = quantas partidas a pessoa já começou. Nas 3 primeiras o bot sobe no máximo +0,05 por partida
+// (Poki v8: depois de vencer a 1ª, a pessoa perdia 66% da 1ª rodada da 2ª partida); depois, no máximo +0,12.
+function proximoNivelBot(nivel, desempenho, venceu, partidas) {
+  const alvo = nivel + (desempenho - 0.5) * 0.6 + (venceu ? 0.04 : -0.05);
+  const teto = nivel + ((partidas || 99) <= 3 ? 0.05 : 0.12);
+  return limitar(Math.min(alvo, teto), 0, 1);
 }
 function nivelBotTexto(nivel) { return Math.round(nivel * 9) + 1; }   // 1 a 10, para mostrar
 

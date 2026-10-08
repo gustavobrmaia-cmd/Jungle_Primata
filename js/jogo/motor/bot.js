@@ -32,6 +32,9 @@ function criarBot(lado, nivel, estilo) {
   const nomes = Object.keys(ESTILOS_BOT);
   const nomeEstilo = estilo || nomes[Math.floor(Math.random() * nomes.length)];
   const e = ESTILOS_BOT[nomeEstilo];
+  // "aprendiz" (1 no nível mais baixo, 0 a partir de 0,35): o bot de quem acabou de chegar.
+  // Calibrado com um jogador humano simulado que reproduz os dados do Poki (v8: humano vencia só ~31% da 1ª rodada).
+  const ap = 1 - Math.min(1, d / 0.35);
   return {
     lado: lado,
     nivel: d,
@@ -39,19 +42,20 @@ function criarBot(lado, nivel, estilo) {
     reacao: lerp(0.5, 0.08, d),            // atraso para perceber (s)
     intervalo: lerp(0.26, 0.06, d),        // tempo entre decisões (s)
     horizonte: Math.round(lerp(24, 46, d)),// passos simulados
-    enxerga: lerp(0.35, 0.95, d),          // chance de notar cada tiro vindo
+    enxerga: lerp(0.35, 0.95, d) * (1 - 0.5 * ap),   // chance de notar cada tiro vindo (aprendiz quase não desvia)
     hesita: lerp(0.45, 0.03, d),           // chance de não atirar num tiro bom
     chuta: lerp(0.02, 0.003, d),           // chance por passo de atirar "no chute"
     pressiona: lerp(0.05, 0.3, d) * e.pressiona,   // chance por passo de atirar quando está mais ou menos na mira
     tolerancia: lerp(1.5, 1.05, d),        // folga para achar que o tiro acerta
-    erroMira: lerp(0.32, 0.035, d),        // erro de mira (radianos) — muda devagar, como a mão de um humano
+    erroMira: lerp(0.32, 0.035, d) + 0.15 * ap,   // erro de mira (radianos) — muda devagar, como a mão de um humano
+    folgaTiro: 0.45 * ap,                  // aprendiz espera um pouco entre um tiro e outro (s)
     coleta: lerp(0.5, 1, d) * e.coleta,    // quanto liga para caixas e cartas
     tatica: lerp(0.2, 0.9, d) * e.tatica,  // quanto usa o cenário (beirada, altura, esconderijo)
     ruido: lerp(10, 1.2, d),               // bagunça na escolha do movimento
     cliques: lerp(4.6, 9.4, d),            // cliques por segundo na queda de braço
     // iniciante: os primeiros tiros de cada rodada passam raspando de propósito (aviso, como em BioShock),
     // e o bot fraco não "caça" o jogador (sem relógio de paciência)
-    graca: Math.round(lerp(3, 0, Math.min(1, d / 0.5))),
+    graca: Math.round(lerp(4, 0, Math.min(1, d / 0.5))),
     caca: d >= 0.35,
     historico: [],                          // posições passadas do oponente (para o atraso de reação)
     plano: null, proxDecisao: 0, passosPlano: 0,
@@ -518,7 +522,7 @@ function pensarBot(bot, M, b) {
     bot.mRodada = M;
     bot.hesitouAte = 0; bot.historico = []; bot.plano = null; bot.passosPlano = 0; bot.proxDecisao = 0;
     bot.nav = null; bot.ultimoDano = 0; bot.semDano = 0; bot.gracaResta = bot.graca;
-    bot.ruidoMira = 0; bot.alvoRuido = 0; bot.trocaRuido = 0; bot.avisoAte = 0; b.avisando = 0;
+    bot.ruidoMira = 0; bot.alvoRuido = 0; bot.trocaRuido = 0; bot.avisoAte = 0; b.avisando = 0; bot.proxTiro = 0;
   }
   lembrar(bot, o);
   const ent = { esq: false, dir: false, pulo: false, segPulo: false, baixo: false, tiro: false };
@@ -558,6 +562,11 @@ function pensarBot(bot, M, b) {
     // na direção certa e com munição sobrando: atira "pressionando" (como um humano faz); impaciente atira mais
     if (Math.random() < bot.pressiona * (fantasma ? 0.4 : 1) * (bot.impaciente ? 2 : 1)) ent.tiro = true;
   } else if (Math.random() < bot.chuta && a.tipo !== "mina") ent.tiro = true;
+  // aprendiz: respira entre um tiro e outro
+  if (ent.tiro && b.cad <= 0 && bot.folgaTiro > 0) {
+    if (M.t < (bot.proxTiro || 0)) ent.tiro = false;
+    else bot.proxTiro = M.t + bot.folgaTiro * (0.7 + Math.random() * 0.6);
+  }
   // tiro pesado (bazuca, laser, sniper...): avisa antes com "!" e uma linha vermelha, quando o jogador é humano.
   // Dá tempo de desviar — e desviar de um tiro avisado é das melhores sensações do jogo.
   if (ent.tiro && b.cad <= 0 && o.humano && armaPesada(a)) {

@@ -375,7 +375,7 @@ function desenharHud(ctx, j, M, dy) {
       !v ? t("empate") : j.modo === "bot" ? (v === 1 ? t("voce_venceu_rodada") : t("bot_venceu_rodada")) : t("jogador_venceu_rodada", v);
     textoContorno(ctx, txt, cx, meio, 58, v ? j.cores[v - 1] : "#fff");
     if (!surv) placarGrande(ctx, j, cx, meio + 60);
-  } else if (j.fase === "fimPartida") {
+  } else if (j.fase === "fimPartida" && estado !== "continuar") {
     const v = j.vencedorPartida;
     const surv = j.modo === "sobrevivencia";
     const txt = surv ? t("fim_sobrevivencia", j.onda) : j.modo === "bot" ? (v === 1 ? t("voce_venceu") : t("bot_venceu")) : t("jogador_venceu", v);

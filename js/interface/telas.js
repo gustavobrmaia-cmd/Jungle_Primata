@@ -161,7 +161,7 @@ function finalizarPartida(j) {
     const antes = save.nivelBot;
     // base: entre o nível do começo e o do fim da partida (o bot já se ajustou a cada rodada)
     const base = j.bots[1] ? (save.nivelBot + j.bots[1].nivel) / 2 : save.nivelBot;
-    save.nivelBot = proximoNivelBot(base, desempenhoDoJogador(j), venceu);
+    save.nivelBot = proximoNivelBot(base, desempenhoDoJogador(j), venceu, save.partidas);
     if (venceu) save.vitorias++; else save.derrotas++;
     salvar();
     Poki.medir("match", "bot", venceu ? "complete" : "fail");

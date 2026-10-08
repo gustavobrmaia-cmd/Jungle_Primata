@@ -78,10 +78,16 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   e o tiro que bate na parede faz som (só para o humano). Muitos mapas usam plataformas finas no meio.
 - Mira assistida igual para jogador e bot. Sem sangue (acerto = faíscas; derrota = estouro em confete).
 - Bot: simula a física para frente e escolhe o melhor movimento; só atira quando a simulação diz que acerta.
-  O nível (save.nivelBot, começa em 0,06 = "nível 2") muda depois de cada partida pelo desempenho do jogador e, um pouco,
+  O nível (save.nivelBot, começa em 0,02 = "nível 1") muda depois de cada partida pelo desempenho do jogador e, um pouco,
   a cada rodada (perdeu a rodada: bot -0,07; ganhou: +0,03). Bot fraco: bate mais fraco (M.multBot 0,7 no nível mais baixo),
   erra de propósito os primeiros tiros de cada rodada (tiros de aviso, como em BioShock) e não "caça" o jogador.
   Playtest v6: 70% perdiam a 1ª rodada e 76% saíam no meio da 1ª partida — o começo tem que ser vencível.
+- Bot "aprendiz" (nível < 0,35): quase não desvia, erra mais, espera entre os tiros, bate 45% do dano no nível 0,
+  4 tiros de aviso por rodada. Perdeu a rodada: bot -0,1 na hora. Nas 3 primeiras partidas o nível sobe no máximo
+  +0,05 por partida (depois +0,12), e Dojo/Castelo/Cidade/Lua ficam por último na ordem dos mapas.
+  Calibrado com scratchpad/sim/humanosim.js (jogador humano simulado: mira com erro, segura o tiro, não desvia),
+  que reproduz o Poki v8 (humano vencia ~31% da 1ª rodada; Dojo 19%). Meta: ~70% de vitórias nas 1ªs rodadas.
+- Poki v8 (500 jogadas, desktop): média 3m39 inflada por uma sessão de ~15 h; real ~1m51; Engaged players 16%.
 - Estado do bot que usa o relógio da rodada (M.t) é zerado a cada rodada nova (pensarBot); antes o bot ficava
   sem atirar no começo das rodadas seguintes.
 - Bot avisa tiro pesado (bazuca, laser, sniper): balão "!" + linha vermelha tracejada por 0,2–0,55 s antes de atirar
