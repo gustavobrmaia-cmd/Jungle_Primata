@@ -329,5 +329,8 @@ TEXTOS.ru = {
   sk_cowboy: "Ковбойская шляпа",
   sk_antena: "Антенна пришельца",
   sk_aureola: "Нимб",
-  sk_coroa: "Корона"
+  sk_coroa: "Корона",
+  novo: "НОВОЕ!",
+  proximo_rival: "СЛЕДУЮЩИЙ СОПЕРНИК",
+  premio_equipado: "{0} надето!"
 };

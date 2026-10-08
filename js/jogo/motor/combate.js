@@ -438,6 +438,7 @@ function causarDano(M, b, dano, atacante, nx, ny, empurra, fx, fy) {
   if (atacante && atacante !== b && atacante.efeitos.furia > 0) dano *= 2;
   if (atacante && atacante !== b && M.multDano) dano *= M.multDano;
   if (atacante && atacante.lado === 2 && M.multBot) dano *= M.multBot;
+  if (atacante && atacante !== b && atacante.lado === 1 && M.multJogador) dano *= M.multJogador;
   const mult = (M.cen.empurrao || 1);
   b.vx += nx * empurra * mult;
   b.vy += ny * empurra * mult * 0.8 - (empurra > 3 ? 1.5 : 0);
@@ -448,6 +449,11 @@ function causarDano(M, b, dano, atacante, nx, ny, empurra, fx, fy) {
     if (b.escudoHP <= 0) b.efeitos.escudo = 0;
     if (typeof Efeitos !== "undefined") Efeitos.anel(b.x, b.y, "#4dabf7", b.r + 10);
     if (dano <= 0) return;
+  }
+  // 1ª partida da vida: a vida de quem joga não passa de um mínimo (a tensão fica, a derrota não)
+  if (b.humano && M.vidaMinima && b.vida - dano < M.vidaMinima) {
+    dano = Math.max(0, b.vida - M.vidaMinima);
+    if (dano <= 0) { b.flash = 0.6; return; }
   }
   b.vida -= dano;
   b.danoRecebido = (b.danoRecebido || 0) + dano;

@@ -329,5 +329,8 @@ TEXTOS.nl = {
   sk_cowboy: "Cowboyhoed",
   sk_antena: "Alien-antenne",
   sk_aureola: "Halo",
-  sk_coroa: "Kroon"
+  sk_coroa: "Kroon",
+  novo: "NIEUW!",
+  proximo_rival: "VOLGENDE RIVAAL",
+  premio_equipado: "{0} uitgerust!"
 };

@@ -4,7 +4,7 @@
 // DESENHO DA PARTIDA E HUD
 // Junta a arte (ArteCenarios, ArteArmas, ArteCartas, ArteBolinha, Efeitos, ArteQueda) na ordem certa.
 // Se algum arquivo de arte faltar, desenha formas simples no lugar (o jogo nunca quebra por causa da arte).
-// No celular em pé o mundo 1280x720 fica um pouco acima do meio e o espaço de baixo fica para os dedos.
+// No celular em pé (contra o bot) a câmera chega perto da luta e segue as bolinhas; o espaço de baixo fica para os dedos.
 // =========================
 
 const temArte = {
@@ -20,19 +20,71 @@ function deslocMundo() {
   return alturaTela > FIS.altura ? Math.round((alturaTela - FIS.altura) / 2) : 0;
 }
 
+// ---------- onde fica cada coisa na tela ----------
+// Deitado/PC: a arena 1280x720 ocupa a tela (no meio, se sobrar altura).
+// Em pé (celular) contra o bot: HUD em cima, controles embaixo e, no meio, a arena com CÂMERA: chega mais
+// perto (zoom 1,15–1,8) e segue as duas bolinhas, com o chão sempre na mesma altura da tela. Antes a arena
+// inteira ocupava 1/3 da tela, as bolinhas ficavam minúsculas e o botão de pulo ficava lá em cima, sobre o HUD
+// (45% das sessões do Poki v9 foram com o celular em pé).
+function layoutTela(j) {
+  const H = alturaTela, dy = deslocMundo();
+  const L = layoutTela.L || (layoutTela.L = {});
+  L.H = H; L.dy = dy; L.emPe = dy > 150; L.cam = false;
+  L.hudTopo = L.emPe ? dy - 200 : 10;
+  L.yBaixo = H - (L.emPe ? 330 : 130);                 // analógicos (andar / mirar)
+  L.yPulo = H * (L.emPe ? 0.3 : 0.32);                 // botão de pulo (metade de cima do lado de dentro)
+  L.limitePulo = 0.45;                                  // toque no lado de dentro acima disso (fração da altura) = pulo
+  if (L.emPe && j && !j.demo && j.modo !== "2p") {
+    const base = H - 760, topo = 150;
+    const zMax = Math.min(1.8, (base - topo - 250) / FIS.altura);
+    if (zMax >= 1.1) {
+      L.cam = true; L.base = base; L.zMax = zMax; L.zMin = Math.min(1.15, zMax);
+      L.hudTopo = topo;
+      L.yPulo = H - 640;
+      L.limitePulo = (H - 470) / H;
+    }
+  }
+  return L;
+}
+// fração da altura da tela acima da qual um toque no lado de dentro é pulo (entrada.js)
+function limitePuloToque() { return layoutTela.L ? layoutTela.L.limitePulo : 0.45; }
+
+const camera = { z: 1, x: 0, oy: 0, M: null };
+function atualizarCamera(j, M, L) {
+  const c = camera;
+  if (!L.cam) { c.z = 1; c.x = 0; c.oy = L.dy; c.M = null; return c; }
+  let x0 = Infinity, x1 = -Infinity;
+  for (let k = 0; k < 2; k++) { const b = M.bolinhas[k]; if (b.viva) { x0 = Math.min(x0, b.x); x1 = Math.max(x1, b.x); } }
+  if (x0 > x1) { const p = M.ko || { x: CONFIG.largura / 2 }; x0 = x1 = p.x; }
+  // perto quando as bolinhas estão perto; mais longe (até ~1100 px de arena) quando se afastam
+  const zAlvo = limitar(CONFIG.largura / (x1 - x0 + 420), L.zMin, L.zMax);
+  const nova = c.M !== M;
+  c.z = nova ? zAlvo : c.z + (zAlvo - c.z) * 0.05;
+  const larg = CONFIG.largura / c.z;
+  const xAlvo = limitar((x0 + x1) / 2 - larg / 2, 0, CONFIG.largura - larg);
+  c.x = nova ? xAlvo : limitar(c.x + (xAlvo - c.x) * 0.1, 0, CONFIG.largura - larg);
+  c.oy = L.base - FIS.altura * c.z;
+  c.M = M;
+  return c;
+}
+function mundoParaTela(x, y) { return { x: (x - camera.x) * camera.z, y: camera.oy + y * camera.z }; }
+function telaParaMundo(x, y) { return { x: x / camera.z + camera.x, y: (y - camera.oy) / camera.z }; }
+
 function desenharJogo(ctx) {
   const j = jogo;
   const H = alturaTela;
   if (!j) { ctx.fillStyle = "#10121c"; ctx.fillRect(0, 0, CONFIG.largura, H); return; }
   const M = j.M, cen = M.cen, t = M.t;
   const dy = deslocMundo();
+  const L = layoutTela(j), cam = atualizarCamera(j, M, L);
 
   // estado que o cenário usa para desenhar
   const est = estadoCenario(j, M, dy);
 
   ctx.save();
   if (temArte.fx) { const s = Efeitos.deslocamento(); ctx.translate(s.x, s.y); }
-  ctx.translate(0, dy);
+  ctx.translate(-cam.x * cam.z, cam.oy);
+  if (cam.z !== 1) ctx.scale(cam.z, cam.z);
   // K.O.: zoom rápido em quem caiu durante a câmera lenta
   if (j.fase === "fimRodada" && M.ko && j.tempoFase < 1.4) {
     const tz = j.tempoFase, k = tz < 0.2 ? tz / 0.2 : Math.max(0, 1 - (tz - 0.2) / 1.2);
@@ -102,9 +154,13 @@ function desenharJogo(ctx) {
 
   // 9. frente do cenário (lava, água, escuridão, vento)
   if (temArte.cen) ArteCenarios.desenharFrente(ctx, cen, est, t);
+  // "NOVO!" em cima das caixas/cartas da rodada em que elas aparecem pela 1ª vez (depois da escuridão da floresta)
+  if (!j.demo && M.novoCaixa && !j.viuCaixa) M.caixas.forEach(function(c) { etiquetaNovo(ctx, c.x, c.y, t); });
+  if (!j.demo && M.novoCarta && !j.viuCarta) M.cartas.forEach(function(c) { etiquetaNovo(ctx, c.x, c.y + Math.sin(c.t * 3) * 6 - 14, t); });
   // reações do bot (balões) e suor quando está com pouca vida
   for (let k = 0; k < 2; k++) desenharReacao(ctx, M, M.bolinhas[k], t);
   ctx.restore();
+  if (L.cam && j.fase !== "queda") desenharSetasForaDaTela(ctx, M);
 
   if (!j.demo) desenharVinheta(ctx, j, M, H);
 
@@ -114,8 +170,9 @@ function desenharJogo(ctx) {
   const naQueda = j.fase === "queda";
   if (naQueda !== desenharJogo.naQueda) { desenharJogo.naQueda = naQueda; el("btnPausa").classList.toggle("escondido", naQueda); }
   if (j.fase === "queda") desenharQueda(ctx, j, H);
-  else { desenharHud(ctx, j, M, dy); desenharSensacoes(ctx, j, M, dy, H); }
-  if (!j.demo) desenharControlesToque(ctx, j, H);
+  else { desenharHud(ctx, j, M, L); desenharSensacoes(ctx, j, M, L); }
+  if (!j.demo) desenharControlesToque(ctx, j, H, L);
+  if (j.fase !== "queda") desenharTutorial(ctx, j, M, L);
   const cruz = !j.demo && estado === "jogo" && entrada.mouseAtivo && j.fase !== "queda";
   if (cruz) desenharCruzMira(ctx, j);
   if (cruz !== desenharJogo.cruz) { desenharJogo.cruz = cruz; canvas.style.cursor = cruz ? "none" : ""; }
@@ -281,6 +338,194 @@ function desenharCruzMira(ctx, j) {
   ctx.restore();
 }
 
+// Em pé com a câmera perto: seta na beirada apontando quem saiu da tela (na cor dele)
+function desenharSetasForaDaTela(ctx, M) {
+  for (let k = 0; k < 2; k++) {
+    const b = M.bolinhas[k];
+    if (!b.viva) continue;
+    const p = mundoParaTela(b.x, b.y), r = b.r * camera.z;
+    const lado = p.x < -r * 0.3 ? -1 : p.x > CONFIG.largura + r * 0.3 ? 1 : 0;
+    if (!lado) continue;
+    const x = lado < 0 ? 46 : CONFIG.largura - 46, y = limitar(p.y, camera.oy + 40, camera.oy + FIS.altura * camera.z - 40);
+    const pulso = 1 + 0.08 * Math.sin(M.t * 8);
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(lado * pulso, pulso);
+    ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(-14, -28); ctx.lineTo(-14, 28); ctx.closePath();
+    ctx.lineJoin = "round"; ctx.lineWidth = 8; ctx.strokeStyle = "rgba(12,8,30,0.85)"; ctx.stroke();
+    ctx.fillStyle = b.cor; ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ---------- tutorial desenhado (1ª partida contra o bot) ----------
+// Sem texto (o Poki recomenda imagem/animação; serve para qualquer idioma): mouse e teclas no PC, dedo em cima
+// dos controles no toque. Uma ação de cada vez, que some quando a pessoa faz (partida.js: passoTutorial).
+function desenharTutorial(ctx, j, M, L) {
+  const tu = j.tuto;
+  if (!tu || !tu.passo || j.fase !== "luta" || estado !== "jogo") return;
+  const b = M.bolinhas[0];
+  if (!b.viva) return;
+  const tm = performance.now() / 1000;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, tu.tempo * 3);
+  if (entrada.toque) tutorialToque(ctx, M, L, tu.passo, tm);
+  else tutorialTeclado(ctx, M, L, tu.passo, tm);
+  if (tu.passo === "pulo") {
+    // seta para cima em cima da bolinha
+    const p = mundoParaTela(b.x, b.y), sobe = Math.abs(Math.sin(tm * 4)) * 14;
+    setaTuto(ctx, p.x, p.y - b.r * camera.z - 46 - sobe, 0, -1, 1);
+  }
+  ctx.restore();
+}
+
+function tutorialTeclado(ctx, M, L, passo, tm) {
+  const b = M.bolinhas[0], p = mundoParaTela(b.x, b.y);
+  const x = limitar(p.x, 170, CONFIG.largura - 170);
+  const y = Math.max(L.emPe ? L.hudTopo + 330 : 150, p.y - b.r * camera.z - (passo === "pulo" ? 150 : 115));
+  const tk = entrada.teclas()[1];
+  if (passo === "tiro") {
+    const clica = tm % 0.8 < 0.25;
+    painelTuto(ctx, x - 100, y - 62, 200, 124);
+    mouseTuto(ctx, x - 44, y, clica);
+    setaTuto(ctx, x + 6, y, 1, 0, 0.7);
+    miraTuto(ctx, x + 60, y, clica);
+  } else if (passo === "andar") {
+    const esq = tm % 1 < 0.5;
+    painelTuto(ctx, x - 130, y - 50, 260, 100);
+    teclaTuto(ctx, x - 40, y, nomeTecla(tk.esquerda[0]), esq);
+    teclaTuto(ctx, x + 40, y, nomeTecla(tk.direita[0]), !esq);
+    setaTuto(ctx, x - 104, y, -1, 0, 0.7);
+    setaTuto(ctx, x + 104, y, 1, 0, 0.7);
+  } else {
+    const nome = nomeTecla(tk.pulo[0]);
+    ctx.font = "900 26px system-ui, sans-serif";
+    const w = Math.max(150, ctx.measureText(nome).width + 50);
+    painelTuto(ctx, x - w / 2 - 22, y - 50, w + 44, 100);
+    teclaTuto(ctx, x, y, nome, tm % 0.9 < 0.3, w);
+  }
+}
+
+function tutorialToque(ctx, M, L, passo, tm) {
+  const W = CONFIG.largura, k = L.emPe ? 1.8 : 1;
+  if (passo === "tiro") {
+    // segura no analógico de mira e arrasta um pouco para o lado do bot
+    const x = 0.86 * W, y = L.yBaixo;
+    anelTuto(ctx, x, y, 76 * k, tm);
+    const a = M.bolinhas[0], o = M.bolinhas[1], ang = Math.atan2(o.y - a.y, o.x - a.x);
+    const f = tm % 1.4 / 1.4, arr = Math.min(1, f * 2.2) * 46 * k;
+    dedoTuto(ctx, x + Math.cos(ang) * arr, y + Math.sin(ang) * arr, f < 0.8, k, tm);
+  } else if (passo === "andar") {
+    const x = 0.14 * W, y = L.yBaixo;
+    anelTuto(ctx, x, y, 84 * k, tm);
+    setaTuto(ctx, Math.max(40, x - 118 * k), y, -1, 0, k * 0.8);
+    setaTuto(ctx, x + 118 * k, y, 1, 0, k * 0.8);
+    dedoTuto(ctx, x + Math.sin(tm * 3) * 55 * k, y, true, k, tm);
+  } else {
+    const x = 0.86 * W, y = L.yPulo, ap = tm % 0.9 < 0.3;
+    anelTuto(ctx, x, y, 62 * k, tm);
+    dedoTuto(ctx, x, y + (ap ? 0 : 16 * k), ap, k, tm);
+  }
+}
+
+function painelTuto(ctx, x, y, w, h) {
+  const a = ctx.globalAlpha;
+  ctx.globalAlpha = a * 0.6; ctx.fillStyle = "rgba(12,8,30,0.9)";
+  retRedondo(ctx, x, y, w, h, 22); ctx.fill();
+  ctx.globalAlpha = a;
+}
+// seta (triângulo) apontando para (dx, dy)
+function setaTuto(ctx, x, y, dx, dy, esc) {
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(Math.atan2(dy, dx)); ctx.scale(esc, esc);
+  ctx.beginPath(); ctx.moveTo(24, 0); ctx.lineTo(-12, -22); ctx.lineTo(-12, 22); ctx.closePath();
+  ctx.lineJoin = "round"; ctx.lineWidth = 7; ctx.strokeStyle = "rgba(12,8,30,0.9)"; ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.fill();
+  ctx.restore();
+}
+function anelTuto(ctx, x, y, r, tm) {
+  ctx.save();
+  ctx.lineWidth = 7; ctx.strokeStyle = "#ffd43b";
+  ctx.beginPath(); ctx.arc(x, y, r * (1.05 + 0.07 * Math.sin(tm * 6)), 0, 7); ctx.stroke();
+  ctx.restore();
+}
+// mão com o indicador esticado; a ponta do dedo fica em (x, y)
+function dedoTuto(ctx, x, y, apertando, k, tm) {
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(k, k);
+  if (apertando) {
+    const f = tm % 0.6 / 0.6;
+    ctx.save();
+    ctx.globalAlpha *= 1 - f;
+    ctx.lineWidth = 5; ctx.strokeStyle = "#fff";
+    ctx.beginPath(); ctx.arc(0, 0, 14 + f * 34, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
+  const ret = function(x, y, w, h, r) {
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  };
+  const forma = function() {
+    ret(-12, 0, 24, 74, 12);                             // indicador
+    ret(-16, 44, 62, 70, 22);                            // palma
+    ctx.moveTo(-4, 80); ctx.ellipse(-16, 80, 12, 19, -0.5, 0, 7);   // polegar
+    ctx.moveTo(30, 50); ctx.arc(20, 50, 10, 0, 7);       // dedos dobrados
+    ctx.moveTo(42, 56); ctx.arc(32, 56, 10, 0, 7);
+  };
+  ctx.lineJoin = "round";
+  ctx.beginPath(); forma(); ctx.lineWidth = 9; ctx.strokeStyle = "rgba(12,8,30,0.9)"; ctx.stroke();
+  ctx.beginPath(); forma(); ctx.fillStyle = "#fff"; ctx.fill();
+  ctx.restore();
+}
+function mouseTuto(ctx, x, y, clicando) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.lineWidth = 6; ctx.strokeStyle = "rgba(12,8,30,0.95)";
+  retRedondo(ctx, -30, -44, 60, 88, 28);
+  ctx.fillStyle = "#f1f3f5"; ctx.fill(); ctx.stroke();
+  // botão esquerdo aceso no clique
+  ctx.save(); retRedondo(ctx, -30, -44, 60, 88, 28); ctx.clip();
+  ctx.fillStyle = clicando ? "#ffd43b" : "#ced4da"; ctx.fillRect(-30, -44, 30, 38);
+  ctx.restore();
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(0, -44); ctx.lineTo(0, -6); ctx.moveTo(-30, -6); ctx.lineTo(30, -6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -44); ctx.quadraticCurveTo(4, -60, 16, -62); ctx.stroke();
+  ctx.restore();
+}
+function miraTuto(ctx, x, y, acende) {
+  ctx.save();
+  ctx.lineCap = "round";
+  for (let p = 0; p < 2; p++) {
+    ctx.strokeStyle = p ? (acende ? "#ffd43b" : "#fff") : "rgba(12,8,30,0.9)"; ctx.lineWidth = p ? 3.5 : 8;
+    ctx.beginPath(); ctx.arc(x, y, 18, 0, 7);
+    ctx.moveTo(x - 30, y); ctx.lineTo(x - 10, y); ctx.moveTo(x + 10, y); ctx.lineTo(x + 30, y);
+    ctx.moveTo(x, y - 30); ctx.lineTo(x, y - 10); ctx.moveTo(x, y + 10); ctx.lineTo(x, y + 30);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function teclaTuto(ctx, x, y, nome, apertada, w) {
+  w = w || 64;
+  const h = 64, desce = apertada ? 5 : 0;
+  ctx.save();
+  ctx.fillStyle = "rgba(12,8,30,0.95)";
+  retRedondo(ctx, x - w / 2 - 3, y - h / 2 - 3, w + 6, h + 9, 14); ctx.fill();
+  ctx.fillStyle = "#868e96";
+  retRedondo(ctx, x - w / 2, y - h / 2 + 6, w, h, 12); ctx.fill();
+  ctx.fillStyle = apertada ? "#ffd43b" : "#f1f3f5";
+  retRedondo(ctx, x - w / 2, y - h / 2 + desce, w, h - 4, 12); ctx.fill();
+  ctx.fillStyle = "#1b1e28"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = "900 " + (nome.length > 2 ? 24 : 30) + "px system-ui, sans-serif";
+  ctx.fillText(nome, x, y - 2 + desce);
+  ctx.restore();
+}
+
+// "NOVO!" pulando em cima da 1ª caixa/carta da 1ª partida (some quando a pessoa pega uma)
+function etiquetaNovo(ctx, x, y, tm) {
+  const sobe = Math.abs(Math.sin(tm * 5)) * 8;
+  textoContorno(ctx, t("novo"), x, y - 52 - sobe, 26, "#ffd43b");
+  setaTuto(ctx, x, y - 36 - sobe, 0, 1, 0.45);
+}
+
 function chaoEmbaixo(M, b) {
   let y = 720;
   for (let i = 0; i < M.plats.length; i++) {
@@ -318,11 +563,11 @@ function nomeJogador(j, lado) {
   return t("jogador_n", lado);
 }
 
-function desenharHud(ctx, j, M, dy) {
+function desenharHud(ctx, j, M, L) {
   // em pé: o HUD fica acima da arena e maior (a tela do celular é estreita)
-  const em = dy > 150;
+  const em = L.emPe;
   const k = em ? 1.45 : 1;
-  const topo = em ? dy - 200 : 10;
+  const topo = L.hudTopo;
   const margem = em ? CONFIG.largura / 2 - CONFIG.largura / 2 / k + 12 : 20;
   ctx.save();
   if (em) { ctx.translate(CONFIG.largura / 2, topo); ctx.scale(k, k); ctx.translate(-CONFIG.largura / 2, -topo); }
@@ -345,7 +590,7 @@ function desenharHud(ctx, j, M, dy) {
   ctx.restore();
   ctx.restore();
 
-  const meio = dy + FIS.altura * 0.42;
+  const meio = mundoParaTela(0, FIS.altura * 0.42).y;
   // abertura da rodada: nome do cenário e o que ele tem de diferente
   if (j.fase === "intro") {
     const k = Math.min(1, j.tempoFase * 4);
@@ -384,21 +629,22 @@ function desenharHud(ctx, j, M, dy) {
     if (surv) textoContorno(ctx, t("recorde_onda", Math.max(save.recordeOnda, j.onda)), cx, meio + 64, 34, "#fff");
     else placarGrande(ctx, j, cx, meio + 70);
   }
-  // primeira partida: lembrete dos controles nos primeiros segundos
-  if ((save.partidas <= 1 && j.rodada <= 2 || j.dicaRodada === j.rodada) && (j.fase === "intro" || j.fase === "luta" && j.tempoFase < 7)) {
-    const texto = entrada.toque ? t(j.modo === "2p" ? "dica_2p_toque" : "dica_bot_toque") : dicaTeclas(j.modo !== "2p");
+  // 2 jogadores: lembrete dos controles nos primeiros segundos (contra o bot o tutorial é desenhado, sem texto)
+  if (j.modo === "2p" && save.partidas <= 3 && j.rodada <= 2 && (j.fase === "intro" || j.fase === "luta" && j.tempoFase < 7)) {
+    const texto = entrada.toque ? t("dica_2p_toque") : dicaTeclas(false);
     const linhas = texto.split("\n");
     const tam = em ? 34 : 24;
-    const base = em ? dy + FIS.altura + 70 : dy + FIS.altura - 30 - (linhas.length - 1) * 30;
+    const base = em ? L.dy + FIS.altura + 70 : L.dy + FIS.altura - 30 - (linhas.length - 1) * 30;
     ctx.globalAlpha = j.fase === "luta" ? Math.min(1, (7 - j.tempoFase) / 1.5) : 1;
     linhas.forEach(function(l, i) { textoContorno(ctx, l, cx, base + i * tam * 1.25, tam, "#fff"); });
     ctx.globalAlpha = 1;
   }
   // missão / desafio / conquista completada durante a partida
+  const yAvisos = mundoParaTela(0, FIS.altura).y - 70;
   if (typeof Progresso !== "undefined") Progresso.avisos.forEach(function(a, i) {
     const k = Math.min(1, a.t * 5) * Math.min(1, (3 - a.t) * 3);
     ctx.globalAlpha = Math.max(0, k);
-    textoContorno(ctx, a.texto, cx, dy + FIS.altura - 70 - i * 34, 26, a.cor);
+    textoContorno(ctx, a.texto, cx, yAvisos - i * 34, 26, a.cor);
     ctx.globalAlpha = 1;
   });
   // carta que alguém acabou de pegar
@@ -496,13 +742,13 @@ function desenharQueda(ctx, j, H) {
 }
 
 // ---------- controles de toque (desenho dos analógicos e da área de tiro) ----------
-function desenharControlesToque(ctx, j, H) {
+function desenharControlesToque(ctx, j, H, L) {
   if (!entrada.toque || j.fase === "queda" || j.fase === "fimPartida") return;
   ctx.save();
-  const emPe = H > FIS.altura + 200;
+  const emPe = L.emPe;
   const k = emPe ? 1.8 : 1;
-  const yBaixo = H - (emPe ? 330 : 130);          // analógicos (andar / mirar)
-  const yCima = H * (emPe ? 0.3 : 0.32);          // botão de pulo (metade de cima do lado de dentro)
+  const yBaixo = L.yBaixo;          // analógicos (andar / mirar)
+  const yCima = L.yPulo;            // botão de pulo (em pé com câmera: logo acima do de mira, perto do polegar)
   const zonas = j.modo === "2p"
     ? [{ x: 0.13, y: yBaixo, tipo: "stick", j: 1 }, { x: 0.39, y: yBaixo, tipo: "mira", j: 1 }, { x: 0.39, y: yCima, tipo: "pulo", j: 1 },
        { x: 0.61, y: yBaixo, tipo: "mira", j: 2 }, { x: 0.61, y: yCima, tipo: "pulo", j: 2 }, { x: 0.87, y: yBaixo, tipo: "stick", j: 2 }]
@@ -598,7 +844,7 @@ function desenharVinheta(ctx, j, M, H) {
   if (a > 0.01) { ctx.globalAlpha = Math.min(0.75, a); ctx.drawImage(vinhetaDor(H), 0, 0, CONFIG.largura, H); ctx.globalAlpha = 1; }
 }
 
-function desenharSensacoes(ctx, j, M, dy, H) {
+function desenharSensacoes(ctx, j, M, L) {
   // contador de combo (a partir de 3 acertos seguidos)
   for (let k = 0; k < 2; k++) {
     const b = M.bolinhas[k], c = b.combo;
@@ -606,7 +852,7 @@ function desenharSensacoes(ctx, j, M, dy, H) {
     const novo = Math.max(0, c.ate - M.t - 1.1) / 0.2;           // pulso logo depois de cada acerto
     const tam = Math.round(34 + novo * 12 + Math.min(c.n, 12));
     ctx.globalAlpha = Math.min(1, c.mostra);
-    const x = b.lado === 1 ? 250 : CONFIG.largura - 250, y = (dy > 150 ? dy + 60 : 160);
+    const x = b.lado === 1 ? 250 : CONFIG.largura - 250, y = L.emPe ? mundoParaTela(0, 60).y : 160;
     textoContorno(ctx, "COMBO x" + c.n, x, y, tam, c.n >= 8 ? "#ff922b" : "#ffd43b");
     ctx.globalAlpha = 1;
   }
@@ -614,19 +860,20 @@ function desenharSensacoes(ctx, j, M, dy, H) {
   const ch = j.chuva;
   if (ch) {
     const idade = (performance.now() - ch.t0) / 1000;
-    const em = dy > 150, alvoX = em ? 140 : 60, alvoY = em ? dy - 110 : 82;
+    const em = L.emPe, alvoX = em ? 140 : 60, alvoY = em ? L.hudTopo + 90 : 82;
+    const o = mundoParaTela(ch.x, ch.y), z = camera.z;
     let chegaram = 0;
     for (let i = 0; i < ch.n; i++) {
       const ini = 0.25 + i * 0.07, u = (idade - ini) / 0.75;
       if (u <= 0) {
         // espalhando no ar antes de voar
-        const a = i / ch.n * Math.PI * 2, r = Math.min(1, idade / 0.25) * 40;
-        moedinha(ctx, ch.x + Math.cos(a) * r, ch.y + dy + Math.sin(a) * r - 10, 1);
+        const a = i / ch.n * Math.PI * 2, r = Math.min(1, idade / 0.25) * 40 * z;
+        moedinha(ctx, o.x + Math.cos(a) * r, o.y + Math.sin(a) * r - 10, 1);
         continue;
       }
       if (u >= 1) { chegaram++; continue; }
       const e = u * u * (3 - 2 * u), a = i / ch.n * Math.PI * 2;
-      const sx = ch.x + Math.cos(a) * 40, sy = ch.y + dy + Math.sin(a) * 40 - 10;
+      const sx = o.x + Math.cos(a) * 40 * z, sy = o.y + Math.sin(a) * 40 * z - 10;
       const x = sx + (alvoX - sx) * e, y = sy + (alvoY - sy) * e - Math.sin(u * Math.PI) * 120;
       moedinha(ctx, x, y, 1 - u * 0.35);
     }

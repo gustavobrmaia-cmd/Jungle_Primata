@@ -329,5 +329,8 @@ TEXTOS.fr = {
   sk_cowboy: "Chapeau de Cowboy",
   sk_antena: "Antenne Alien",
   sk_aureola: "Auréole",
-  sk_coroa: "Couronne"
+  sk_coroa: "Couronne",
+  novo: "NOUVEAU !",
+  proximo_rival: "RIVAL SUIVANT",
+  premio_equipado: "{0} équipé !"
 };

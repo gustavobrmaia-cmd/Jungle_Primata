@@ -329,5 +329,8 @@ TEXTOS.tr = {
   sk_cowboy: "Kovboy Şapkası",
   sk_antena: "Uzaylı Anteni",
   sk_aureola: "Hale",
-  sk_coroa: "Taç"
+  sk_coroa: "Taç",
+  novo: "YENİ!",
+  proximo_rival: "SIRADAKİ RAKİP",
+  premio_equipado: "{0} kuşanıldı!"
 };

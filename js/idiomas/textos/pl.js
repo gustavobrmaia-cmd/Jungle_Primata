@@ -329,5 +329,8 @@ TEXTOS.pl = {
   sk_cowboy: "Kapelusz Kowboja",
   sk_antena: "Antena Kosmity",
   sk_aureola: "Aureola",
-  sk_coroa: "Korona"
+  sk_coroa: "Korona",
+  novo: "NOWE!",
+  proximo_rival: "NASTĘPNY RYWAL",
+  premio_equipado: "{0} założone!"
 };

@@ -329,5 +329,8 @@ TEXTOS.id = {
   sk_cowboy: "Topi Koboi",
   sk_antena: "Antena Alien",
   sk_aureola: "Lingkaran Cahaya",
-  sk_coroa: "Mahkota"
+  sk_coroa: "Mahkota",
+  novo: "BARU!",
+  proximo_rival: "LAWAN BERIKUTNYA",
+  premio_equipado: "{0} dipakai!"
 };

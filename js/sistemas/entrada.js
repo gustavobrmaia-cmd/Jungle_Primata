@@ -129,8 +129,8 @@ const entrada = (function() {
       const fx = (t2.clientX - r.left) / r.width;
       const fy = (t2.clientY - r.top) / r.height;
       const z = zona(fx);
-      // lado de dentro: em cima = botão de pulo, embaixo = analógico de mira
-      const tipo = z[1] === "mira" && fy < 0.45 ? "pulo" : z[1];
+      // lado de dentro: em cima = botão de pulo, embaixo = analógico de mira (em pé: a linha fica logo acima do analógico)
+      const tipo = z[1] === "mira" && fy < (typeof limitePuloToque === "function" ? limitePuloToque() : 0.45) ? "pulo" : z[1];
       const d = { jogador: z[0], tipo: tipo, x0: t2.clientX, y0: t2.clientY, dx: 0, dy: 0, pulou: false,
                   escala: r.width / CONFIG.largura, fx: fx, fy: fy };
       dedos.set(t2.identifier, d);

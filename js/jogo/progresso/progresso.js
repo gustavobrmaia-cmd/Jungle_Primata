@@ -234,12 +234,19 @@ const Progresso = (function() {
     });
     return lista.length ? lista[Math.floor(Math.random() * lista.length)].id : null;
   }
-  function abrirBau(tipo) {
+  // garantir: o baú da 1ª partida da vida sempre traz um acessório, que já vem equipado na partida seguinte
+  // (a pessoa vê o prêmio em cima da bolinha logo de cara)
+  function abrirBau(tipo, garantir) {
     const regra = { normal: [15, 40, 0.08, 2], nivel: [80, 150, 0.35, 3], lendario: [250, 400, 1, 4] }[tipo] || [15, 40, 0, 1];
     const premio = { tipo: tipo, moedas: Math.round(regra[0] + Math.random() * (regra[1] - regra[0])), skin: null };
-    if (Math.random() < regra[2]) premio.skin = skinSorteada(regra[3]);
+    if (garantir) {
+      const lista = SKINS_ACESSORIO.filter(function(s) { return s.preco && !temSkin(s.id) && s.raridade <= 2; });
+      if (lista.length) { premio.skin = lista[Math.floor(Math.random() * lista.length)].id; premio.equipou = true; }
+    }
+    if (!premio.skin && Math.random() < regra[2]) premio.skin = skinSorteada(regra[3]);
     ganharMoedas(premio.moedas);
     if (premio.skin) ganharSkin(premio.skin);
+    if (premio.equipou) save.skinAcessorio = premio.skin;
     salvar();
     Poki.medir("chest", tipo, "interact");
     return premio;

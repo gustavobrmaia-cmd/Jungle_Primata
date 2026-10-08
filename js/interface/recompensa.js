@@ -5,6 +5,9 @@
 // 1. Fim da partida: tela com o resultado, a barra de XP enchendo (subir de nível dá um baú especial),
 //    o baú da partida para abrir (toque -> treme -> abre com raios e o prêmio), "▶ abrir outro baú" (premiado,
 //    1 vez) e REVANCHE direto (sem passar pelo menu).
+//    O baú abre sozinho e, contra o bot, "▶ PRÓXIMO RIVAL" conta 4 s e começa a próxima partida sozinho
+//    (no Poki v9 ~30% de quem terminava a 1ª partida não começava a 2ª). Clicar em outro botão cancela a contagem.
+//    O baú da 1ª partida da vida sempre traz um acessório, que já vem equipado.
 // 2. Recompensa diária: sequência de 7 dias que cresce (dia 3 tem baú, dia 7 baú lendário). Aparece sozinha
 //    no menu uma vez por dia; perder um dia volta para o dia 1.
 // =========================
@@ -17,7 +20,8 @@ function abrirRecompensa(j, titulo, sub) {
   const xp = Progresso.ganharXP(Progresso.xpDaPartida(j));
   const baus = ["normal"];
   for (let i = 0; i < xp.subiu; i++) baus.push("nivel");
-  rec = { modo: j.modo, baus: baus, i: 0, fase: "fechado", t0: 0, premio: null, extraUsado: false, xp: xp };
+  rec = { modo: j.modo, baus: baus, i: 0, fase: "fechado", t0: 0, premio: null, extraUsado: false, xp: xp,
+          primeira: !!j.treino, aberta: performance.now() / 1000, fimBaus: 0, cancelou: false };
   estado = "recompensa";
   garantirDemo();          // no fundo, a luta de demonstração (sem o placar da partida que acabou)
   atualizarTextos();
@@ -64,6 +68,7 @@ function atualizarBotoesRecompensa() {
   const podeExtra = !faltam && rec.fase !== "sacudindo" && !rec.extraUsado && Poki.premiadoDisponivel();
   el("btnOutroBau").classList.toggle("escondido", !podeExtra);
   el("btnOutroBau").textContent = "▶ " + t("outro_bau");
+  textoRevanche(rec.cancelou ? 0 : rec.n || 0);
   if (podeExtra && !rec.ofertou) { rec.ofertou = true; Eventos.oferta("extra-chest", "visible"); }
 }
 
@@ -74,7 +79,7 @@ function abrirBauDaVez() {
   som("carga");
   atualizarBotoesRecompensa();
   setTimeout(function() {
-    rec.premio = Progresso.abrirBau(rec.baus[rec.i]);
+    rec.premio = Progresso.abrirBau(rec.baus[rec.i], rec.primeira && rec.i === 0);
     rec.fase = "aberto";
     rec.t0 = performance.now() / 1000;
     som("carta");
@@ -91,13 +96,34 @@ function abrirBauDaVez() {
 
 function mostrarPremio(alvo, premio) {
   let txt = "+" + premio.moedas + " 🪙";
-  if (premio.skin) txt += "   ✨ " + t("premio_skin", t("sk_" + premio.skin));
+  if (premio.skin) txt += "   ✨ " + t(premio.equipou ? "premio_equipado" : "premio_skin", t("sk_" + premio.skin));
   alvo.textContent = txt;
+}
+
+// botão da próxima partida: contra o bot vira "▶ PRÓXIMO RIVAL" com a contagem
+function textoRevanche(n) {
+  const b = el("btnRevanche");
+  if (!b || !rec) return;
+  b.textContent = rec.modo === "bot" ? "▶ " + t("proximo_rival") + (n > 0 ? "  " + n : "") : t("revanche");
+}
+
+// chamado a cada quadro com a tela aberta: abre o baú sozinho e conta para a próxima partida
+function contagemRecompensa(tempo) {
+  if (!rec || ocupado) return;
+  if (rec.fase === "fechado" && rec.i < rec.baus.length && tempo - Math.max(rec.aberta, rec.t0) > 0.9) abrirBauDaVez();
+  if (rec.modo !== "bot" || rec.cancelou || rec.i < rec.baus.length || rec.fase !== "aberto") return;
+  if (!rec.fimBaus) rec.fimBaus = tempo;
+  const falta = 4 - (tempo - rec.fimBaus - 0.5);
+  if (falta <= 0) { Eventos.marco("next-rival-auto"); revanche(); return; }
+  const n = Math.ceil(Math.min(4, falta));
+  if (n !== rec.n) { rec.n = n; textoRevanche(n); }
 }
 
 function outroBau() {
   if (ocupado || !rec || rec.extraUsado) return;
   ocupado = true;
+  rec.cancelou = true;
+  textoRevanche(0);
   Eventos.oferta("extra-chest", "interact");
   Poki.premiado("small").then(function(assistiu) {
     ocupado = false;
@@ -134,6 +160,8 @@ function desenharRecompensa(tempo) {
   const cv = el("canvasBau"), g = cv.getContext("2d");
   g.clearRect(0, 0, cv.width, cv.height);
   if (!rec || typeof ArteBau === "undefined") return;
+  contagemRecompensa(tempo);
+  if (!rec) return;
   const tipo = rec.baus[Math.min(rec.i, rec.baus.length - 1)];
   const tipoVisto = rec.fase === "aberto" ? rec.baus[rec.i - 1] : tipo;
   const dt = tempo - rec.t0;

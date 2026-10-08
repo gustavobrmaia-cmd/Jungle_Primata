@@ -329,5 +329,8 @@ TEXTOS.it = {
   sk_cowboy: "Cappello da Cowboy",
   sk_antena: "Antenna Aliena",
   sk_aureola: "Aureola",
-  sk_coroa: "Corona"
+  sk_coroa: "Corona",
+  novo: "NUOVO!",
+  proximo_rival: "PROSSIMO RIVALE",
+  premio_equipado: "{0} equipaggiato!"
 };

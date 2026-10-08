@@ -329,5 +329,8 @@ TEXTOS.ro = {
   sk_cowboy: "Pălărie de Cowboy",
   sk_antena: "Antenă Extraterestră",
   sk_aureola: "Aureolă",
-  sk_coroa: "Coroană"
+  sk_coroa: "Coroană",
+  novo: "NOU!",
+  proximo_rival: "URMĂTORUL RIVAL",
+  premio_equipado: "{0} echipat!"
 };

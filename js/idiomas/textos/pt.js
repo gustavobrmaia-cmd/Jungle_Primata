@@ -329,5 +329,8 @@ TEXTOS.pt = {
   sk_cowboy: "Chapéu de Caubói",
   sk_antena: "Antena Alien",
   sk_aureola: "Auréola",
-  sk_coroa: "Coroa"
+  sk_coroa: "Coroa",
+  novo: "NOVO!",
+  proximo_rival: "PRÓXIMO RIVAL",
+  premio_equipado: "{0} equipado!"
 };

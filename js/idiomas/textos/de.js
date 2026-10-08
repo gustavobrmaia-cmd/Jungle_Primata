@@ -329,5 +329,8 @@ TEXTOS.de = {
   sk_cowboy: "Cowboyhut",
   sk_antena: "Alien-Antenne",
   sk_aureola: "Heiligenschein",
-  sk_coroa: "Krone"
+  sk_coroa: "Krone",
+  novo: "NEU!",
+  proximo_rival: "NÄCHSTER GEGNER",
+  premio_equipado: "{0} ausgerüstet!"
 };

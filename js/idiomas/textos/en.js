@@ -329,5 +329,8 @@ TEXTOS.en = {
   sk_cowboy: "Cowboy Hat",
   sk_antena: "Alien Antenna",
   sk_aureola: "Halo",
-  sk_coroa: "Crown"
+  sk_coroa: "Crown",
+  novo: "NEW!",
+  proximo_rival: "NEXT RIVAL",
+  premio_equipado: "{0} equipped!"
 };

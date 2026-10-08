@@ -37,7 +37,10 @@ Combinado com o dono do jogo. Qualquer versão nova TEM que manter isto:
 - Som sintetizado (WebAudio), sem arquivos de áudio.
 - Arte desenhada no canvas ou pixel art pequena.
 - Loop de passo fixo (1/60 s). Resolução lógica 1280x720 escalada.
-- Celular em pé suportado (tela mais alta, sem pedir para girar).
+- Celular em pé suportado (tela mais alta, sem pedir para girar). Contra o bot, em pé, a arena tem CÂMERA (desenho.js:
+  `layoutTela`, `atualizarCamera`, `mundoParaTela`/`telaParaMundo`): zoom 1,15–1,8 seguindo as duas bolinhas, chão fixo
+  em H-760, HUD em cima (y 150), pulo embaixo à direita logo acima do analógico de mira (toque na metade direita acima de
+  H-470 = pulo) e seta na beirada para quem sai da tela. Tablet/tela pouco alta: sem câmera (layout antigo).
 - Modo leve (`CONFIG.leve`; Opções > Gráficos: automático/altos/leves, `save.qualidade`): automático em aparelho de toque
   ou com pouca memória/poucos núcleos. Menos partículas (300) e a luta do fundo dos menus desenhada a 30 qps.
 - Sprites de armas, cartas e efeitos são preparados logo no começo, em pedaços (evita engasgo no 1º uso).
@@ -67,7 +70,8 @@ interface/telas, nucleo/main.
 Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nunca desenha.
 
 ## O jogo atual: Crazy Balls Duel
-- Duas bolinhas (cores sorteadas). Modos: contra o bot, 2 jogadores no mesmo aparelho, e a demo (bot x bot no fundo dos menus).
+- Duas bolinhas. Contra o bot o jogador é sempre rosa (CORES_BOLINHAS[0], a mesma da prévia no menu) e o bot ganha uma cor
+  de tom bem diferente (`coresDiferentes`: matiz >= 75°). Antes as duas eram sorteadas e 21% das partidas ficavam parecidas. Modos: contra o bot, 2 jogadores no mesmo aparelho, e a demo (bot x bot no fundo dos menus).
 - Partida até 5 pontos (a 1ª partida da vida, contra o bot, vai até 3: `CONFIG.pontosPrimeira`). Rodada de 45 s num cenário diferente; últimos 10 s com dano em dobro.
   Se ninguém morrer: queda de braço (quem clicar mais vence; quem tem mais vida começa na frente).
 - Os dois começam a rodada com a mesma arma sorteada; caixas de arma caem (1ª aos 1,5 s, depois a cada ~4 s);
@@ -88,6 +92,16 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   Calibrado com scratchpad/sim/humanosim.js (jogador humano simulado: mira com erro, segura o tiro, não desvia),
   que reproduz o Poki v8 (humano vencia ~31% da 1ª rodada; Dojo 19%). Meta: ~70% de vitórias nas 1ªs rodadas.
 - Poki v8 (500 jogadas, desktop): média 3m39 inflada por uma sessão de ~15 h; real ~1m51; Engaged players 16%.
+- Poki v9 (500 jogadas, PC+celular: 73% celular, 45% das sessões em pé): média 2m03, Engaged 18%. 77% não terminavam a
+  1ª partida (40% saíam NO MEIO da 1ª rodada); quem chegava na 2ª partida ficava (~90% terminavam cada rodada).
+- v10 = 1ª partida da vida "treino" (`jogo.treino`): campo + mapas simples (fábrica, fliperama, templo, floresta), bot
+  "agressivo" (vem lutar), tiro do jogador x`CONFIG.multTreino` (1,8), vida do jogador não passa de 8 (`M.vidaMinima`),
+  rodada 1 só rifle com munição infinita, caixas entram na rodada 2 e cartas na 3 com "NOVO!" em cima. Simulação:
+  1ª partida ~45 s (3x0, luta de ~12 s). 2ª partida: tiro x`CONFIG.multSegunda` (1,25), luta ~22 s, jogador vence 65–80%.
+  Nas 3 primeiras partidas só personalidades agressivo/saltitante e espaço/oceano/vulcão vão para o fim junto dos difíceis.
+- Tutorial desenhado (sem texto) na 1ª partida: atirar -> andar -> pular, uma ação por vez, some quando a pessoa faz
+  (partida.js `passoTutorial`, desenho.js `desenharTutorial`): mouse+mira e teclas no PC, mão em cima dos controles no
+  toque. Perdeu a rodada sem acertar nada: a dica de atirar volta. Texto de controles só no modo 2 jogadores.
 - Estado do bot que usa o relógio da rodada (M.t) é zerado a cada rodada nova (pensarBot); antes o bot ficava
   sem atirar no começo das rodadas seguintes.
 - Bot avisa tiro pesado (bazuca, laser, sniper): balão "!" + linha vermelha tracejada por 0,2–0,55 s antes de atirar
@@ -114,7 +128,9 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
 - gameplayStop no fim de cada rodada e gameplayStart quando a próxima começa (além de pausa, menus e anúncios).
 - Progresso (js/jogo/progresso): moedas, 3 missões, 4 desafios da semana (skin exclusiva), 27 conquistas, 30 skins,
   XP/nível do jogador, baús (normal no fim da partida, de nível ao subir, lendário no 7º dia) e recompensa diária (7 dias).
-- Fim da partida: tela de recompensa (interface/recompensa.js): XP, baú para abrir, "▶ abrir outro baú" (premiado) e REVANCHE.
+- Fim da partida: tela de recompensa (interface/recompensa.js): XP, baú que abre sozinho, "▶ abrir outro baú" (premiado) e,
+  contra o bot, "▶ PRÓXIMO RIVAL" com contagem de 4 s que começa a próxima partida sozinha (outro botão cancela).
+  O baú da 1ª partida sempre dá um acessório, que já vem equipado (`Progresso.abrirBau(tipo, garantir)`).
 - Modos: contra o bot, 2 jogadores, SOBREVIVÊNCIA (ondas de bots cada vez mais fortes; vida passa de uma onda para outra,
   +35 entre ondas; recorde em save.recordeOnda; "Continuar" premiado volta na mesma onda com vida cheia).
 - Equilíbrio: `node` + simulação bot x bot (script fora do repositório) — medir % de rodadas na queda de braço (~10–35%)

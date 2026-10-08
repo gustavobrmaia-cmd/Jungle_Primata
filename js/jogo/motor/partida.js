@@ -40,28 +40,40 @@ function escolherSkins(j) {
   let s2 = sorteio();
   if (SKIN[s1.corpo] && SKIN[s1.corpo].cor !== "jogador") j.cores[0] = SKIN[s1.corpo].cor;
   const fixa2 = SKIN[s2.corpo].cor !== "jogador" ? SKIN[s2.corpo].cor : null;
-  if (fixa2 && distanciaCor(fixa2, j.cores[0]) > 140) j.cores[1] = fixa2;
+  if (fixa2 && coresDiferentes(fixa2, j.cores[0])) j.cores[1] = fixa2;
   else {
     if (fixa2) s2.corpo = "classico";
-    if (distanciaCor(j.cores[1], j.cores[0]) <= 140) {
-      const alt = CORES_BOLINHAS.filter(function(c) { return distanciaCor(c, j.cores[0]) > 140; });
-      j.cores[1] = alt[Math.floor(Math.random() * alt.length)] || "#4dabf7";
-    }
+    if (!coresDiferentes(j.cores[1], j.cores[0])) j.cores[1] = corDiferente(j.cores[0]);
   }
   j.skins = [s1, s2];
 }
 
-function sortearCores() {
-  const l = embaralhar(CORES_BOLINHAS);
-  // duas cores que não se confundem (tons bem diferentes)
-  const a = l[0];
-  for (let i = 1; i < l.length; i++) if (distanciaCor(a, l[i]) > 140) return [a, l[i]];
-  return [l[0], l[1]];
+// Contra o bot o jogador tem sempre a mesma cor (a da prévia no menu) e o bot ganha uma bem diferente.
+// Antes as duas eram sorteadas e em ~21% das partidas ficavam parecidas (azul x ciano, rosa x rosa).
+function sortearCores(modo) {
+  const a = modo === "bot" || modo === "sobrevivencia" ? CORES_BOLINHAS[0] : embaralhar(CORES_BOLINHAS)[0];
+  return [a, corDiferente(a)];
 }
-function distanciaCor(a, b) {
-  const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16);
-  const dr = (x >> 16) - (y >> 16), dg = ((x >> 8) & 255) - ((y >> 8) & 255), db = (x & 255) - (y & 255);
-  return Math.sqrt(dr * dr * 0.3 + dg * dg * 0.59 + db * db * 0.11);
+function corDiferente(a) {
+  const alt = CORES_BOLINHAS.filter(function(c) { return coresDiferentes(c, a); });
+  return alt[Math.floor(Math.random() * alt.length)] || (coresDiferentes("#4dabf7", a) ? "#4dabf7" : "#ff5d73");
+}
+// matiz (0-360), saturação e luz (0-1) de "#rrggbb"
+function hslDe(c) {
+  const n = parseInt(c.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  if (d === 0) return { h: 0, s: 0, l: l };
+  const s = d / (1 - Math.abs(2 * l - 1));
+  let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h *= 60; if (h < 0) h += 360;
+  return { h: h, s: s, l: l };
+}
+// dá para distinguir de longe? tons bem separados (>= 75°); cor quase branca/cinza só com uma cor forte
+function coresDiferentes(a, b) {
+  const x = hslDe(a), y = hslDe(b);
+  if (x.s < 0.3 || y.s < 0.3) return Math.max(x.s, y.s) >= 0.5 && Math.abs(x.l - y.l) < 0.5 || Math.abs(x.l - y.l) > 0.3;
+  let d = Math.abs(x.h - y.h); if (d > 180) d = 360 - d;
+  return d >= 75;
 }
 
 // opcoes: { lendaria, nivelBot, primeiraVez }
@@ -70,19 +82,25 @@ function novaPartida(modo, opcoes) {
   let ordem = embaralhar(CENARIOS.map(function(c) { return c.id; }));
   // nas 3 primeiras partidas, os mapas mais cruéis para quem está aprendendo (cair da arena, empurrão forte)
   // ficam por último — no Poki v8 o jogador perdia 58-65% das rodadas neles
+  // (e, no v9, espaço/oceano/vulcão também espantavam: sem gravidade, água e lava confundem quem está começando)
   if (modo === "bot" && save.partidas <= 3) {
-    const dificeis = ["dojo", "castelo", "cidade", "lua"];
-    ordem = ordem.filter(function(id) { return dificeis.indexOf(id) < 0; }).concat(embaralhar(dificeis.slice()));
+    const dificeis = ["dojo", "castelo", "cidade", "lua"], medios = ["espaco", "oceano", "vulcao"];
+    ordem = ordem.filter(function(id) { return dificeis.indexOf(id) < 0 && medios.indexOf(id) < 0; })
+      .concat(embaralhar(medios), embaralhar(dificeis.slice()));
   }
-  // na primeiríssima partida a 1ª rodada é no campo (o mais simples)
-  if (opcoes.primeiraVez) { ordem.splice(ordem.indexOf("campo"), 1); ordem.unshift("campo"); }
+  // 1ª partida da vida ("treino"): campo e depois só mapas simples (sem cair, lava, água ou gravidade esquisita)
+  const treino = !!opcoes.primeiraVez && modo === "bot";
+  if (treino) {
+    const simples = ["fabrica", "fliperama", "templo", "floresta"];
+    ordem = ["campo"].concat(embaralhar(simples), ordem.filter(function(id) { return id !== "campo" && simples.indexOf(id) < 0; }));
+  }
   jogo = {
     modo: modo,
     demo: modo === "demo",
     pontos: [0, 0],
     alvo: opcoes.primeiraVez && modo === "bot" ? CONFIG.pontosPrimeira : CONFIG.pontosParaVencer,
     rodada: 0,
-    cores: sortearCores(),
+    cores: sortearCores(modo),
     ordem: ordem,
     lendaria: !!opcoes.lendaria,
     nivelBot: opcoes.nivelBot === undefined ? 0.5 : opcoes.nivelBot,
@@ -93,7 +111,10 @@ function novaPartida(modo, opcoes) {
     total: { dano: [0, 0], tiros: [0, 0], acertos: [0, 0], quedas: 0, rodadas: [] },
     vencedorRodada: 0, vencedorPartida: 0,
     banner: null,
-    tempoReal: 0
+    tempoReal: 0,
+    treino: treino,
+    // tutorial desenhado da 1ª partida (atirar -> andar -> pular; desenho.js)
+    tuto: modo === "bot" && save.partidas <= 1 ? { passo: null, tempo: 0, andou: 0, pulou: false } : null
   };
   escolherSkins(jogo);
   // prepara a cena da queda de braço já no começo da partida (as cores não mudam até o fim)
@@ -101,7 +122,9 @@ function novaPartida(modo, opcoes) {
     const cores = jogo.cores;
     setTimeout(function() { try { ArteQueda.preparar(cores[0], cores[1], CONFIG.largura, alturaTela); } catch (e) { /* sem queda pronta: faz na hora */ } }, 50);
   }
-  if (modo === "bot") jogo.bots[1] = criarBot(2, jogo.nivelBot);
+  // personalidade: nas primeiras partidas só as que vêm lutar (o cauteloso, o atirador e o colecionador
+  // ficavam longe e a rodada arrastava; na simulação 1 de cada 4 rodadas passava de 40 s)
+  if (modo === "bot") jogo.bots[1] = criarBot(2, jogo.nivelBot, treino ? "agressivo" : save.partidas <= 3 ? (Math.random() < 0.5 ? "agressivo" : "saltitante") : undefined);
   // Sobrevivência: ondas de bots cada vez mais fortes; a vida do jogador passa de uma onda para a outra
   if (modo === "sobrevivencia") {
     jogo.onda = 1;
@@ -135,8 +158,21 @@ function iniciarRodada() {
   b1.humano = !j.demo && !j.bots[0];
   b2.humano = !j.demo && !j.bots[1];
   // os dois começam com a mesma arma (justo) e ela muda a cada rodada
-  const arma = sortearArma(M, true);
+  const arma = j.treino && j.rodada === 1 ? "rifle" : sortearArma(M, true);
   equipar(b1, arma); equipar(b2, arma);
+  // 1ª partida da vida: dá para chegar perto de perder, mas não perder; o tiro do jogador pesa mais (rodada curta)
+  // e as coisas aparecem aos poucos: rodada 1 só o rifle (sem acabar a munição), 2 entram as caixas de arma,
+  // 3 entram as cartas, cada novidade com um "NOVO!" em cima (desenho.js)
+  if (j.treino) {
+    M.vidaMinima = 8;
+    M.multJogador = CONFIG.multTreino;
+    if (j.rodada === 1) { b1.municao = Infinity; M.proxCaixa = Infinity; M.proxCarta = Infinity; }
+    else if (j.rodada === 2) { M.proxCarta = Infinity; M.novoCaixa = true; }
+    else if (j.rodada === 3) { M.novoCarta = true; M.proxCarta = 2.5; }
+  } else if (j.modo === "bot" && save.partidas === 2) M.multJogador = CONFIG.multSegunda;
+  if (j.tuto && j.rodada > 3) j.tuto = null;
+  // perdeu a rodada sem acertar nada: a dica desenhada de mirar e atirar volta nesta rodada
+  if (j.modo === "bot" && j.dicaRodada === j.rodada && !j.tuto) j.tuto = { passo: null, tempo: 0, andou: 1, pulou: true, so: true };
   if (j.modo === "sobrevivencia") {
     b1.vida = j.vidaJogador;
     M.multBot = 1 + Math.max(0, j.onda - 12) * 0.1;   // depois da onda 12 o bot também bate mais forte
@@ -200,6 +236,7 @@ function atualizarJogo(dt) {
     if (!j.avisouDobro && j.relogio <= RODADA.danoDobro) { j.avisouDobro = true; if (!j.demo) som("alarme"); }
     passoMundo(j, M, true, 1);
     j.relogio -= FIS.dt;
+    if (j.tuto) passoTutorial(j, M);
     if (M.morreu) {
       const vivos = M.bolinhas.filter(function(b) { return b.viva; });
       j.vencedorRodada = vivos.length === 1 ? vivos[0].lado : 0;
@@ -217,6 +254,18 @@ function atualizarJogo(dt) {
     passoMundo(j, M, true, M.ko ? (j.tempoFase < 1.1 ? 0.25 : 1) : (j.tempoFase < 0.7 ? 0.35 : 1));
     if (j.tempoFase >= RODADA.fim) fecharRodada(j);
   }
+}
+
+// Tutorial desenhado (1ª partida): uma ação de cada vez, na ordem atirar -> andar -> pular; o que a pessoa já
+// fez sozinha é pulado e cada dica some assim que ela faz (o desenho fica em desenho.js)
+function passoTutorial(j, M) {
+  const tu = j.tuto;
+  const tiros = M.stats.tiros[0] + (tu.so ? 0 : j.total.tiros[0]);   // dica que voltou: conta só os tiros desta rodada
+  const passo = tiros < 3 ? "tiro" : tu.andou < 0.5 ? "andar" : !tu.pulou ? "pulo" : null;
+  if (tu.so && passo !== "tiro") { j.tuto = null; return; }
+  if (!passo) { j.tuto = null; if (!j.demo) Eventos.marco("tutorial-done"); return; }
+  if (passo !== tu.passo) { tu.passo = passo; tu.tempo = 0; }
+  tu.tempo += FIS.dt;
 }
 
 // avança o mundo; "lento" < 1 deixa tudo mais devagar (câmera lenta)
@@ -242,6 +291,7 @@ function passoMundo(j, M, controles, lento) {
     const yAntes = b.vy;
     moverBolinha(b, ent, M.cen, M.plats, M.t, M.bumpers);
     animarBolinha(b, yAntes);
+    if (k === 0 && j.tuto && controles) { if (ent.esq || ent.dir) j.tuto.andou += FIS.dt; if (b.evento === "pulo") j.tuto.pulou = true; }
     if (b.evento === "caiu") { b.vida = 0; matar(M, b); }
     else if (b.evento === "lava") causarDano(M, b, 18, null, 0, -1, 0);
     else if (b.evento === "pulo") { if (!M.mudo) som("pulo"); if (typeof Efeitos !== "undefined" && b.noChao === false && b.tempoNoAr > 0.2) Efeitos.poeira(b.x, b.y + b.r); }
@@ -266,6 +316,7 @@ function passoMundo(j, M, controles, lento) {
       const b = M.bolinhas[p.lado - 1];
       if (typeof Efeitos !== "undefined") Efeitos.texto(b.x, b.y - b.r - 34, t("a_" + p.arma), ["#ffffff", "#ffffff", "#d0bfff", "#ffd43b"][ARMA[p.arma].raridade]);
       if (!j.demo && (p.lado === 1 || j.modo === "2p")) Poki.medir("weapon", p.arma, "interact");
+      if (p.lado === 1) j.viuCaixa = true;
       registrar(j, p.lado, "caixas", 1, { arma: p.arma });
     });
     M.pegou = null;
@@ -273,6 +324,7 @@ function passoMundo(j, M, controles, lento) {
   if (!j.demo && M.ultimaCarta && !M.ultimaCarta.medida) {
     M.ultimaCarta.medida = true;
     if (M.ultimaCarta.lado === 1 || j.modo === "2p") Poki.medir("card", M.ultimaCarta.id, "interact");
+    if (M.ultimaCarta.lado === 1) j.viuCarta = true;
     registrar(j, M.ultimaCarta.lado, "cartas", 1, { carta: M.ultimaCarta.id });
   }
 }
@@ -285,7 +337,11 @@ function entradaHumana(j, b) {
   const m = entrada.mira(j);
   if (!m) b.miraLivre = null;
   else if (m.ang !== undefined) b.miraLivre = m.ang;
-  else b.miraLivre = Math.atan2(m.y - deslocMundo() - b.y, m.x - b.x);
+  else {
+    // mouse: da tela para o mundo (em pé a câmera aproxima e anda)
+    const w = typeof telaParaMundo === "function" ? telaParaMundo(m.x, m.y) : { x: m.x, y: m.y - deslocMundo() };
+    b.miraLivre = Math.atan2(w.y - b.y, w.x - b.x);
+  }
   return {
     esq: entrada.segurando(j, "esquerda"),
     dir: entrada.segurando(j, "direita"),
