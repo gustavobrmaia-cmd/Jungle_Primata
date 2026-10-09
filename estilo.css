@@ -216,10 +216,11 @@ body.retrato button.tecla { min-width: 100px; font-size: 26px; }
 /* ---------- Escolha do modo com 4 cartões (Rivais em destaque, primeiro) ---------- */
 button.modo { width: 285px; min-height: 250px; }
 button.modo .nome { font-size: 34px; }
-button.modo.surv { background: linear-gradient(#ff922b, #e8590c); border-bottom-color: #8a3407; }
-button.modo[data-acao="modoBot"] { background: linear-gradient(#4c6ef5, #364fc7); border-bottom-color: #1b2a7a; }
-button.modo[data-acao="modo2p"] { background: linear-gradient(#f06595, #c2255c); border-bottom-color: #7a1238; }
-button.modo.rivais { background: linear-gradient(#fcc419, #e67700); border-bottom-color: #8a4b00; color: #2b1600; }
+.modos button.modo.surv { background: linear-gradient(#ff922b, #e8590c); border-bottom-color: #8a3407; }
+/* (".modos" na frente: precisa vencer a regra antiga "button.modo + button.modo", que pinta de rosa) */
+.modos button.modo[data-acao="modoBot"] { background: linear-gradient(#4c6ef5, #364fc7); border-bottom-color: #1b2a7a; }
+.modos button.modo[data-acao="modo2p"] { background: linear-gradient(#f06595, #c2255c); border-bottom-color: #7a1238; }
+.modos button.modo.rivais { background: linear-gradient(#fcc419, #e67700); border-bottom-color: #8a4b00; color: #2b1600; }
 button.modo.rivais .dica { opacity: 1; }
 body.retrato button.modo .nome { font-size: 54px; }
 
