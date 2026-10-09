@@ -163,6 +163,8 @@ function iniciarRodada() {
     stats: { dano: [0, 0], tiros: [0, 0], acertos: [0, 0] },
     morreu: null, pegou: null, ultimaCarta: null
   };
+  // contra bot (pessoa x máquina): os mapas cruéis ficam mais justos para a pessoa (veja combate.js e passoMundo)
+  M.contraBot = !j.demo && (j.modo === "bot" || j.modo === "sobrevivencia");
   const b1 = novaBolinha(1, cen.spawn[0][0], cen.spawn[0][1], j.cores[0]);
   const b2 = novaBolinha(2, cen.spawn[1][0], cen.spawn[1][1], j.cores[1]);
   M.bolinhas = [b1, b2];
@@ -181,7 +183,7 @@ function iniciarRodada() {
     if (j.rodada === 1) { b1.municao = Infinity; M.proxCaixa = Infinity; M.proxCarta = Infinity; }
     else if (j.rodada === 2) { M.proxCarta = Infinity; M.novoCaixa = true; }
     else if (j.rodada === 3) { M.novoCarta = true; M.proxCarta = 2.5; }
-  } else if (j.modo === "bot" && save.partidas === 2) M.multJogador = CONFIG.multSegunda;
+  } else if (j.modo === "bot" && (save.partidas === 2 || j.rival && j.rival.liga === 0 && j.rival.i <= 2)) M.multJogador = CONFIG.multSegunda;
   if (j.tuto && j.rodada > 3) j.tuto = null;
   // perdeu a rodada sem acertar nada: a dica desenhada de mirar e atirar volta nesta rodada
   if (j.modo === "bot" && j.dicaRodada === j.rodada && !j.tuto) j.tuto = { passo: null, tempo: 0, andou: 1, pulou: true, so: true };
@@ -304,7 +306,12 @@ function passoMundo(j, M, controles, lento) {
     moverBolinha(b, ent, M.cen, M.plats, M.t, M.bumpers);
     animarBolinha(b, yAntes);
     if (k === 0 && j.tuto && controles) { if (ent.esq || ent.dir) j.tuto.andou += FIS.dt; if (b.evento === "pulo") j.tuto.pulou = true; }
-    if (b.evento === "caiu") { b.vida = 0; matar(M, b); }
+    if (b.evento === "caiu") {
+      // contra o bot, a 1ª queda da rodada não mata: a pessoa volta para o ponto de partida com -25 de vida
+      // (no Poki v10 o jogador perdia 85% no dojô e 76% na cidade; na simulação, mais da metade era por cair)
+      if (b.humano && M.contraBot && !b.resgatado && b.vida > 25) resgatar(M, b);
+      else { b.vida = 0; matar(M, b); }
+    }
     else if (b.evento === "lava") causarDano(M, b, 18, null, 0, -1, 0);
     else if (b.evento === "pulo") { if (!M.mudo) som("pulo"); if (typeof Efeitos !== "undefined" && b.noChao === false && b.tempoNoAr > 0.2) Efeitos.poeira(b.x, b.y + b.r); }
     else if (b.evento === "aterrissou" && typeof Efeitos !== "undefined" && Math.abs(yAntes) > 6) Efeitos.poeira(b.x, b.y + b.r * gravSinal(M.cen, M.t));
@@ -363,6 +370,17 @@ function entradaHumana(j, b) {
     tiro: entrada.segurando(j, "tiro") || apertouTiro,
     apertouTiro: apertouTiro
   };
+}
+
+// volta a pessoa que caiu da arena para o ponto de partida dela (uma vez por rodada)
+function resgatar(M, b) {
+  const sp = M.cen.spawn[b.lado - 1];
+  if (typeof Efeitos !== "undefined") Efeitos.teleporte(b.x, Math.min(b.y, 700), b.cor);
+  b.resgatado = true;
+  b.x = sp[0]; b.y = sp[1] - 40; b.vx = 0; b.vy = 0;
+  b.vida -= 25; b.flash = 1; b.dor = 0.35;
+  if (typeof Efeitos !== "undefined") { Efeitos.teleporte(b.x, b.y, b.cor); Efeitos.texto(b.x, b.y - b.r - 30, t("salvo"), "#69db7c", 1.2); }
+  somJogo(M, "pegar");
 }
 
 // amassa e estica a bolinha (pulo e aterrissagem) e escolhe a expressão

@@ -346,5 +346,7 @@ TEXTOS.en = {
   proximo: "Next: {0}",
   revanche_contra: "Rematch vs {0}",
   campeao_liga: "{0} LEAGUE CHAMPION!",
-  rival_venceu: "{0} wins!"
+  rival_venceu: "{0} wins!",
+  venca_ganhe: "Win to get: {0}",
+  salvo: "SAVED!"
 };

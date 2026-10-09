@@ -5,7 +5,7 @@
 // 1. Fim da partida: tela com o resultado, a barra de XP enchendo (subir de nível dá um baú especial),
 //    o baú da partida para abrir (toque -> treme -> abre com raios e o prêmio), "▶ abrir outro baú" (premiado,
 //    1 vez) e REVANCHE direto (sem passar pelo menu).
-//    O baú abre sozinho e, contra o bot, "▶ PRÓXIMO RIVAL" conta 4 s e começa a próxima partida sozinho
+//    O baú abre sozinho e, contra o bot, "▶ PRÓXIMO RIVAL" conta 3 s e começa a próxima partida sozinho
 //    (no Poki v9 ~30% de quem terminava a 1ª partida não começava a 2ª). Clicar em outro botão cancela a contagem.
 //    O baú da 1ª partida da vida sempre traz um acessório, que já vem equipado.
 //    Modo rivais: a fileira dos 10 rivais (vencidos com ✓, o próximo em destaque), o nome do próximo e o prêmio;
@@ -26,13 +26,14 @@ function abrirRecompensa(j, titulo, sub) {
   if (rr && rr.venceu && rr.i === 4) baus.push("nivel");
   if (rr && rr.venceu && rr.i === RIVAIS.length - 1) baus.push("lendario");
   rec = { modo: j.rival ? "rivais" : j.modo, baus: baus, i: 0, fase: "fechado", t0: 0, premio: null, extraUsado: false, xp: xp,
-          primeira: !!j.treino, aberta: performance.now() / 1000, fimBaus: 0, cancelou: false,
+          primeira: !!j.treino && !rr, aberta: performance.now() / 1000, fimBaus: 0, cancelou: false,   // no modo rivais o acessório vem do rival
           rival: rr, venceu: j.vencedorPartida === 1 };
   estado = "recompensa";
   garantirDemo();          // no fundo, a luta de demonstração (sem o placar da partida que acabou)
   atualizarTextos();
   el("recTitulo").textContent = titulo;
   el("recSub").textContent = sub || "";
+  rec.sub = sub || "";
   el("recPremio").textContent = "";
   animarXp(xp);
   // escada de rivais
@@ -42,7 +43,7 @@ function abrirRecompensa(j, titulo, sub) {
   if (rr) {
     const prox = rr.venceu ? (rr.campeao ? 0 : rr.i + 1) : rr.i, liga = rr.venceu && rr.campeao ? rr.liga + 1 : rr.liga;
     el("recProximo").textContent = rr.campeao ? "🏆 " + t("campeao_liga", nomeLiga(rr.liga)) :
-      rr.venceu ? t("proximo", RIVAIS[prox].nome) + "   ·   🏆 " + premioRival(prox, liga) + " 🪙" : t("revanche_contra", rr.nome);
+      rr.venceu ? t("proximo", RIVAIS[prox].nome) + "   ·   " + textoPremioRival(prox, liga) : t("revanche_contra", rr.nome);
   }
   atualizarBotoesRecompensa();
   mostrarTela("telaRecompensa");
@@ -67,7 +68,7 @@ function animarXp(xp) {
         passo++;
         som("vitoria_rodada");
         el("recNivel").textContent = t("nivel_jogador", xp.nivelAntes + passo);
-        el("recSub").textContent = t("subiu_nivel", xp.nivelAntes + passo);
+        el("recSub").textContent = t("subiu_nivel", xp.nivelAntes + passo) + (rec && rec.sub ? "   ·   " + rec.sub : "");
         barra.style.transition = "none"; barra.style.width = "0%"; void barra.offsetWidth;
         proximo();
       }, 650);
@@ -131,12 +132,12 @@ function textoRevanche(n) {
 // chamado a cada quadro com a tela aberta: abre o baú sozinho e conta para a próxima partida
 function contagemRecompensa(tempo) {
   if (!rec || ocupado) return;
-  if (rec.fase === "fechado" && rec.i < rec.baus.length && tempo - Math.max(rec.aberta, rec.t0) > 0.9) abrirBauDaVez();
+  if (rec.fase === "fechado" && rec.i < rec.baus.length && tempo - Math.max(rec.aberta, rec.t0) > 0.5) abrirBauDaVez();
   if ((rec.modo !== "bot" && rec.modo !== "rivais") || rec.cancelou || rec.i < rec.baus.length || rec.fase !== "aberto") return;
   if (!rec.fimBaus) rec.fimBaus = tempo;
-  const falta = 4 - (tempo - rec.fimBaus - 0.5);
+  const falta = 3 - (tempo - rec.fimBaus - 0.4);
   if (falta <= 0) { Eventos.marco("next-rival-auto"); revanche(); return; }
-  const n = Math.ceil(Math.min(4, falta));
+  const n = Math.ceil(Math.min(3, falta));
   if (n !== rec.n) { rec.n = n; textoRevanche(n); }
 }
 

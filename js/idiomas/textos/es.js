@@ -346,5 +346,7 @@ TEXTOS.es = {
   proximo: "Siguiente: {0}",
   revanche_contra: "Revancha contra {0}",
   campeao_liga: "¡CAMPEÓN DE LA LIGA {0}!",
-  rival_venceu: "¡{0} gana!"
+  rival_venceu: "¡{0} gana!",
+  venca_ganhe: "Gana y llévate: {0}",
+  salvo: "¡SALVADO!"
 };

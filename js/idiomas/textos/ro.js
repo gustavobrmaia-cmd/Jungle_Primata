@@ -346,5 +346,7 @@ TEXTOS.ro = {
   proximo: "Următorul: {0}",
   revanche_contra: "Revanșă cu {0}",
   campeao_liga: "CAMPION AL LIGII {0}!",
-  rival_venceu: "{0} a câștigat!"
+  rival_venceu: "{0} a câștigat!",
+  venca_ganhe: "Câștigă și primești: {0}",
+  salvo: "SALVAT!"
 };

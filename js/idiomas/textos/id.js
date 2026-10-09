@@ -346,5 +346,7 @@ TEXTOS.id = {
   proximo: "Berikutnya: {0}",
   revanche_contra: "Tanding ulang vs {0}",
   campeao_liga: "JUARA LIGA {0}!",
-  rival_venceu: "{0} menang!"
+  rival_venceu: "{0} menang!",
+  venca_ganhe: "Menang dan dapatkan: {0}",
+  salvo: "SELAMAT!"
 };

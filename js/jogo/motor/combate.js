@@ -439,7 +439,9 @@ function causarDano(M, b, dano, atacante, nx, ny, empurra, fx, fy) {
   if (atacante && atacante !== b && M.multDano) dano *= M.multDano;
   if (atacante && atacante.lado === 2 && M.multBot) dano *= M.multBot;
   if (atacante && atacante !== b && atacante.lado === 1 && M.multJogador) dano *= M.multJogador;
-  const mult = (M.cen.empurrao || 1);
+  // contra o bot, a pessoa é empurrada menos nos mapas de empurrão forte (dojô 2,2x -> ~1,5x)
+  let mult = (M.cen.empurrao || 1);
+  if (b.humano && M.contraBot && mult > 1) mult = 1 + (mult - 1) * 0.4;
   b.vx += nx * empurra * mult;
   b.vy += ny * empurra * mult * 0.8 - (empurra > 3 ? 1.5 : 0);
   if (dano <= 0) return;
@@ -804,7 +806,10 @@ function atualizarMeteorosDoCenario(M) {
   if (!M.cen.meteoros) return;
   if (M.t < M.proxMeteoro) return;
   M.proxMeteoro = M.t + M.cen.meteoros * (0.8 + Math.random() * 0.4);
-  const alvo = M.bolinhas[Math.random() < 0.5 ? 0 : 1];
+  // contra o bot, os meteoros miram mais no bot (70%) e, quando vêm na pessoa, avisam mais cedo
+  // (no castelo o jogador perdia 67%: o bot desvia dos círculos vermelhos, gente quase não)
+  const humano = M.bolinhas[0].humano && M.contraBot;
+  const alvo = M.bolinhas[humano ? (Math.random() < 0.7 ? 1 : 0) : (Math.random() < 0.5 ? 0 : 1)];
   const x = alvo.x + (Math.random() - 0.5) * 260;
   // cai no chão embaixo do ponto
   let y = 660;
@@ -812,6 +817,6 @@ function atualizarMeteorosDoCenario(M) {
     const p = M.plats[k];
     if (x > p.x && x < p.x + p.w && p.y >= alvo.y - 30 && p.y < y) y = p.y;
   }
-  avisarCeu(M, 0, x, y - 6, 1.25, METEORO_CENARIO);
+  avisarCeu(M, 0, x, y - 6, alvo.humano && M.contraBot ? 1.8 : 1.25, METEORO_CENARIO);
 }
 const METEORO_CENARIO = { id: "meteoro_cenario", explode: 72, dano: 22, empurra: 10, visual: "meteoro" };

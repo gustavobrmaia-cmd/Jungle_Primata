@@ -346,5 +346,7 @@ TEXTOS.tr = {
   proximo: "Sıradaki: {0}",
   revanche_contra: "{0} ile rövanş",
   campeao_liga: "{0} LİGİ ŞAMPİYONU!",
-  rival_venceu: "{0} kazandı!"
+  rival_venceu: "{0} kazandı!",
+  venca_ganhe: "Kazan ve al: {0}",
+  salvo: "KURTULDUN!"
 };

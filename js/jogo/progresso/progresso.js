@@ -286,7 +286,7 @@ const Progresso = (function() {
     preparar: preparar, registrar: registrar, semanaAtual: semanaAtual, valorStat: valorStat,
     resgatarMissao: resgatarMissao, trocarMissao: trocarMissao, resgatarDesafio: resgatarDesafio,
     semanaCompleta: semanaCompleta, resgatarPremioSemana: resgatarPremioSemana, resgatarConquista: resgatarConquista,
-    temSkin: temSkin, comprarSkin: comprarSkin, equipar: equipar, pendentes: pendentes,
+    temSkin: temSkin, ganharSkin: ganharSkin, comprarSkin: comprarSkin, equipar: equipar, pendentes: pendentes,
     moedasDaPartida: moedasDaPartida, ganharMoedas: ganharMoedas, avisos: avisos, atualizarAvisos: atualizarAvisos,
     xpParaSubir: xpParaSubir, ganharXP: ganharXP, xpDaPartida: xpDaPartida, abrirBau: abrirBau,
     DIARIAS: DIARIAS, diaDisponivel: diaDisponivel, pegarDiaria: pegarDiaria

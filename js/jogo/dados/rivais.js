@@ -4,13 +4,13 @@
 // MODO RIVAIS (a escada)
 // Um modo à parte (o "Contra o bot" normal continua no menu). 10 rivais em sequência, cada um com nome, cor,
 // skin, jeito de lutar e um mapa de casa (a 1ª rodada é nele):
-//   venceu  -> próximo rival + moedas (o 5º dá um baú de nível, o 10º um baú lendário);
+//   venceu  -> próximo rival + moedas + o ACESSÓRIO dele (já vem equipado; o 5º também dá um baú de nível, o 10º um lendário);
 //   perdeu  -> revanche contra o mesmo, um pouco mais fraco a cada derrota (rivalAjuste) — ninguém fica preso;
 //   10º     -> CAMPEÃO da liga e a escada recomeça na liga seguinte (Bronze, Prata, Ouro, Diamante, Mestre, Mestre 2...),
 //              com os mesmos rivais mais fortes.
 // A 1ª partida da vida é contra o rival 1 (a partida "treino"). O progresso fica no save (rival, liga, rivalAjuste).
 // Os mapas mais cruéis (no v10 o jogador perdia 67–85% neles) são a casa dos últimos rivais.
-// Cores: só tons que se distinguem bem da bolinha rosa do jogador.
+// Cores: só tons que se distinguem bem da bolinha rosa do jogador. Sem o "cauteloso" (foge e a rodada arrasta).
 // =========================
 
 const RIVAIS = [
@@ -20,9 +20,9 @@ const RIVAIS = [
   { id: "rocky",  nome: "Rocky",  cor: "#94d82d", corpo: "camuflado", acessorio: "chifres",       estilo: "saltitante",   casa: "fliperama" },
   { id: "nova",   nome: "Nova",   cor: "#22b8cf", corpo: "xadrez",    acessorio: "fone",          estilo: "atirador",     casa: "templo" },
   { id: "taz",    nome: "Taz",    cor: "#20c997", corpo: "robo",      acessorio: "antena",        estilo: "colecionador", casa: "laboratorio" },
-  { id: "ivy",    nome: "Ivy",    cor: "#2f9e44", corpo: "melancia",  acessorio: "tiara_flores",  estilo: "cauteloso",    casa: "deserto" },
+  { id: "ivy",    nome: "Ivy",    cor: "#2f9e44", corpo: "melancia",  acessorio: "tiara_flores",  estilo: "saltitante",   casa: "deserto" },
   { id: "frost",  nome: "Frost",  cor: "#a5d8ff", corpo: "gelo",      acessorio: "viking",        estilo: "atirador",     casa: "castelo" },
-  { id: "shadow", nome: "Shadow", cor: "#845ef7", corpo: "cromado",   acessorio: "mascara_ninja", estilo: "cauteloso",    casa: "cidade" },
+  { id: "shadow", nome: "Shadow", cor: "#845ef7", corpo: "cromado",   acessorio: "mascara_ninja", estilo: "agressivo",    casa: "cidade" },
   { id: "king",   nome: "King",   cor: "#5f3dc4", corpo: "galaxia",   acessorio: "coroa",         estilo: "agressivo",    casa: "dojo" }
 ];
 
@@ -40,4 +40,10 @@ function premioRival(i, liga) {
 // "Bronze", "Prata"... e depois "Mestre 2", "Mestre 3"...
 function nomeLiga(liga) {
   return liga < 5 ? t("liga_" + liga) : t("liga_4") + " " + (liga - 3);
+}
+
+// o que se ganha vencendo o rival i: o acessório dele (se ainda não tiver) ou só as moedas
+function textoPremioRival(i, liga) {
+  const ace = RIVAIS[i].acessorio, novo = ace && typeof Progresso !== "undefined" && !Progresso.temSkin(ace);
+  return t("venca_ganhe", (novo ? "🎁 " + t("sk_" + ace) + " + " : "") + premioRival(i, liga) + " 🪙");
 }

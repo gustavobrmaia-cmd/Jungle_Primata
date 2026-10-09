@@ -346,5 +346,7 @@ TEXTOS.pl = {
   proximo: "Następny: {0}",
   revanche_contra: "Rewanż: {0}",
   campeao_liga: "MISTRZ LIGI {0}!",
-  rival_venceu: "{0} wygrywa!"
+  rival_venceu: "{0} wygrywa!",
+  venca_ganhe: "Wygraj i zdobądź: {0}",
+  salvo: "URATOWANY!"
 };

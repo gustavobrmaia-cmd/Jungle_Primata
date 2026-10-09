@@ -346,5 +346,7 @@ TEXTOS.nl = {
   proximo: "Volgende: {0}",
   revanche_contra: "Revanche tegen {0}",
   campeao_liga: "KAMPIOEN VAN DE {0}-DIVISIE!",
-  rival_venceu: "{0} wint!"
+  rival_venceu: "{0} wint!",
+  venca_ganhe: "Win en krijg: {0}",
+  salvo: "GERED!"
 };

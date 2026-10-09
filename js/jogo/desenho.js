@@ -606,11 +606,12 @@ function desenharHud(ctx, j, M, L) {
       textoContorno(ctx, j.rival.d.nome.toUpperCase(), cx, meio - 16, 80, j.cores[1]);
       textoContorno(ctx, t("c_" + M.cen.id), cx, meio + 38, 40, cor);
       textoContorno(ctx, t("r_" + M.cen.id), cx, meio + 76, 26, "#fff");
+      textoContorno(ctx, textoPremioRival(j.rival.i, j.rival.liga), cx, meio + 112, 26, "#ffd43b");
     } else {
       textoContorno(ctx, t("c_" + M.cen.id), cx, meio - 20, 76, cor);
       textoContorno(ctx, t("r_" + M.cen.id), cx, meio + 30, 30, "#fff");
     }
-    if (j.lendaria) textoContorno(ctx, "✨ " + t("lendaria") + " ✨", cx, meio + (j.rival && j.rodada === 1 ? 114 : 74), 26, "#ffd43b");
+    if (j.lendaria) textoContorno(ctx, "✨ " + t("lendaria") + " ✨", cx, meio + (j.rival && j.rodada === 1 ? 148 : 74), 26, "#ffd43b");
     if (j.modo === "sobrevivencia") textoContorno(ctx, t("onda_n", j.onda), cx, meio - 96, 44, "#ffd43b");
     ctx.globalAlpha = 1;
   } else if (j.fase === "luta" && j.tempoFase < 0.7) {

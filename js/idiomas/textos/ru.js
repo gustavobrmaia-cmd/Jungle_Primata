@@ -346,5 +346,7 @@ TEXTOS.ru = {
   proximo: "Следующий: {0}",
   revanche_contra: "Реванш: {0}",
   campeao_liga: "ЧЕМПИОН ЛИГИ «{0}»!",
-  rival_venceu: "{0} победил!"
+  rival_venceu: "{0} победил!",
+  venca_ganhe: "Победи и получи: {0}",
+  salvo: "СПАСЁН!"
 };

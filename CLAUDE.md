@@ -140,6 +140,14 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   O "Contra o bot" normal continua no menu (nível adaptativo save.nivelBot). Tela de fim: fileira dos 10 rivais
   (vencidos com ✓, próximo pulsando, os que faltam com "?"), "Próximo: X · 🏆 moedas" e PRÓXIMO RIVAL / REVANCHE com
   contagem. Eventos: rival/r1..r10 (ligas seguintes: rival/l2-r1...) start/complete/fail; match/rivals; champion-N.
+- v12: vencer um rival dá o ACESSÓRIO dele (se ainda não tiver; já vem equipado) além das moedas; a abertura da
+  partida e o menu mostram "Vença e ganhe: 🎁 X + moedas". Sem rival "cauteloso" na escada (rodada arrastava).
+  Rivais 2 e 3 da liga Bronze com tiro x`multSegunda`. Baú abre em 0,5 s e PRÓXIMO RIVAL conta 3 s.
+  Contra bot (`M.contraBot`): a 1ª queda da rodada não mata (volta ao ponto de partida com -25, "SALVO!"), a pessoa
+  leva 40% do empurrão extra do mapa e os meteoros do castelo miram o bot 70% das vezes (e avisam a pessoa com 1,8 s).
+  Simulação (bot 0,3): dojô 8% -> 27% de vitória do jogador, castelo 23% -> 30%, campo ~45%.
+- Poki v11 (teste parado em ~260 jogadas, 2m13; público bem diferente: espanhol 9% x 34% na v10): começo igual à v10
+  (terminam a 1ª rodada 79%, começam a 2ª partida 39%) e a passagem 1ª->2ª melhorou (~83% x ~73%).
 - Poki v10 (500 jogadas, 89% celular): média 2m47, Engaged 27%. Terminavam a 1ª partida ~55% (v9 23%), começavam a
   2ª ~40% (v9 15%); passar de 3 min ≈ chegar na 3ª rodada da 2ª partida. A passagem 1ª->2ª ainda perdia ~27%.
   Mapas difíceis: o jogador perdia 85% no dojô, 76% cidade, 72% lua, 67% castelo -> agora no fim da ordem nas 6

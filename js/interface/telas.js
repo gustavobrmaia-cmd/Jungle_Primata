@@ -42,7 +42,7 @@ function atualizarTextos() {
   const toque = entrada.toque;
   el("dicaBot").textContent = t("nivel_bot", nivelBotTexto(save.nivelBot)) + "\n" + (toque ? t("dica_bot_toque") : dicaTeclas(true));
   el("dica2p").textContent = toque ? t("dica_2p_toque") : dicaTeclas(false);
-  el("dicaRivais").textContent = t("rival_n", save.rival + 1, RIVAIS.length) + ": " + RIVAIS[save.rival].nome + "\n" + t("liga_n", nomeLiga(save.liga)) + "\n" + t("rivais_dica");
+  el("dicaRivais").textContent = t("rival_n", save.rival + 1, RIVAIS.length) + ": " + RIVAIS[save.rival].nome + "\n" + t("liga_n", nomeLiga(save.liga)) + "\n" + textoPremioRival(save.rival, save.liga);
   atualizarBotaoLendaria();
   atualizarMenuProgresso();
 }
@@ -175,13 +175,16 @@ function finalizarPartida(j) {
       const premio = premioRival(r.i, r.liga);
       Progresso.ganharMoedas(premio);
       j.resultadoRival.moedas = premio;
+      // o acessório do rival vencido vira seu (e já vem equipado na próxima partida)
+      const ace = r.d.acessorio;
+      if (ace && !Progresso.temSkin(ace)) { Progresso.ganharSkin(ace); save.skinAcessorio = ace; j.resultadoRival.acessorio = ace; }
       save.rivalAjuste = 0;
       if (r.i + 1 >= RIVAIS.length) { save.rival = 0; save.liga = r.liga + 1; j.resultadoRival.campeao = true; Eventos.marco("champion-" + r.liga); }
       else save.rival = r.i + 1;
     } else save.rivalAjuste = Math.max(-0.3, (save.rivalAjuste || 0) - 0.07);
     salvar();
     texto = (venceu ? t("rival_derrotado", r.d.nome) : t("rival_venceu", r.d.nome)) + "  " + j.pontos[0] + " – " + j.pontos[1];
-    if (venceu) extra = "🏆 +" + j.resultadoRival.moedas + " 🪙";
+    if (venceu) extra = "🏆 +" + j.resultadoRival.moedas + " 🪙" + (j.resultadoRival.acessorio ? "   ✨ " + t("premio_equipado", t("sk_" + j.resultadoRival.acessorio)) : "");
   } else if (j.modo === "bot") {
     const venceu = j.vencedorPartida === 1;
     const antes = save.nivelBot;
