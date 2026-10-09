@@ -332,5 +332,19 @@ TEXTOS.nl = {
   sk_coroa: "Kroon",
   novo: "NIEUW!",
   proximo_rival: "VOLGENDE RIVAAL",
-  premio_equipado: "{0} uitgerust!"
+  premio_equipado: "{0} uitgerust!",
+  modo_rivais: "Rivalen",
+  rivais_dica: "Versla 10 rivalen en stijg op",
+  rival_n: "RIVAAL {0}/{1}",
+  liga_0: "Brons",
+  liga_1: "Zilver",
+  liga_2: "Goud",
+  liga_3: "Diamant",
+  liga_4: "Meester",
+  liga_n: "{0}-divisie",
+  rival_derrotado: "{0} verslagen!",
+  proximo: "Volgende: {0}",
+  revanche_contra: "Revanche tegen {0}",
+  campeao_liga: "KAMPIOEN VAN DE {0}-DIVISIE!",
+  rival_venceu: "{0} wint!"
 };

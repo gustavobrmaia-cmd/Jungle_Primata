@@ -332,5 +332,19 @@ TEXTOS.it = {
   sk_coroa: "Corona",
   novo: "NUOVO!",
   proximo_rival: "PROSSIMO RIVALE",
-  premio_equipado: "{0} equipaggiato!"
+  premio_equipado: "{0} equipaggiato!",
+  modo_rivais: "Rivali",
+  rivais_dica: "Batti 10 rivali e sali di lega",
+  rival_n: "RIVALE {0}/{1}",
+  liga_0: "Bronzo",
+  liga_1: "Argento",
+  liga_2: "Oro",
+  liga_3: "Diamante",
+  liga_4: "Maestro",
+  liga_n: "Lega {0}",
+  rival_derrotado: "{0} sconfitto!",
+  proximo: "Prossimo: {0}",
+  revanche_contra: "Rivincita contro {0}",
+  campeao_liga: "CAMPIONE DELLA LEGA {0}!",
+  rival_venceu: "{0} vince!"
 };

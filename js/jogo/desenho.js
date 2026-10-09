@@ -554,6 +554,7 @@ function retRedondo(ctx, x, y, w, h, r) {
 }
 
 function nomeJogador(j, lado) {
+  if (j.rival && lado === 2) return j.rival.d.nome.toUpperCase() + " · " + t("rival_n", j.rival.i + 1, RIVAIS.length);
   if (j.modo === "bot" || j.modo === "sobrevivencia") {
     const nivel = j.bots[1] ? j.bots[1].nivel : j.nivelBot;
     const estilo = j.bots[1] ? " · " + t("estilo_" + j.bots[1].estilo) : "";
@@ -591,14 +592,25 @@ function desenharHud(ctx, j, M, L) {
   ctx.restore();
 
   const meio = mundoParaTela(0, FIS.altura * 0.42).y;
+  // textos do meio (abertura, LUTE, K.O., placar): em pé ficam 40% maiores (a tela do celular é estreita)
+  ctx.save();
+  if (em) { ctx.translate(cx, meio); ctx.scale(1.4, 1.4); ctx.translate(-cx, -meio); }
   // abertura da rodada: nome do cenário e o que ele tem de diferente
   if (j.fase === "intro") {
     const k = Math.min(1, j.tempoFase * 4);
     const cor = temArte.cen && ArteCenarios.corDestaque ? ArteCenarios.corDestaque(M.cen.id) : "#ffd43b";
     ctx.globalAlpha = k;
-    textoContorno(ctx, t("c_" + M.cen.id), cx, meio - 20, 76, cor);
-    textoContorno(ctx, t("r_" + M.cen.id), cx, meio + 30, 30, "#fff");
-    if (j.lendaria) textoContorno(ctx, "✨ " + t("lendaria") + " ✨", cx, meio + 74, 26, "#ffd43b");
+    if (j.rival && j.rodada === 1) {
+      // modo rivais, 1ª rodada: o rival em destaque e o mapa menor embaixo
+      textoContorno(ctx, t("rival_n", j.rival.i + 1, RIVAIS.length) + " · " + t("liga_n", nomeLiga(j.rival.liga)), cx, meio - 84, 28, "#fff");
+      textoContorno(ctx, j.rival.d.nome.toUpperCase(), cx, meio - 16, 80, j.cores[1]);
+      textoContorno(ctx, t("c_" + M.cen.id), cx, meio + 38, 40, cor);
+      textoContorno(ctx, t("r_" + M.cen.id), cx, meio + 76, 26, "#fff");
+    } else {
+      textoContorno(ctx, t("c_" + M.cen.id), cx, meio - 20, 76, cor);
+      textoContorno(ctx, t("r_" + M.cen.id), cx, meio + 30, 30, "#fff");
+    }
+    if (j.lendaria) textoContorno(ctx, "✨ " + t("lendaria") + " ✨", cx, meio + (j.rival && j.rodada === 1 ? 114 : 74), 26, "#ffd43b");
     if (j.modo === "sobrevivencia") textoContorno(ctx, t("onda_n", j.onda), cx, meio - 96, 44, "#ffd43b");
     ctx.globalAlpha = 1;
   } else if (j.fase === "luta" && j.tempoFase < 0.7) {
@@ -629,6 +641,7 @@ function desenharHud(ctx, j, M, L) {
     if (surv) textoContorno(ctx, t("recorde_onda", Math.max(save.recordeOnda, j.onda)), cx, meio + 64, 34, "#fff");
     else placarGrande(ctx, j, cx, meio + 70);
   }
+  ctx.restore();
   // 2 jogadores: lembrete dos controles nos primeiros segundos (contra o bot o tutorial é desenhado, sem texto)
   if (j.modo === "2p" && save.partidas <= 3 && j.rodada <= 2 && (j.fase === "intro" || j.fase === "luta" && j.tempoFase < 7)) {
     const texto = entrada.toque ? t("dica_2p_toque") : dicaTeclas(false);

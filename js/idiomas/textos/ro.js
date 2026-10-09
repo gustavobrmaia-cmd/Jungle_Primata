@@ -332,5 +332,19 @@ TEXTOS.ro = {
   sk_coroa: "Coroană",
   novo: "NOU!",
   proximo_rival: "URMĂTORUL RIVAL",
-  premio_equipado: "{0} echipat!"
+  premio_equipado: "{0} echipat!",
+  modo_rivais: "Rivali",
+  rivais_dica: "Învinge 10 rivali și urcă de ligă",
+  rival_n: "RIVAL {0}/{1}",
+  liga_0: "Bronz",
+  liga_1: "Argint",
+  liga_2: "Aur",
+  liga_3: "Diamant",
+  liga_4: "Maestru",
+  liga_n: "Liga {0}",
+  rival_derrotado: "{0} învins!",
+  proximo: "Următorul: {0}",
+  revanche_contra: "Revanșă cu {0}",
+  campeao_liga: "CAMPION AL LIGII {0}!",
+  rival_venceu: "{0} a câștigat!"
 };

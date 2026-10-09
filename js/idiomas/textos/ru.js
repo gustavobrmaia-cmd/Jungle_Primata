@@ -332,5 +332,19 @@ TEXTOS.ru = {
   sk_coroa: "Корона",
   novo: "НОВОЕ!",
   proximo_rival: "СЛЕДУЮЩИЙ СОПЕРНИК",
-  premio_equipado: "{0} надето!"
+  premio_equipado: "{0} надето!",
+  modo_rivais: "Соперники",
+  rivais_dica: "Победи 10 соперников и поднимись",
+  rival_n: "СОПЕРНИК {0}/{1}",
+  liga_0: "Бронза",
+  liga_1: "Серебро",
+  liga_2: "Золото",
+  liga_3: "Алмаз",
+  liga_4: "Мастер",
+  liga_n: "Лига «{0}»",
+  rival_derrotado: "{0} побеждён!",
+  proximo: "Следующий: {0}",
+  revanche_contra: "Реванш: {0}",
+  campeao_liga: "ЧЕМПИОН ЛИГИ «{0}»!",
+  rival_venceu: "{0} победил!"
 };

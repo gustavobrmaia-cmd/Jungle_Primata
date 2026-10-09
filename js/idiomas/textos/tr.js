@@ -332,5 +332,19 @@ TEXTOS.tr = {
   sk_coroa: "Taç",
   novo: "YENİ!",
   proximo_rival: "SIRADAKİ RAKİP",
-  premio_equipado: "{0} kuşanıldı!"
+  premio_equipado: "{0} kuşanıldı!",
+  modo_rivais: "Rakipler",
+  rivais_dica: "10 rakibi yen, lig atla",
+  rival_n: "RAKİP {0}/{1}",
+  liga_0: "Bronz",
+  liga_1: "Gümüş",
+  liga_2: "Altın",
+  liga_3: "Elmas",
+  liga_4: "Usta",
+  liga_n: "{0} Ligi",
+  rival_derrotado: "{0} yenildi!",
+  proximo: "Sıradaki: {0}",
+  revanche_contra: "{0} ile rövanş",
+  campeao_liga: "{0} LİGİ ŞAMPİYONU!",
+  rival_venceu: "{0} kazandı!"
 };

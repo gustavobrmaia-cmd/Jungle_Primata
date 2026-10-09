@@ -42,6 +42,7 @@ function atualizarTextos() {
   const toque = entrada.toque;
   el("dicaBot").textContent = t("nivel_bot", nivelBotTexto(save.nivelBot)) + "\n" + (toque ? t("dica_bot_toque") : dicaTeclas(true));
   el("dica2p").textContent = toque ? t("dica_2p_toque") : dicaTeclas(false);
+  el("dicaRivais").textContent = t("rival_n", save.rival + 1, RIVAIS.length) + ": " + RIVAIS[save.rival].nome + "\n" + t("liga_n", nomeLiga(save.liga)) + "\n" + t("rivais_dica");
   atualizarBotaoLendaria();
   atualizarMenuProgresso();
 }
@@ -97,7 +98,7 @@ function comecarPartida(modo) {
   ocupado = true;
   const primeira = save.partidas === 0;
   const lendaria = lendariaPronta;
-  if (!primeira) Eventos.botao("mode-" + (modo === "2p" ? "2p" : modo === "sobrevivencia" ? "survival" : "bot"));
+  if (!primeira) Eventos.botao("mode-" + (modo === "2p" ? "2p" : modo === "sobrevivencia" ? "survival" : modo === "rivais" ? "rivals" : "bot"));
   mostrarTela(null);
   // sem anúncio comum na 1ª partida e logo depois de um premiado
   (primeira || lendaria ? Promise.resolve() : Poki.intervalo()).then(function() {
@@ -106,17 +107,25 @@ function comecarPartida(modo) {
     save.dobrar = 0;
     save.partidas++;
     salvar();
-    novaPartida(modo, { lendaria: lendaria, nivelBot: save.nivelBot, primeiraVez: primeira });
+    // modo rivais = partida contra o bot (mesmas regras) contra o rival atual da escada
+    const escada = modo === "rivais";
+    const nivel = escada ? nivelRival(save.rival, save.liga, save.rivalAjuste) : save.nivelBot;
+    novaPartida(escada ? "bot" : modo, { lendaria: lendaria, nivelBot: nivel, primeiraVez: primeira,
+      rival: escada ? save.rival : null, liga: save.liga });
     estado = "jogo";
     entrada.ativa = true;
     entrada.limparApertos();
     mostrarTela(null);
     Poki.jogando(true);
-    Poki.medir("match", modo === "sobrevivencia" ? "survival" : modo, "start");
+    Poki.medir("match", modo === "sobrevivencia" ? "survival" : escada ? "rivals" : modo, "start");
     if (modo === "bot") Poki.medir("bot", "level-" + Math.round(save.nivelBot * 10), "start");
+    if (escada) Poki.medir("rival", idEventoRival(save.rival, save.liga), "start");
     if (save.partidas <= 10) Eventos.marco("match-" + save.partidas);
   });
 }
+
+// evento do Poki por rival: rival/r1 ... rival/r10 (liga Bronze); nas ligas seguintes rival/l2-r1...
+function idEventoRival(i, liga) { return (liga ? "l" + (liga + 1) + "-" : "") + "r" + (i + 1); }
 
 // ---------- fim da partida (chamado por partida.js) ----------
 function aoTerminarPartida(j) {
@@ -156,7 +165,24 @@ function finalizarPartida(j) {
     if (save.nivelBot >= 0.85) Progresso.registrar("botMestre", 1);
     if ((j.piorDiferenca || 0) >= 3) Progresso.registrar("virada", 1);
   }
-  if (j.modo === "bot") {
+  if (j.rival) {
+    // modo rivais: venceu -> próximo rival (+ moedas e, no 5º/10º, baú); perdeu -> revanche, rival mais fraco
+    const venceu = j.vencedorPartida === 1, r = j.rival;
+    Poki.medir("rival", idEventoRival(r.i, r.liga), venceu ? "complete" : "fail");
+    if (venceu) save.vitorias++; else save.derrotas++;
+    j.resultadoRival = { venceu: venceu, i: r.i, liga: r.liga, nome: r.d.nome, moedas: 0, campeao: false };
+    if (venceu) {
+      const premio = premioRival(r.i, r.liga);
+      Progresso.ganharMoedas(premio);
+      j.resultadoRival.moedas = premio;
+      save.rivalAjuste = 0;
+      if (r.i + 1 >= RIVAIS.length) { save.rival = 0; save.liga = r.liga + 1; j.resultadoRival.campeao = true; Eventos.marco("champion-" + r.liga); }
+      else save.rival = r.i + 1;
+    } else save.rivalAjuste = Math.max(-0.3, (save.rivalAjuste || 0) - 0.07);
+    salvar();
+    texto = (venceu ? t("rival_derrotado", r.d.nome) : t("rival_venceu", r.d.nome)) + "  " + j.pontos[0] + " – " + j.pontos[1];
+    if (venceu) extra = "🏆 +" + j.resultadoRival.moedas + " 🪙";
+  } else if (j.modo === "bot") {
     const venceu = j.vencedorPartida === 1;
     const antes = save.nivelBot;
     // base: entre o nível do começo e o do fim da partida (o bot já se ajustou a cada rodada)
@@ -294,6 +320,7 @@ function montarTelas() {
   const acoes = {
     jogar: abrirModo,
     modoBot: function() { comecarPartida("bot"); },
+    modoRivais: function() { comecarPartida("rivais"); },
     modo2p: function() { comecarPartida("2p"); },
     lendaria: ativarLendaria,
     idiomas: function() { estado = "idiomas"; mostrarTela("telaIdiomas"); },

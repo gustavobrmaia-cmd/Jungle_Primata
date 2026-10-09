@@ -332,5 +332,19 @@ TEXTOS.de = {
   sk_coroa: "Krone",
   novo: "NEU!",
   proximo_rival: "NÄCHSTER GEGNER",
-  premio_equipado: "{0} ausgerüstet!"
+  premio_equipado: "{0} ausgerüstet!",
+  modo_rivais: "Rivalen",
+  rivais_dica: "Besiege 10 Rivalen und steig auf",
+  rival_n: "RIVALE {0}/{1}",
+  liga_0: "Bronze",
+  liga_1: "Silber",
+  liga_2: "Gold",
+  liga_3: "Diamant",
+  liga_4: "Meister",
+  liga_n: "Liga {0}",
+  rival_derrotado: "{0} besiegt!",
+  proximo: "Nächster: {0}",
+  revanche_contra: "Revanche gegen {0}",
+  campeao_liga: "CHAMPION DER LIGA {0}!",
+  rival_venceu: "{0} gewinnt!"
 };

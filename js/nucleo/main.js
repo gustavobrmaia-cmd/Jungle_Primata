@@ -108,8 +108,8 @@ function quadro(agora) {
   ajustarTela();
   montarTelas();
   carregarIdioma(detectarIdioma(save.idioma)).then(function() {
-    // 1ª visita: cai direto numa partida contra o bot (sem escolher modo); depois: menu
-    if (save.partidas === 0) comecarPartida("bot");
+    // 1ª visita: cai direto no modo rivais, contra o rival 1 (sem escolher modo); depois: menu
+    if (save.partidas === 0) comecarPartida("rivais");
     else irParaMenu("");
     requestAnimationFrame(quadro);
     // o SDK carrega em paralelo; o jogo não espera por ele para aparecer

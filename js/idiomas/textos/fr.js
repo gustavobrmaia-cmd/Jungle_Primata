@@ -332,5 +332,19 @@ TEXTOS.fr = {
   sk_coroa: "Couronne",
   novo: "NOUVEAU !",
   proximo_rival: "RIVAL SUIVANT",
-  premio_equipado: "{0} équipé !"
+  premio_equipado: "{0} équipé !",
+  modo_rivais: "Rivaux",
+  rivais_dica: "Bats 10 rivaux et monte de ligue",
+  rival_n: "RIVAL {0}/{1}",
+  liga_0: "Bronze",
+  liga_1: "Argent",
+  liga_2: "Or",
+  liga_3: "Diamant",
+  liga_4: "Maître",
+  liga_n: "Ligue {0}",
+  rival_derrotado: "{0} vaincu !",
+  proximo: "Suivant : {0}",
+  revanche_contra: "Revanche contre {0}",
+  campeao_liga: "CHAMPION DE LA LIGUE {0} !",
+  rival_venceu: "{0} gagne !"
 };

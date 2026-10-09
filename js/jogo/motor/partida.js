@@ -80,10 +80,11 @@ function coresDiferentes(a, b) {
 function novaPartida(modo, opcoes) {
   opcoes = opcoes || {};
   let ordem = embaralhar(CENARIOS.map(function(c) { return c.id; }));
-  // nas 3 primeiras partidas, os mapas mais cruéis para quem está aprendendo (cair da arena, empurrão forte)
+  // nas primeiras partidas, os mapas mais cruéis para quem está aprendendo (cair da arena, empurrão forte)
   // ficam por último — no Poki v8 o jogador perdia 58-65% das rodadas neles
-  // (e, no v9, espaço/oceano/vulcão também espantavam: sem gravidade, água e lava confundem quem está começando)
-  if (modo === "bot" && save.partidas <= 3) {
+  // (e, no v9, espaço/oceano/vulcão também espantavam: sem gravidade, água e lava confundem quem está começando).
+  // v11: nas 6 primeiras partidas (no v10 o jogador perdia 67–85% no dojô, cidade, lua e castelo)
+  if (modo === "bot" && save.partidas <= 6) {
     const dificeis = ["dojo", "castelo", "cidade", "lua"], medios = ["espaco", "oceano", "vulcao"];
     ordem = ordem.filter(function(id) { return dificeis.indexOf(id) < 0 && medios.indexOf(id) < 0; })
       .concat(embaralhar(medios), embaralhar(dificeis.slice()));
@@ -94,6 +95,9 @@ function novaPartida(modo, opcoes) {
     const simples = ["fabrica", "fliperama", "templo", "floresta"];
     ordem = ["campo"].concat(embaralhar(simples), ordem.filter(function(id) { return id !== "campo" && simples.indexOf(id) < 0; }));
   }
+  // modo rivais: a 1ª rodada é na casa do rival
+  const rival = modo === "bot" && opcoes.rival !== undefined && opcoes.rival !== null ? RIVAIS[opcoes.rival] : null;
+  if (rival && !treino) ordem = [rival.casa].concat(ordem.filter(function(id) { return id !== rival.casa; }));
   jogo = {
     modo: modo,
     demo: modo === "demo",
@@ -113,10 +117,18 @@ function novaPartida(modo, opcoes) {
     banner: null,
     tempoReal: 0,
     treino: treino,
+    rival: rival ? { i: opcoes.rival, liga: opcoes.liga || 0, d: rival } : null,
     // tutorial desenhado da 1ª partida (atirar -> andar -> pular; desenho.js)
     tuto: modo === "bot" && save.partidas <= 1 ? { passo: null, tempo: 0, andou: 0, pulou: false } : null
   };
   escolherSkins(jogo);
+  // rival: a cara dele (cor, corpo e acessório); se a skin do jogador tiver a mesma cor, o rival troca de cor
+  if (rival) {
+    const fixa = SKIN[rival.corpo] && SKIN[rival.corpo].cor !== "jogador" ? SKIN[rival.corpo].cor : rival.cor;
+    jogo.skins[1] = { corpo: rival.corpo, acessorio: rival.acessorio };
+    if (coresDiferentes(fixa, jogo.cores[0])) jogo.cores[1] = fixa;
+    else { jogo.skins[1].corpo = "classico"; jogo.cores[1] = corDiferente(jogo.cores[0]); }
+  }
   // prepara a cena da queda de braço já no começo da partida (as cores não mudam até o fim)
   if (modo !== "demo" && typeof ArteQueda !== "undefined" && ArteQueda.preparar) {
     const cores = jogo.cores;
@@ -124,7 +136,7 @@ function novaPartida(modo, opcoes) {
   }
   // personalidade: nas primeiras partidas só as que vêm lutar (o cauteloso, o atirador e o colecionador
   // ficavam longe e a rodada arrastava; na simulação 1 de cada 4 rodadas passava de 40 s)
-  if (modo === "bot") jogo.bots[1] = criarBot(2, jogo.nivelBot, treino ? "agressivo" : save.partidas <= 3 ? (Math.random() < 0.5 ? "agressivo" : "saltitante") : undefined);
+  if (modo === "bot") jogo.bots[1] = criarBot(2, jogo.nivelBot, rival ? rival.estilo : treino ? "agressivo" : save.partidas <= 3 ? (Math.random() < 0.5 ? "agressivo" : "saltitante") : undefined);
   // Sobrevivência: ondas de bots cada vez mais fortes; a vida do jogador passa de uma onda para a outra
   if (modo === "sobrevivencia") {
     jogo.onda = 1;

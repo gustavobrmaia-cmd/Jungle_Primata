@@ -332,5 +332,19 @@ TEXTOS.id = {
   sk_coroa: "Mahkota",
   novo: "BARU!",
   proximo_rival: "LAWAN BERIKUTNYA",
-  premio_equipado: "{0} dipakai!"
+  premio_equipado: "{0} dipakai!",
+  modo_rivais: "Rival",
+  rivais_dica: "Kalahkan 10 lawan dan naik liga",
+  rival_n: "LAWAN {0}/{1}",
+  liga_0: "Perunggu",
+  liga_1: "Perak",
+  liga_2: "Emas",
+  liga_3: "Berlian",
+  liga_4: "Master",
+  liga_n: "Liga {0}",
+  rival_derrotado: "{0} dikalahkan!",
+  proximo: "Berikutnya: {0}",
+  revanche_contra: "Tanding ulang vs {0}",
+  campeao_liga: "JUARA LIGA {0}!",
+  rival_venceu: "{0} menang!"
 };

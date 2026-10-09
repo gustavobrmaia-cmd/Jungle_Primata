@@ -332,5 +332,19 @@ TEXTOS.en = {
   sk_coroa: "Crown",
   novo: "NEW!",
   proximo_rival: "NEXT RIVAL",
-  premio_equipado: "{0} equipped!"
+  premio_equipado: "{0} equipped!",
+  modo_rivais: "Rivals",
+  rivais_dica: "Beat 10 rivals and climb the leagues",
+  rival_n: "RIVAL {0}/{1}",
+  liga_0: "Bronze",
+  liga_1: "Silver",
+  liga_2: "Gold",
+  liga_3: "Diamond",
+  liga_4: "Master",
+  liga_n: "{0} League",
+  rival_derrotado: "{0} defeated!",
+  proximo: "Next: {0}",
+  revanche_contra: "Rematch vs {0}",
+  campeao_liga: "{0} LEAGUE CHAMPION!",
+  rival_venceu: "{0} wins!"
 };

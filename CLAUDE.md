@@ -76,7 +76,7 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   Se ninguém morrer: queda de braço (quem clicar mais vence; quem tem mais vida começa na frente).
 - Os dois começam a rodada com a mesma arma sorteada; caixas de arma caem (1ª aos 1,5 s, depois a cada ~4 s);
   cartas de habilidade aparecem (1ª aos ~4 s).
-- 1ª visita: cai direto numa partida contra o bot (sem tela de modo). "2 jogadores" tem o selo "mesmo aparelho · não é
+- 1ª visita: cai direto no modo Rivais, contra o rival 1 (sem tela de modo). "2 jogadores" tem o selo "mesmo aparelho · não é
   online" (no playtest acharam que era online) e, no celular, fica por último e menor.
 - Plataformas finas (`fina: true`) deixam o tiro passar; nas grossas a linha da mira para e mostra um X vermelho,
   e o tiro que bate na parede faz som (só para o humano). Muitos mapas usam plataformas finas no meio.
@@ -131,7 +131,20 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
 - Fim da partida: tela de recompensa (interface/recompensa.js): XP, baú que abre sozinho, "▶ abrir outro baú" (premiado) e,
   contra o bot, "▶ PRÓXIMO RIVAL" com contagem de 4 s que começa a próxima partida sozinha (outro botão cancela).
   O baú da 1ª partida sempre dá um acessório, que já vem equipado (`Progresso.abrirBau(tipo, garantir)`).
-- Modos: contra o bot, 2 jogadores, SOBREVIVÊNCIA (ondas de bots cada vez mais fortes; vida passa de uma onda para outra,
+- MODO RIVAIS (v11, `js/jogo/dados/rivais.js`): escada de 10 rivais (Bob, Zippy, Kiki, Rocky, Nova, Taz, Ivy, Frost,
+  Shadow, King), cada um com cor, corpo, acessório, personalidade e mapa de casa (1ª rodada). Por dentro é uma partida
+  "bot" com `jogo.rival`. Venceu -> próximo (+moedas `premioRival`; o 5º dá baú de nível, o 10º baú lendário); perdeu ->
+  revanche, rival 0,07 mais fraco a cada derrota (`save.rivalAjuste`, até -0,3). Depois do 10º: CAMPEÃO e a escada
+  recomeça na liga seguinte (Bronze, Prata, Ouro, Diamante, Mestre, Mestre 2...; +0,12 de nível por liga).
+  Força: `nivelRival` (rival 1 = 0,02 ... rival 10 = 0,6). A 1ª visita cai direto aqui (rival 1 = partida treino).
+  O "Contra o bot" normal continua no menu (nível adaptativo save.nivelBot). Tela de fim: fileira dos 10 rivais
+  (vencidos com ✓, próximo pulsando, os que faltam com "?"), "Próximo: X · 🏆 moedas" e PRÓXIMO RIVAL / REVANCHE com
+  contagem. Eventos: rival/r1..r10 (ligas seguintes: rival/l2-r1...) start/complete/fail; match/rivals; champion-N.
+- Poki v10 (500 jogadas, 89% celular): média 2m47, Engaged 27%. Terminavam a 1ª partida ~55% (v9 23%), começavam a
+  2ª ~40% (v9 15%); passar de 3 min ≈ chegar na 3ª rodada da 2ª partida. A passagem 1ª->2ª ainda perdia ~27%.
+  Mapas difíceis: o jogador perdia 85% no dojô, 76% cidade, 72% lua, 67% castelo -> agora no fim da ordem nas 6
+  primeiras partidas e como casa dos rivais 8–10.
+- Modos: RIVAIS, contra o bot, 2 jogadores, SOBREVIVÊNCIA (ondas de bots cada vez mais fortes; vida passa de uma onda para outra,
   +35 entre ondas; recorde em save.recordeOnda; "Continuar" premiado volta na mesma onda com vida cheia).
 - Equilíbrio: `node` + simulação bot x bot (script fora do repositório) — medir % de rodadas na queda de braço (~10–35%)
   e duração da partida (2–3,5 min). `CONFIG.multDano` é o ajuste geral.

@@ -8,6 +8,8 @@
 //    O baú abre sozinho e, contra o bot, "▶ PRÓXIMO RIVAL" conta 4 s e começa a próxima partida sozinho
 //    (no Poki v9 ~30% de quem terminava a 1ª partida não começava a 2ª). Clicar em outro botão cancela a contagem.
 //    O baú da 1ª partida da vida sempre traz um acessório, que já vem equipado.
+//    Modo rivais: a fileira dos 10 rivais (vencidos com ✓, o próximo em destaque), o nome do próximo e o prêmio;
+//    perdeu -> "REVANCHE" contra o mesmo. O 5º rival dá um baú de nível e o 10º um baú lendário.
 // 2. Recompensa diária: sequência de 7 dias que cresce (dia 3 tem baú, dia 7 baú lendário). Aparece sozinha
 //    no menu uma vez por dia; perder um dia volta para o dia 1.
 // =========================
@@ -20,8 +22,12 @@ function abrirRecompensa(j, titulo, sub) {
   const xp = Progresso.ganharXP(Progresso.xpDaPartida(j));
   const baus = ["normal"];
   for (let i = 0; i < xp.subiu; i++) baus.push("nivel");
-  rec = { modo: j.modo, baus: baus, i: 0, fase: "fechado", t0: 0, premio: null, extraUsado: false, xp: xp,
-          primeira: !!j.treino, aberta: performance.now() / 1000, fimBaus: 0, cancelou: false };
+  const rr = j.resultadoRival || null;
+  if (rr && rr.venceu && rr.i === 4) baus.push("nivel");
+  if (rr && rr.venceu && rr.i === RIVAIS.length - 1) baus.push("lendario");
+  rec = { modo: j.rival ? "rivais" : j.modo, baus: baus, i: 0, fase: "fechado", t0: 0, premio: null, extraUsado: false, xp: xp,
+          primeira: !!j.treino, aberta: performance.now() / 1000, fimBaus: 0, cancelou: false,
+          rival: rr, venceu: j.vencedorPartida === 1 };
   estado = "recompensa";
   garantirDemo();          // no fundo, a luta de demonstração (sem o placar da partida que acabou)
   atualizarTextos();
@@ -29,6 +35,15 @@ function abrirRecompensa(j, titulo, sub) {
   el("recSub").textContent = sub || "";
   el("recPremio").textContent = "";
   animarXp(xp);
+  // escada de rivais
+  el("canvasEscada").classList.toggle("escondido", !rr);
+  el("recProximo").classList.toggle("escondido", !rr);
+  el("telaRecompensa").classList.toggle("comEscada", !!rr);
+  if (rr) {
+    const prox = rr.venceu ? (rr.campeao ? 0 : rr.i + 1) : rr.i, liga = rr.venceu && rr.campeao ? rr.liga + 1 : rr.liga;
+    el("recProximo").textContent = rr.campeao ? "🏆 " + t("campeao_liga", nomeLiga(rr.liga)) :
+      rr.venceu ? t("proximo", RIVAIS[prox].nome) + "   ·   🏆 " + premioRival(prox, liga) + " 🪙" : t("revanche_contra", rr.nome);
+  }
   atualizarBotoesRecompensa();
   mostrarTela("telaRecompensa");
   if (xp.subiu) Eventos.marco("player-level-" + xp.nivel);
@@ -78,7 +93,10 @@ function abrirBauDaVez() {
   rec.t0 = performance.now() / 1000;
   som("carga");
   atualizarBotoesRecompensa();
+  // se a pessoa sair da tela no meio da animação, fecharRecompensa já entrega o baú: os passos abaixo não rodam
+  const r = rec;
   setTimeout(function() {
+    if (rec !== r) return;
     rec.premio = Progresso.abrirBau(rec.baus[rec.i], rec.primeira && rec.i === 0);
     rec.fase = "aberto";
     rec.t0 = performance.now() / 1000;
@@ -87,7 +105,8 @@ function abrirBauDaVez() {
     rec.i++;
     // próximo baú (se subiu de nível) fica pronto depois de um instante
     setTimeout(function() {
-      if (rec && rec.i < rec.baus.length) { rec.fase = "fechado"; }
+      if (rec !== r) return;
+      if (rec.i < rec.baus.length) { rec.fase = "fechado"; }
       atualizarBotoesRecompensa();
       atualizarMenuProgresso();
     }, 900);
@@ -104,14 +123,16 @@ function mostrarPremio(alvo, premio) {
 function textoRevanche(n) {
   const b = el("btnRevanche");
   if (!b || !rec) return;
-  b.textContent = rec.modo === "bot" ? "▶ " + t("proximo_rival") + (n > 0 ? "  " + n : "") : t("revanche");
+  const contra = rec.modo === "bot" || rec.modo === "rivais";
+  const nome = contra && rec.venceu ? t("proximo_rival") : t("revanche");
+  b.textContent = contra ? "▶ " + nome + (n > 0 ? "  " + n : "") : nome;
 }
 
 // chamado a cada quadro com a tela aberta: abre o baú sozinho e conta para a próxima partida
 function contagemRecompensa(tempo) {
   if (!rec || ocupado) return;
   if (rec.fase === "fechado" && rec.i < rec.baus.length && tempo - Math.max(rec.aberta, rec.t0) > 0.9) abrirBauDaVez();
-  if (rec.modo !== "bot" || rec.cancelou || rec.i < rec.baus.length || rec.fase !== "aberto") return;
+  if ((rec.modo !== "bot" && rec.modo !== "rivais") || rec.cancelou || rec.i < rec.baus.length || rec.fase !== "aberto") return;
   if (!rec.fimBaus) rec.fimBaus = tempo;
   const falta = 4 - (tempo - rec.fimBaus - 0.5);
   if (falta <= 0) { Eventos.marco("next-rival-auto"); revanche(); return; }
@@ -139,7 +160,7 @@ function outroBau() {
 // baús que ficaram sem abrir quando a pessoa sai: o prêmio vem do mesmo jeito
 function fecharRecompensa() {
   if (!rec) return;
-  while (rec.i < rec.baus.length) { Progresso.abrirBau(rec.baus[rec.i]); rec.i++; }
+  while (rec.i < rec.baus.length) { Progresso.abrirBau(rec.baus[rec.i], rec.primeira && rec.i === 0); rec.i++; }
   rec = null;
 }
 
@@ -162,6 +183,7 @@ function desenharRecompensa(tempo) {
   if (!rec || typeof ArteBau === "undefined") return;
   contagemRecompensa(tempo);
   if (!rec) return;
+  if (rec.rival) desenharEscada(tempo);
   const tipo = rec.baus[Math.min(rec.i, rec.baus.length - 1)];
   const tipoVisto = rec.fase === "aberto" ? rec.baus[rec.i - 1] : tipo;
   const dt = tempo - rec.t0;
@@ -170,6 +192,52 @@ function desenharRecompensa(tempo) {
   if (rec.fase === "aberto") abre = Math.min(1, dt * 3);
   const pula = rec.fase === "fechado" ? Math.abs(Math.sin(tempo * 3)) * 6 : 0;
   ArteBau.desenhar(g, cv.width / 2, cv.height * 0.58 - pula, 1, tipoVisto, abre, tempo, sacode);
+}
+
+// Fileira dos 10 rivais: vencidos com ✓, o próximo (ou o da revanche) grande e pulsando, os que faltam escondidos.
+// Logo depois de uma vitória o rival vencido fica em destaque um instante, ganha o ✓ e o destaque passa adiante.
+function desenharEscada(tempo) {
+  const cv = el("canvasEscada"), g = cv.getContext("2d"), rr = rec.rival;
+  g.clearRect(0, 0, cv.width, cv.height);
+  const n = RIVAIS.length, passo = Math.min(92, (cv.width - 80) / (n - 1)), x0 = cv.width / 2 - passo * (n - 1) / 2, y = cv.height * 0.5;
+  const dt = tempo - rec.aberta;
+  const trocou = rr.venceu && dt > 0.9;
+  const vencidos = rr.campeao ? (trocou ? n : n - 1) : rr.i + (trocou ? 1 : 0);
+  const destaque = rr.campeao ? (trocou ? -1 : n - 1) : rr.venceu && !trocou ? rr.i : vencidos;
+  g.strokeStyle = "rgba(255,255,255,0.18)"; g.lineWidth = 6;
+  g.beginPath(); g.moveTo(x0, y); g.lineTo(x0 + passo * (n - 1), y); g.stroke();
+  for (let k = 0; k < n; k++) {
+    const r = RIVAIS[k], x = x0 + k * passo, grande = k === destaque;
+    const raio = grande ? 34 + 3 * Math.sin(tempo * 6) : 24;
+    if (grande) {
+      g.fillStyle = "rgba(255,212,59,0.25)"; g.beginPath(); g.arc(x, y, raio + 12, 0, 7); g.fill();
+      g.strokeStyle = "#ffd43b"; g.lineWidth = 5; g.beginPath(); g.arc(x, y, raio + 8, 0, 7); g.stroke();
+    }
+    if (k < vencidos || grande) {
+      g.globalAlpha = k < vencidos && !grande ? 0.55 : 1;
+      if (typeof ArteSkins !== "undefined") ArteSkins.miniatura(g, r.corpo, r.acessorio, r.cor, x, y, raio, tempo);
+      else { g.fillStyle = r.cor; g.beginPath(); g.arc(x, y, raio, 0, 7); g.fill(); }
+      g.globalAlpha = 1;
+    } else {
+      // quem ainda não apareceu: silhueta com "?"
+      g.fillStyle = "#2b2f45"; g.beginPath(); g.arc(x, y, raio, 0, 7); g.fill();
+      g.strokeStyle = "rgba(255,255,255,0.25)"; g.lineWidth = 3; g.stroke();
+      g.fillStyle = "rgba(255,255,255,0.5)"; g.font = "900 26px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText("?", x, y + 1);
+    }
+    if (k < vencidos) {
+      // ✓ verde (com um "pulo" quando acabou de ganhar)
+      const novo = rr.venceu && k === vencidos - 1 && dt < 1.3 ? 1 + 0.6 * Math.max(0, 1.3 - dt) : 1;
+      g.save(); g.translate(x + 16, y + 16); g.scale(novo, novo);
+      g.fillStyle = "#2b8a3e"; g.beginPath(); g.arc(0, 0, 13, 0, 7); g.fill();
+      g.strokeStyle = "#fff"; g.lineWidth = 4; g.lineCap = "round"; g.lineJoin = "round";
+      g.beginPath(); g.moveTo(-6, 0); g.lineTo(-1, 5); g.lineTo(7, -5); g.stroke();
+      g.restore();
+    }
+    g.fillStyle = grande ? "#ffd43b" : "rgba(255,255,255,0.6)"; g.font = "900 " + (grande ? 22 : 16) + "px system-ui, sans-serif";
+    g.textAlign = "center"; g.textBaseline = "alphabetic";
+    g.fillText(grande ? r.nome : String(k + 1), x, y + (grande ? 66 : 48));
+  }
 }
 
 // ---------- recompensa diária ----------
