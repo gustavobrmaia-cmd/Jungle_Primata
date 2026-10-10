@@ -348,5 +348,15 @@ TEXTOS.fr = {
   campeao_liga: "CHAMPION DE LA LIGUE {0} !",
   rival_venceu: "{0} gagne !",
   venca_ganhe: "Gagne et obtiens : {0}",
-  salvo: "SAUVÉ !"
+  salvo: "SAUVÉ !",
+  melhorar: "Améliorer",
+  poder_explica: "Deviens plus fort contre le bot et les rivaux. En mode 2 joueurs, les deux sont égaux.",
+  poder_n: "⚡ PUISSANCE {0}",
+  poder_dica: "Améliore-toi et reviens plus fort !",
+  poder_gaste: "Dépense tes pièces : deviens plus fort !",
+  mel_forca: "Force",
+  mel_vida: "Vie",
+  mel_veloc: "Vitesse",
+  mel_nivel: "Niv {0}",
+  mel_max: "MAX"
 };

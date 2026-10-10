@@ -348,5 +348,15 @@ TEXTOS.nl = {
   campeao_liga: "KAMPIOEN VAN DE {0}-DIVISIE!",
   rival_venceu: "{0} wint!",
   venca_ganhe: "Win en krijg: {0}",
-  salvo: "GERED!"
+  salvo: "GERED!",
+  melhorar: "Verbeteren",
+  poder_explica: "Word sterker tegen de bot en de rivalen. In de 2-spelersmodus zijn jullie gelijk.",
+  poder_n: "⚡ KRACHT {0}",
+  poder_dica: "Verbeter jezelf en kom sterker terug!",
+  poder_gaste: "Gebruik je munten: word sterker!",
+  mel_forca: "Sterkte",
+  mel_vida: "Leven",
+  mel_veloc: "Snelheid",
+  mel_nivel: "Nv {0}",
+  mel_max: "MAX"
 };

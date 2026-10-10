@@ -36,12 +36,13 @@ const Eventos = (function() {
     }
   }
 
-  function inicioDaVisita() {
+  // primeira: a visita começou sem nenhuma partida no save (até a v12 era lido depois, e quase tudo virava "returning")
+  function inicioDaVisita(primeira) {
     const mobile = "ontouchstart" in window || navigator.maxTouchPoints > 0;
     Poki.medir("session", "lang-" + IDIOMA, "start");
     Poki.medir("session", mobile ? "mobile" : "desktop", "start");
     if (mobile) Poki.medir("session", window.innerHeight > window.innerWidth ? "portrait" : "landscape", "start");
-    Poki.medir("session", save.partidas === 0 ? "first-visit" : "returning", "start");
+    Poki.medir("session", primeira ? "first-visit" : "returning", "start");
   }
 
   let primeira = false;

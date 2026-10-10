@@ -439,6 +439,9 @@ function causarDano(M, b, dano, atacante, nx, ny, empurra, fx, fy) {
   if (atacante && atacante !== b && M.multDano) dano *= M.multDano;
   if (atacante && atacante.lado === 2 && M.multBot) dano *= M.multBot;
   if (atacante && atacante !== b && atacante.lado === 1 && M.multJogador) dano *= M.multJogador;
+  // poder (melhorias compradas; rivais também têm): força de quem bate e vida de quem apanha
+  if (atacante && atacante !== b && atacante.forca) dano *= atacante.forca;
+  if (b.defesa) dano /= b.defesa;
   // contra o bot, a pessoa é empurrada menos nos mapas de empurrão forte (dojô 2,2x -> ~1,5x)
   let mult = (M.cen.empurrao || 1);
   if (b.humano && M.contraBot && mult > 1) mult = 1 + (mult - 1) * 0.4;

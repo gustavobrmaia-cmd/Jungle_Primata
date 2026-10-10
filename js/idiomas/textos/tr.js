@@ -348,5 +348,15 @@ TEXTOS.tr = {
   campeao_liga: "{0} LİGİ ŞAMPİYONU!",
   rival_venceu: "{0} kazandı!",
   venca_ganhe: "Kazan ve al: {0}",
-  salvo: "KURTULDUN!"
+  salvo: "KURTULDUN!",
+  melhorar: "Geliştir",
+  poder_explica: "Bota ve rakiplere karşı güçlen. 2 oyunculu modda ikiniz de eşitsiniz.",
+  poder_n: "⚡ GÜÇ {0}",
+  poder_dica: "Geliştir ve daha güçlü dön!",
+  poder_gaste: "Paralarını harca: güçlen!",
+  mel_forca: "Kuvvet",
+  mel_vida: "Can",
+  mel_veloc: "Hız",
+  mel_nivel: "Sv {0}",
+  mel_max: "MAKS"
 };

@@ -56,17 +56,19 @@ js/
   poki/       poki.js (SDK e anúncios), eventos.js (Game Events)
   idiomas/    idiomas.js (t(), detecção, troca)  +  textos/xx.js (os 12 idiomas)
   sistemas/   audio.js (som sintetizado), entrada.js (teclado, toque, controle; 2 jogadores)
-  interface/  telas.js (menu, escolha do modo, pausa, continuar; anúncios)
+  interface/  telas.js (menu, escolha do modo, pausa, continuar; anúncios), menus.js, recompensa.js (fim da partida),
+              poder.js (painel das melhorias: tela de fim e tela Melhorar)
   jogo/
     dados/    armas.js (50 armas), cenarios.js (15 cenários), cartas.js (12 cartas + cores), skins.js (corpos e acessórios)
-    progresso/ dados.js (missões, desafios, conquistas), progresso.js (moedas, contadores, prêmios)
+    progresso/ dados.js (missões, desafios, conquistas), progresso.js (moedas, contadores, prêmios),
+              poder.js (melhorias Força/Vida/Velocidade e o poder dos rivais)
     motor/    fisica.js, combate.js (tiros, explosões, itens), bot.js (IA), partida.js (rodadas, queda de braço)
     arte/     efeitos.js, skins.js, bolinhas.js, armas.js, cartas.js, cenarios.js, queda.js, bau.js (só desenho, canvas)
     desenho.js (junta a arte na ordem certa + HUD)
 ```
 Ordem dos scripts no index.html: nucleo/config, nucleo/util, idiomas/idiomas, nucleo/save, poki/poki, poki/eventos,
-sistemas/audio, sistemas/entrada, jogo/dados/*, jogo/arte/*, jogo/motor/* (fisica, combate, bot, partida), jogo/desenho,
-interface/telas, nucleo/main.
+sistemas/audio, sistemas/entrada, jogo/dados/*, jogo/arte/*, jogo/motor/* (fisica, combate, bot, partida),
+jogo/progresso/* (dados, progresso, poder), jogo/desenho, interface/* (telas, menus, recompensa, poder), nucleo/main.
 Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nunca desenha.
 
 ## O jogo atual: Crazy Balls Duel
@@ -146,6 +148,22 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   Contra bot (`M.contraBot`): a 1ª queda da rodada não mata (volta ao ponto de partida com -25, "SALVO!"), a pessoa
   leva 40% do empurrão extra do mapa e os meteoros do castelo miram o bot 70% das vezes (e avisam a pessoa com 1,8 s).
   Simulação (bot 0,3): dojô 8% -> 27% de vitória do jogador, castelo 23% -> 30%, campo ~45%.
+- PODER (v13, `js/jogo/progresso/poder.js` + `js/interface/poder.js`): melhorias compradas com moedas — Força (dano
+  x1+0,10/nível), Vida (dano recebido ÷1+0,10/nível; a barra continua 0–100) e Velocidade (andar x1+0,03/nível, máx. 10).
+  Custo 40, 50, 65, 85, 105... (x1,28). PODER = 100 + 10 por nível. Vale contra máquina (rivais, bot, sobrevivência),
+  nunca no 2 jogadores. Rivais têm poder: +1 nível por degrau e +12 por liga (King da Bronze = 190, Prata começa em 220).
+  Painel ao lado do baú na tela de fim (dá para comprar -> a contagem espera 5 s, 8 s na 1ª vez; comprar devolve 4 s),
+  botão "⚡ Melhorar" no menu (selo "!" quando dá para comprar) e "⚡130 VS ⚡110" na abertura do rival.
+  Simulação (scratchpad/sim/poder.js, novato simulado): rival 5 — sem comprar 26% das rodadas (v12 50%), com 12 níveis 56%
+  e 80% das partidas; King com 20 níveis 44% das rodadas (v12 22%). Quem compra sobe mais fácil que na v12; quem não
+  compra trava no meio da escada (por isso o painel pulsa e espera).
+  Eventos: upgrade/forca|vida|veloc (interact), power/level-N, reward/upgrade (visible/interact).
+  Por quê: v10 de novo e v12 deram 2m25 e 23% (os 2m47 da v10 foram sorte); quem joga 5 min+ (~10%) soma quase metade
+  do tempo e enfeite não segurou essa turma.
+- Evento session/first-visit corrigido na v13: até a v12 era lido depois que a 1ª partida já tinha somado em
+  save.partidas, e quase tudo saía como "returning".
+- Poki v12 e v10 de novo (9 out 2026, 500 jogadas cada): os dois 2m25 e 23% (reprovou). Histograma v10 x v12: começo igual,
+  diferença no 5m+ (67 x 52). Um teste de 500 varia uns ±20–25 s na média só de sorte.
 - Poki v11 (teste parado em ~260 jogadas, 2m13; público bem diferente: espanhol 9% x 34% na v10): começo igual à v10
   (terminam a 1ª rodada 79%, começam a 2ª partida 39%) e a passagem 1ª->2ª melhorou (~83% x ~73%).
 - Poki v10 (500 jogadas, 89% celular): média 2m47, Engaged 27%. Terminavam a 1ª partida ~55% (v9 23%), começavam a

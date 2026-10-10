@@ -348,5 +348,15 @@ TEXTOS.id = {
   campeao_liga: "JUARA LIGA {0}!",
   rival_venceu: "{0} menang!",
   venca_ganhe: "Menang dan dapatkan: {0}",
-  salvo: "SELAMAT!"
+  salvo: "SELAMAT!",
+  melhorar: "Tingkatkan",
+  poder_explica: "Jadi lebih kuat melawan bot dan rival. Di mode 2 pemain, kalian setara.",
+  poder_n: "⚡ KEKUATAN {0}",
+  poder_dica: "Tingkatkan dan kembali lebih kuat!",
+  poder_gaste: "Pakai koinmu: jadi lebih kuat!",
+  mel_forca: "Serangan",
+  mel_vida: "Nyawa",
+  mel_veloc: "Kecepatan",
+  mel_nivel: "Lv {0}",
+  mel_max: "MAKS"
 };

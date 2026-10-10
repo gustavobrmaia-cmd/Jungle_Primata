@@ -171,6 +171,11 @@ function iniciarRodada() {
   // quem é controlado por uma pessoa (ímã da mira, sons e efeitos de acerto, tela vermelha...)
   b1.humano = !j.demo && !j.bots[0];
   b2.humano = !j.demo && !j.bots[1];
+  // poder (melhorias, v13): o da pessoa vale contra máquina; o rival da escada tem o dele
+  if (M.contraBot && typeof Poder !== "undefined") {
+    Poder.aplicar(b1, Poder.doJogador());
+    if (j.rival) Poder.aplicar(b2, Poder.doRival(j.rival.i, j.rival.liga));
+  }
   // os dois começam com a mesma arma (justo) e ela muda a cada rodada
   const arma = j.treino && j.rodada === 1 ? "rifle" : sortearArma(M, true);
   equipar(b1, arma); equipar(b2, arma);

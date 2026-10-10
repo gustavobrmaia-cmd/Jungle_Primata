@@ -26,11 +26,20 @@
       <div class="botoes">
         <button class="grande" data-acao="jogar" data-t="jogar"></button>
         <div class="linha">
+          <button data-acao="poder" class="botaoPoder">⚡ <span data-t="melhorar"></span><span class="selo escondido" id="seloPoder">!</span></button>
           <button data-acao="missoes"><span data-t="missoes"></span><span class="selo escondido" id="seloMissoes"></span></button>
           <button data-acao="skins" data-t="skins"></button>
           <button data-acao="opcoes" data-t="opcoes"></button>
         </div>
       </div>
+    </div>
+
+    <!-- Melhorar (poder): Força, Vida e Velocidade compradas com moedas -->
+    <div id="telaPoder" class="tela">
+      <h2 data-t="melhorar"></h2>
+      <p class="info pequena" data-t="poder_explica"></p>
+      <div id="menuPoder" class="poderPainel"></div>
+      <button data-acao="voltar" data-t="voltar"></button>
     </div>
 
     <!-- Opções -->
@@ -140,7 +149,10 @@
       <div class="xpLinha"><span id="recNivel"></span><div class="barraXp grande"><div id="recXp"></div></div><span id="recXpTxt"></span></div>
       <canvas id="canvasEscada" width="980" height="150" class="escondido"></canvas>
       <p class="proximoRival escondido" id="recProximo"></p>
-      <canvas id="canvasBau" width="460" height="290"></canvas>
+      <div class="recMeio">
+        <canvas id="canvasBau" width="460" height="290"></canvas>
+        <div id="recPoder" class="poderPainel escondido"></div>
+      </div>
       <p class="premioTxt" id="recPremio"></p>
       <div class="linha">
         <button class="grande" data-acao="abrirBau" id="btnAbrirBau"></button>
@@ -203,10 +215,12 @@
   <script src="js/jogo/motor/partida.js"></script>
   <script src="js/jogo/progresso/dados.js"></script>
   <script src="js/jogo/progresso/progresso.js"></script>
+  <script src="js/jogo/progresso/poder.js"></script>
   <script src="js/jogo/desenho.js"></script>
   <script src="js/interface/telas.js"></script>
   <script src="js/interface/menus.js"></script>
   <script src="js/interface/recompensa.js"></script>
+  <script src="js/interface/poder.js"></script>
   <script src="js/nucleo/main.js"></script>
 </body>
 </html>

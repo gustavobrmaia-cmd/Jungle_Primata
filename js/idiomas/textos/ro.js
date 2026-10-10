@@ -348,5 +348,15 @@ TEXTOS.ro = {
   campeao_liga: "CAMPION AL LIGII {0}!",
   rival_venceu: "{0} a câștigat!",
   venca_ganhe: "Câștigă și primești: {0}",
-  salvo: "SALVAT!"
+  salvo: "SALVAT!",
+  melhorar: "Îmbunătățește",
+  poder_explica: "Devino mai puternic contra botului și a rivalilor. În modul 2 jucători sunteți egali.",
+  poder_n: "⚡ PUTERE {0}",
+  poder_dica: "Îmbunătățește-te și revino mai puternic!",
+  poder_gaste: "Cheltuie monedele: devino mai puternic!",
+  mel_forca: "Forță",
+  mel_vida: "Viață",
+  mel_veloc: "Viteză",
+  mel_nivel: "Nv {0}",
+  mel_max: "MAX"
 };

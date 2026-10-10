@@ -348,5 +348,15 @@ TEXTOS.pt = {
   campeao_liga: "CAMPEÃO DA LIGA {0}!",
   rival_venceu: "{0} venceu!",
   venca_ganhe: "Vença e ganhe: {0}",
-  salvo: "SALVO!"
+  salvo: "SALVO!",
+  melhorar: "Melhorar",
+  poder_explica: "Fique mais forte contra o bot e os rivais. No modo 2 jogadores, os dois são iguais.",
+  poder_n: "⚡ PODER {0}",
+  poder_dica: "Melhore e volte mais forte!",
+  poder_gaste: "Use suas moedas: fique mais forte!",
+  mel_forca: "Força",
+  mel_vida: "Vida",
+  mel_veloc: "Velocidade",
+  mel_nivel: "Nv {0}",
+  mel_max: "MÁX"
 };

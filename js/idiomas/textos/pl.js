@@ -348,5 +348,15 @@ TEXTOS.pl = {
   campeao_liga: "MISTRZ LIGI {0}!",
   rival_venceu: "{0} wygrywa!",
   venca_ganhe: "Wygraj i zdobądź: {0}",
-  salvo: "URATOWANY!"
+  salvo: "URATOWANY!",
+  melhorar: "Ulepsz",
+  poder_explica: "Stań się silniejszy w walce z botem i rywalami. W trybie 2 graczy obaj są równi.",
+  poder_n: "⚡ MOC {0}",
+  poder_dica: "Ulepsz się i wróć silniejszy!",
+  poder_gaste: "Wydaj monety: stań się silniejszy!",
+  mel_forca: "Siła",
+  mel_vida: "Życie",
+  mel_veloc: "Szybkość",
+  mel_nivel: "Poz. {0}",
+  mel_max: "MAX"
 };

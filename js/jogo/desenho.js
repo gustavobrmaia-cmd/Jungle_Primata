@@ -607,6 +607,12 @@ function desenharHud(ctx, j, M, L) {
       textoContorno(ctx, t("c_" + M.cen.id), cx, meio + 38, 40, cor);
       textoContorno(ctx, t("r_" + M.cen.id), cx, meio + 76, 26, "#fff");
       textoContorno(ctx, textoPremioRival(j.rival.i, j.rival.liga), cx, meio + 112, 26, "#ffd43b");
+      // poder dos dois (v13): o número que as melhorias fazem subir (na partida treino os dois são iguais: não mostra)
+      if (!j.treino && typeof Poder !== "undefined") {
+        textoContorno(ctx, "⚡" + Poder.valor(Poder.doJogador()), cx - 120, meio - 132, 34, j.cores[0]);
+        textoContorno(ctx, "VS", cx, meio - 132, 26, "#fff");
+        textoContorno(ctx, "⚡" + Poder.valor(Poder.doRival(j.rival.i, j.rival.liga)), cx + 120, meio - 132, 34, j.cores[1]);
+      }
     } else {
       textoContorno(ctx, t("c_" + M.cen.id), cx, meio - 20, 76, cor);
       textoContorno(ctx, t("r_" + M.cen.id), cx, meio + 30, 30, "#fff");

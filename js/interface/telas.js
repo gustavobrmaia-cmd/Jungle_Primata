@@ -2,7 +2,7 @@
 
 // =========================
 // TELAS e o "estado" do jogo
-// estado: "menu" | "modo" | "idiomas" | "opcoes" | "controles" | "missoes" | "skins" | "jogo" | "pausa" | "continuar"
+// estado: "menu" | "modo" | "idiomas" | "opcoes" | "controles" | "missoes" | "skins" | "poder" | "jogo" | "pausa" | "continuar"
 // Fluxo:
 //   1ª visita: escolhe o modo (bot / 2 jogadores) e a luta começa na hora (sem anúncio).
 //   Fim da partida: volta para o MENU (com o placar). Jogar -> escolhe o modo -> anúncio comum -> luta.
@@ -21,7 +21,7 @@ let lendariaPronta = false;     // assistiu o anúncio da Partida Lendária
 let pendente = null;            // partida que acabou e espera a resposta do "continuar"
 
 const TELAS = ["telaMenu", "telaModo", "telaIdiomas", "telaPausa", "telaContinuar",
-  "telaOpcoes", "telaControles", "telaMissoes", "telaSkins", "telaRecompensa", "telaDiaria"];
+  "telaOpcoes", "telaControles", "telaMissoes", "telaSkins", "telaRecompensa", "telaDiaria", "telaPoder"];
 let diariaVista = false;     // a recompensa diária abre sozinha uma vez por visita
 
 function mostrarTela(id) {
@@ -287,6 +287,7 @@ function atualizarMenuProgresso() {
   const n = Progresso.pendentes();
   el("seloMissoes").textContent = n;
   el("seloMissoes").classList.toggle("escondido", n === 0);
+  el("seloPoder").classList.toggle("escondido", !Poder.algumaPossivel());
   el("menuNivelNum").textContent = t("nivel_jogador", save.nivel);
   el("menuXp").style.width = Math.min(100, 100 * save.xp / Progresso.xpParaSubir(save.nivel)) + "%";
   el("dicaSurv").textContent = t("sobrevivencia_dica") + (save.recordeOnda ? "\n" + t("recorde_onda", save.recordeOnda) : "");
@@ -334,6 +335,7 @@ function montarTelas() {
     teclasPadrao: teclasDeFabrica,
     missoes: function() { abrirMissoes("missoes"); },
     skins: function() { abrirSkins("corpo"); },
+    poder: abrirTelaPoder,
     modoSurv: function() { comecarPartida("sobrevivencia"); },
     abrirBau: abrirBauDaVez,
     outroBau: outroBau,

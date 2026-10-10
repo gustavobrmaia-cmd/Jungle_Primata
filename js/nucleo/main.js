@@ -109,13 +109,15 @@ function quadro(agora) {
   montarTelas();
   carregarIdioma(detectarIdioma(save.idioma)).then(function() {
     // 1ª visita: cai direto no modo rivais, contra o rival 1 (sem escolher modo); depois: menu
-    if (save.partidas === 0) comecarPartida("rivais");
+    // (guardado antes: a 1ª partida já soma em save.partidas antes do SDK ficar pronto)
+    const primeiraVisita = save.partidas === 0;
+    if (primeiraVisita) comecarPartida("rivais");
     else irParaMenu("");
     requestAnimationFrame(quadro);
     // o SDK carrega em paralelo; o jogo não espera por ele para aparecer
     Poki.iniciar().then(function() {
       Poki.carregou();
-      Eventos.inicioDaVisita();
+      Eventos.inicioDaVisita(primeiraVisita);
       atualizarTextos();   // o botão do anúncio premiado aparece quando o SDK fica pronto
     });
     // prepara os desenhos das armas, cartas e efeitos antes de aparecerem (evita engasgo no 1º uso),

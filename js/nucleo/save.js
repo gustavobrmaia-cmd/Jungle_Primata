@@ -34,6 +34,7 @@ function saveNovo() {
     rival: 0,         // modo rivais: o próximo rival a enfrentar (0 a 9)
     liga: 0,          // modo rivais: 0 Bronze, 1 Prata, 2 Ouro, 3 Diamante, 4+ Mestre
     rivalAjuste: 0,   // modo rivais: o rival atual fica mais fraco a cada derrota (até -0,3); zera ao vencer
+    poder: { forca: 0, vida: 0, veloc: 0 },   // melhorias compradas (js/jogo/progresso/poder.js)
     qualidade: "auto" // "auto" | "alta" | "leve"
   };
 }

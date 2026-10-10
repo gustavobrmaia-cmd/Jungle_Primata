@@ -86,7 +86,7 @@ function copiarBolinha(b) {
     lado: b.lado, x: b.x, y: b.y, vx: b.vx, vy: b.vy, r: b.r, dir: b.dir,
     noChao: b.noChao, tempoNoAr: b.tempoNoAr, pulos: b.pulos, puloCd: b.puloCd, ignoraFina: b.ignoraFina,
     segurouPulo: b.segurouPulo, chao: b.chao, portalCd: b.portalCd, lavaCd: 0, vida: b.vida, viva: b.viva,
-    efeitos: b.efeitos
+    multVel: b.multVel, efeitos: b.efeitos
   };
 }
 
@@ -104,7 +104,7 @@ function moverBolinha(b, ent, cen, plats, t, bumpers) {
   const g = gravidadeDe(cen) * sinal;
   const ef = b.efeitos;
   const congelado = ef.congelado > 0;
-  const mult = (ef.rapidez > 0 ? 1.4 : 1) * (ef.lento > 0 ? 0.5 : 1) * (ef.mini > 0 ? 1.12 : 1);
+  const mult = (b.multVel || 1) * (ef.rapidez > 0 ? 1.4 : 1) * (ef.lento > 0 ? 0.5 : 1) * (ef.mini > 0 ? 1.12 : 1);
   const esq = !congelado && ent.esq, dir = !congelado && ent.dir;
   const input = (dir ? 1 : 0) - (esq ? 1 : 0);
   if (input) b.dir = input;

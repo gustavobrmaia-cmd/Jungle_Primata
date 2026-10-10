@@ -8,6 +8,8 @@
 //    O baú abre sozinho e, contra o bot, "▶ PRÓXIMO RIVAL" conta 3 s e começa a próxima partida sozinho
 //    (no Poki v9 ~30% de quem terminava a 1ª partida não começava a 2ª). Clicar em outro botão cancela a contagem.
 //    O baú da 1ª partida da vida sempre traz um acessório, que já vem equipado.
+//    v13: ao lado do baú, o painel de PODER (Força, Vida, Velocidade; interface/poder.js). Dá para comprar ->
+//    a contagem espera 5 s (8 s na 1ª vez) e cada compra devolve pelo menos 4 s.
 //    Modo rivais: a fileira dos 10 rivais (vencidos com ✓, o próximo em destaque), o nome do próximo e o prêmio;
 //    perdeu -> "REVANCHE" contra o mesmo. O 5º rival dá um baú de nível e o 10º um baú lendário.
 // 2. Recompensa diária: sequência de 7 dias que cresce (dia 3 tem baú, dia 7 baú lendário). Aparece sozinha
@@ -27,7 +29,7 @@ function abrirRecompensa(j, titulo, sub) {
   if (rr && rr.venceu && rr.i === RIVAIS.length - 1) baus.push("lendario");
   rec = { modo: j.rival ? "rivais" : j.modo, baus: baus, i: 0, fase: "fechado", t0: 0, premio: null, extraUsado: false, xp: xp,
           primeira: !!j.treino && !rr, aberta: performance.now() / 1000, fimBaus: 0, cancelou: false,   // no modo rivais o acessório vem do rival
-          rival: rr, venceu: j.vencedorPartida === 1 };
+          rival: rr, venceu: j.vencedorPartida === 1, poder: j.modo !== "2p", espera: 3 };
   estado = "recompensa";
   garantirDemo();          // no fundo, a luta de demonstração (sem o placar da partida que acabou)
   atualizarTextos();
@@ -36,6 +38,16 @@ function abrirRecompensa(j, titulo, sub) {
   rec.sub = sub || "";
   el("recPremio").textContent = "";
   animarXp(xp);
+  // painel de poder (contra máquina): ao lado do baú; comprar não cancela a contagem, só dá mais tempo
+  const painel = el("recPoder");
+  painel.classList.toggle("escondido", !rec.poder);
+  el("telaRecompensa").classList.toggle("comPoder", rec.poder);
+  if (rec.poder) {
+    if (!painel.firstChild) montarPainelPoder(painel, poderComprouNaRecompensa);
+    painel.dataset.perdeu = rec.venceu ? "0" : "1";
+    atualizarPainelPoder(painel);
+    if (Poder.algumaPossivel()) Eventos.oferta("upgrade", "visible");
+  }
   // escada de rivais
   el("canvasEscada").classList.toggle("escondido", !rr);
   el("recProximo").classList.toggle("escondido", !rr);
@@ -43,7 +55,8 @@ function abrirRecompensa(j, titulo, sub) {
   if (rr) {
     const prox = rr.venceu ? (rr.campeao ? 0 : rr.i + 1) : rr.i, liga = rr.venceu && rr.campeao ? rr.liga + 1 : rr.liga;
     el("recProximo").textContent = rr.campeao ? "🏆 " + t("campeao_liga", nomeLiga(rr.liga)) :
-      rr.venceu ? t("proximo", RIVAIS[prox].nome) + "   ·   " + textoPremioRival(prox, liga) : t("revanche_contra", rr.nome);
+      rr.venceu ? t("proximo", RIVAIS[prox].nome + " ⚡" + Poder.valor(Poder.doRival(prox, liga))) + "   ·   " + textoPremioRival(prox, liga) :
+      t("revanche_contra", rr.nome + " ⚡" + Poder.valor(Poder.doRival(rr.i, rr.liga)));
   }
   atualizarBotoesRecompensa();
   mostrarTela("telaRecompensa");
@@ -104,6 +117,7 @@ function abrirBauDaVez() {
     som("carta");
     mostrarPremio(el("recPremio"), rec.premio);
     rec.i++;
+    if (rec.poder) atualizarPainelPoder(el("recPoder"));
     // próximo baú (se subiu de nível) fica pronto depois de um instante
     setTimeout(function() {
       if (rec !== r) return;
@@ -134,11 +148,23 @@ function contagemRecompensa(tempo) {
   if (!rec || ocupado) return;
   if (rec.fase === "fechado" && rec.i < rec.baus.length && tempo - Math.max(rec.aberta, rec.t0) > 0.5) abrirBauDaVez();
   if ((rec.modo !== "bot" && rec.modo !== "rivais") || rec.cancelou || rec.i < rec.baus.length || rec.fase !== "aberto") return;
-  if (!rec.fimBaus) rec.fimBaus = tempo;
-  const falta = 3 - (tempo - rec.fimBaus - 0.4);
+  if (!rec.fimBaus) {
+    rec.fimBaus = tempo;
+    // dá para melhorar: mais tempo (bem mais na 1ª vez, quando a pessoa ainda não sabe o que é)
+    if (rec.poder && Poder.algumaPossivel()) rec.espera = (save.stats.melhorias || 0) ? 5 : 8;
+  }
+  const falta = rec.espera - (tempo - rec.fimBaus - 0.4);
   if (falta <= 0) { Eventos.marco("next-rival-auto"); revanche(); return; }
-  const n = Math.ceil(Math.min(3, falta));
+  const n = Math.ceil(Math.min(rec.espera, falta));
   if (n !== rec.n) { rec.n = n; textoRevanche(n); }
+}
+
+// comprou uma melhoria na tela de fim: a contagem para a próxima partida volta a ter pelo menos 4 s
+function poderComprouNaRecompensa() {
+  if (!rec || !rec.fimBaus) return;
+  const agora = performance.now() / 1000;
+  if (rec.espera - (agora - rec.fimBaus - 0.4) < 4) { rec.espera = 4; rec.fimBaus = agora - 0.4; rec.n = 4; textoRevanche(rec.cancelou ? 0 : 4); }
+  Eventos.oferta("upgrade", "interact");
 }
 
 function outroBau() {

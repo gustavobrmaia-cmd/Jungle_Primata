@@ -348,5 +348,15 @@ TEXTOS.en = {
   campeao_liga: "{0} LEAGUE CHAMPION!",
   rival_venceu: "{0} wins!",
   venca_ganhe: "Win to get: {0}",
-  salvo: "SAVED!"
+  salvo: "SAVED!",
+  melhorar: "Upgrade",
+  poder_explica: "Get stronger against the bot and the rivals. In 2-player mode, both players are equal.",
+  poder_n: "⚡ POWER {0}",
+  poder_dica: "Upgrade and come back stronger!",
+  poder_gaste: "Spend your coins: get stronger!",
+  mel_forca: "Strength",
+  mel_vida: "Health",
+  mel_veloc: "Speed",
+  mel_nivel: "Lv {0}",
+  mel_max: "MAX"
 };

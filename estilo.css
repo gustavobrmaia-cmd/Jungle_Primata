@@ -253,3 +253,53 @@ body.retrato button.modo .nome { font-size: 54px; }
 body.retrato #gradeDiaria { grid-template-columns: repeat(4, 170px); }
 body.retrato .barraXp.grande { width: 520px; }
 body.retrato button.modo { width: 760px; min-height: 240px; }
+
+/* ---------- Poder (v13): melhorias ao lado do baú (fim de partida) e na tela Melhorar do menu ---------- */
+.recMeio { display: flex; align-items: center; justify-content: center; gap: 24px; }
+.poderPainel { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.poderTopo { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 30px; font-size: 24px; font-weight: 900; }
+.poderValor { color: #ffd43b; text-shadow: 0 3px 0 #1b1030; white-space: nowrap; }
+.poderValor.pulou { animation: pularPoder 0.45s ease-out; }
+@keyframes pularPoder { 30% { transform: scale(1.35); color: #fff; } }
+.poderDica { flex: 1; font-size: 18px; color: #c5f6fa; }
+.poderMoedas { color: #ffe066; white-space: nowrap; }
+.poderCartas { display: flex; gap: 12px; justify-content: center; }
+button.poderCarta {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 176px; min-width: 0; padding: 10px 8px 8px; font-size: 20px;
+  background: rgba(36, 30, 80, 0.92); border: 3px solid rgba(255, 255, 255, 0.1); border-bottom: 6px solid #1b1030; border-radius: 16px;
+}
+.pcIcone { font-size: 38px; line-height: 1.15; }
+.pcNome { font-size: 22px; color: var(--cor); }
+.pcNivel { font-size: 16px; opacity: 0.85; }
+.pcPreco { margin-top: 4px; padding: 4px 14px; border-radius: 999px; background: rgba(0, 0, 0, 0.35); font-size: 20px; color: #ffe066; }
+button.poderCarta.pode { border-color: var(--cor); box-shadow: 0 0 18px -2px var(--cor); animation: pulsar 1.4s ease-in-out infinite; }
+button.poderCarta.pode .pcPreco { background: linear-gradient(#69db7c, #2f9e44); color: #fff; }
+button.poderCarta:not(.pode) { filter: saturate(0.55) brightness(0.85); }
+button.poderCarta.max .pcPreco { background: #5f3dc4; color: #fff; }
+button.poderCarta.comprou { animation: comprouPoder 0.5s ease-out; }
+@keyframes comprouPoder { 0% { transform: scale(1.14); filter: brightness(1.8); } 100% { transform: none; } }
+button.poderCarta.sem { animation: semMoedas 0.35s; }
+@keyframes semMoedas { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+#telaRecompensa.comPoder #canvasBau { width: 300px; height: 189px; }
+#menuPoder { margin: 10px 0; }
+#menuPoder button.poderCarta { width: 230px; padding: 16px 10px 12px; }
+#menuPoder .pcIcone { font-size: 54px; }
+#menuPoder .pcNome { font-size: 28px; }
+#menuPoder .pcNivel { font-size: 20px; }
+#menuPoder .pcPreco { font-size: 24px; }
+button.botaoPoder { position: relative; background: linear-gradient(#ff922b, #e8590c); border-bottom-color: #8a3407; }
+body.retrato .recMeio { flex-direction: column; gap: 14px; }
+body.retrato .poderTopo { font-size: 32px; }
+body.retrato .poderDica { font-size: 24px; }
+body.retrato button.poderCarta { width: 240px; min-width: 0; padding: 14px 8px 10px; font-size: 26px; }
+body.retrato .pcIcone { font-size: 50px; }
+body.retrato .pcNome { font-size: 30px; }
+body.retrato .pcNivel { font-size: 22px; }
+body.retrato .pcPreco { font-size: 28px; }
+body.retrato #menuPoder button.poderCarta { width: 340px; padding: 22px 10px 16px; }
+body.retrato #menuPoder .pcIcone { font-size: 70px; }
+body.retrato #menuPoder .pcNome { font-size: 38px; }
+body.retrato #menuPoder .pcNivel { font-size: 28px; }
+body.retrato #menuPoder .pcPreco { font-size: 34px; }
+body.retrato #telaPoder .info.pequena { font-size: 30px; max-width: 900px; }
