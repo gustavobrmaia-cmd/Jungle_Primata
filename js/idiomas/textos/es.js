@@ -361,5 +361,7 @@ TEXTOS.es = {
   mel_max: "MÁX",
   mel_d_forca: "Pega más fuerte",
   mel_d_vida: "Aguanta más",
-  mel_d_veloc: "Corre más"
+  mel_d_veloc: "Corre más",
+  gratis: "¡GRATIS!",
+  escolha_gratis: "¡Elige 1 gratis!"
 };

@@ -361,5 +361,7 @@ TEXTOS.pt = {
   mel_max: "MÁX",
   mel_d_forca: "Bate mais forte",
   mel_d_vida: "Aguenta mais",
-  mel_d_veloc: "Corre mais"
+  mel_d_veloc: "Corre mais",
+  gratis: "GRÁTIS!",
+  escolha_gratis: "Escolha 1 de graça!"
 };

@@ -41,6 +41,10 @@ function montarPainelPoder(alvo, aoComprar) {
     });
     cartas.appendChild(b);
   });
+  // v15: mão apontando para o 1º cartão enquanto a 1ª melhoria é grátis (igual à mão do tutorial da luta)
+  const mao = document.createElement("span");
+  mao.className = "maoPoder"; mao.textContent = "👆";
+  cartas.firstChild.appendChild(mao);
   alvo.appendChild(topo);
   alvo.appendChild(cartas);
   atualizarPainelPoder(alvo);
@@ -56,10 +60,11 @@ function reanimar(elemento, classe) {
 function atualizarPainelPoder(alvo) {
   if (!alvo || !alvo.firstChild) return;
   const pode = Poder.algumaPossivel();
+  alvo.classList.toggle("comGratis", Poder.gratis());
   alvo.querySelector(".poderValor").textContent = t("poder_n", Poder.valor(Poder.doJogador()));
   alvo.querySelector(".poderMoedas").textContent = "🪙 " + save.moedas;
   // dica curta: depois de perder ("melhore e volte mais forte") ou para quem ainda não comprou quase nada
-  alvo.querySelector(".poderDica").textContent = !pode ? "" : alvo.dataset.perdeu === "1" ? t("poder_dica") :
+  alvo.querySelector(".poderDica").textContent = Poder.gratis() ? t("escolha_gratis") : !pode ? "" : alvo.dataset.perdeu === "1" ? t("poder_dica") :
     (save.stats.melhorias || 0) < 3 ? t("poder_gaste") : "";
   alvo.querySelectorAll(".poderCarta").forEach(function(b) {
     const id = b.dataset.melhoria, n = Poder.nivel(id), max = Poder.noMax(id);
@@ -72,7 +77,9 @@ function atualizarPainelPoder(alvo) {
     const faixa = n ? Math.min(4, Math.floor((n - 1) / 5)) : 0, cheias = n ? n - faixa * 5 : 0;
     est.dataset.faixa = faixa;
     est.innerHTML = '<span class="cheia">' + "★".repeat(cheias) + '</span><span class="vazia">' + "★".repeat(5 - cheias) + "</span>";
-    b.querySelector(".pcPreco").textContent = max ? t("mel_max") : "🪙 " + Poder.custo(id);
+    const custo = Poder.custo(id);
+    b.querySelector(".pcPreco").textContent = max ? t("mel_max") : custo ? "🪙 " + custo : t("gratis");
+    b.classList.toggle("gratis", !max && !custo);
     b.classList.toggle("pode", Poder.podeComprar(id));
     b.classList.toggle("max", max);
   });

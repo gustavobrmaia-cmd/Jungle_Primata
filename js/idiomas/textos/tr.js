@@ -361,5 +361,7 @@ TEXTOS.tr = {
   mel_max: "MAKS",
   mel_d_forca: "Daha sert vur",
   mel_d_vida: "Daha dayanıklı ol",
-  mel_d_veloc: "Daha hızlı koş"
+  mel_d_veloc: "Daha hızlı koş",
+  gratis: "BEDAVA!",
+  escolha_gratis: "1 tanesini bedava seç!"
 };

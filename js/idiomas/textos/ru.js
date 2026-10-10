@@ -361,5 +361,7 @@ TEXTOS.ru = {
   mel_max: "МАКС",
   mel_d_forca: "Бей сильнее",
   mel_d_vida: "Держись дольше",
-  mel_d_veloc: "Беги быстрее"
+  mel_d_veloc: "Беги быстрее",
+  gratis: "БЕСПЛАТНО!",
+  escolha_gratis: "Выбери 1 бесплатно!"
 };

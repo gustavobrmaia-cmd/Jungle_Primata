@@ -361,5 +361,7 @@ TEXTOS.fr = {
   mel_max: "MAX",
   mel_d_forca: "Frappe plus fort",
   mel_d_vida: "Tiens plus longtemps",
-  mel_d_veloc: "Cours plus vite"
+  mel_d_veloc: "Cours plus vite",
+  gratis: "GRATUIT !",
+  escolha_gratis: "Choisis-en 1 gratuite !"
 };

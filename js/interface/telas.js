@@ -100,8 +100,10 @@ function comecarPartida(modo) {
   const lendaria = lendariaPronta;
   if (!primeira) Eventos.botao("mode-" + (modo === "2p" ? "2p" : modo === "sobrevivencia" ? "survival" : modo === "rivais" ? "rivals" : "bot"));
   mostrarTela(null);
-  // sem anúncio comum na 1ª partida e logo depois de um premiado
-  (primeira || lendaria ? Promise.resolve() : Poki.intervalo()).then(function() {
+  // sem anúncio comum na 1ª partida, na 2ª (v15) e logo depois de um premiado
+  // v15: também sem pedir anúncio antes da 2ª partida — a passagem 1ª->2ª é onde mais gente sai (perdia 24–35%)
+  const segunda = save.partidas === 1;
+  (primeira || segunda || lendaria ? Promise.resolve() : Poki.intervalo()).then(function() {
     ocupado = false;
     lendariaPronta = false;
     save.dobrar = 0;
@@ -161,7 +163,8 @@ function finalizarPartida(j) {
   if (j.lendaria) Progresso.registrar("lendarias", 1);
   if (j.modo === "bot" && j.vencedorPartida === 1) {
     Progresso.registrar("vitorias", 1);
-    if (j.pontos[1] === 0 && j.alvo >= 3) Progresso.registrar("placar5x0", 1);   // (o id ficou "5x0"; desde a v14 é 3 – 0)
+    // (o id ficou "5x0"; desde a v14 é 3 – 0; v15: a partida treino não conta — no v14 243 pessoas ganharam de graça)
+    if (j.pontos[1] === 0 && j.alvo >= 3 && !j.treino) Progresso.registrar("placar5x0", 1);
     if (save.nivelBot >= 0.85) Progresso.registrar("botMestre", 1);
     if ((j.piorDiferenca || 0) >= 2) Progresso.registrar("virada", 1);   // partida até 3: virar de 0 – 2
   }

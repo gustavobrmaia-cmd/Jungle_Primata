@@ -307,6 +307,7 @@ function pegarDiaria() {
   if (!diaria || diaria.fase !== "fechado") return;
   const premio = Progresso.pegarDiaria();
   if (!premio) { fecharDiaria(); return; }
+  Eventos.oferta("daily", "interact");   // v15: antes só media "visible" e a tabela mostrava 0% pegando
   diaria.premio = premio;
   montarDiaria(premio.dia, true);
   som("carta");

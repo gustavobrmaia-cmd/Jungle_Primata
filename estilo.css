@@ -522,3 +522,13 @@ body.retrato #menuPoder .pcEstrelas { font-size: 30px; }
 #recPoder .pcIcone { width: 42px; height: 42px; font-size: 26px; margin-top: 4px; }
 body.retrato #recPoder .pcEfeito { display: block; }
 body.retrato #recPoder .pcIcone { width: 80px; height: 80px; font-size: 46px; }
+
+/* ---- v15: 1ª melhoria grátis (preço verde "GRÁTIS!") e a mão apontando para o 1º cartão ---- */
+button.poderCarta.gratis .pcPreco { background: linear-gradient(180deg, #8ce99a, #2f9e44); color: #fff; border-bottom-color: #1b5e28; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); }
+.maoPoder {
+  display: none; position: absolute; left: 50%; top: 88%; z-index: 4; font-size: 46px; line-height: 1; pointer-events: none;
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.45)); animation: maoToca 1s ease-in-out infinite;
+}
+.poderPainel.comGratis .maoPoder { display: block; }
+@keyframes maoToca { 0%, 100% { transform: translate(-50%, 10px); } 45% { transform: translate(-50%, -14px) scale(0.92); } }
+body.retrato .maoPoder { font-size: 70px; }

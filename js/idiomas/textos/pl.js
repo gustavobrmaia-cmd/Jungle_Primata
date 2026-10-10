@@ -361,5 +361,7 @@ TEXTOS.pl = {
   mel_max: "MAX",
   mel_d_forca: "Mocniejsze ciosy",
   mel_d_vida: "Więcej wytrzymasz",
-  mel_d_veloc: "Szybszy ruch"
+  mel_d_veloc: "Szybszy ruch",
+  gratis: "ZA DARMO!",
+  escolha_gratis: "Wybierz 1 za darmo!"
 };

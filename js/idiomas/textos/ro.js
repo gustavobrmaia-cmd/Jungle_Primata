@@ -361,5 +361,7 @@ TEXTOS.ro = {
   mel_max: "MAX",
   mel_d_forca: "Lovește mai tare",
   mel_d_vida: "Rezistă mai mult",
-  mel_d_veloc: "Fugi mai repede"
+  mel_d_veloc: "Fugi mai repede",
+  gratis: "GRATUIT!",
+  escolha_gratis: "Alege 1 gratuit!"
 };

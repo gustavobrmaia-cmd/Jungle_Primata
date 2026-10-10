@@ -361,5 +361,7 @@ TEXTOS.id = {
   mel_max: "MAKS",
   mel_d_forca: "Pukul lebih keras",
   mel_d_vida: "Lebih tahan lama",
-  mel_d_veloc: "Lari lebih cepat"
+  mel_d_veloc: "Lari lebih cepat",
+  gratis: "GRATIS!",
+  escolha_gratis: "Pilih 1 gratis!"
 };

@@ -361,5 +361,7 @@ TEXTOS.nl = {
   mel_max: "MAX",
   mel_d_forca: "Harder raken",
   mel_d_vida: "Langer volhouden",
-  mel_d_veloc: "Sneller rennen"
+  mel_d_veloc: "Sneller rennen",
+  gratis: "GRATIS!",
+  escolha_gratis: "Kies er 1 gratis!"
 };

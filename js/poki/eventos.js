@@ -32,6 +32,8 @@ const Eventos = (function() {
     segundos += dt / 1000;
     while (proximaMarca < MARCAS.length && segundos >= MARCAS[proximaMarca]) {
       Poki.medir("playtime", nomeTempo(MARCAS[proximaMarca]), "reached");
+      // v15: 3 e 5 min por idioma (qual público joga mais? os testes da noite, com mais espanhol, iam melhor)
+      if (MARCAS[proximaMarca] === 180 || MARCAS[proximaMarca] === 300) Poki.medir("engaged", nomeTempo(MARCAS[proximaMarca]) + "-" + IDIOMA, "reached");
       proximaMarca++;
     }
   }

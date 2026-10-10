@@ -361,5 +361,7 @@ TEXTOS.it = {
   mel_max: "MAX",
   mel_d_forca: "Colpisci più forte",
   mel_d_vida: "Resisti di più",
-  mel_d_veloc: "Corri più veloce"
+  mel_d_veloc: "Corri più veloce",
+  gratis: "GRATIS!",
+  escolha_gratis: "Scegline 1 gratis!"
 };

@@ -168,6 +168,17 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   Eventos: upgrade/forca|vida|veloc (interact), power/level-N, reward/upgrade (visible/interact).
   Por quê: v10 de novo e v12 deram 2m25 e 23% (os 2m47 da v10 foram sorte); quem joga 5 min+ (~10%) soma quase metade
   do tempo e enfeite não segurou essa turma.
+- v15 (dados v13/v14): na v14 só 28% de quem via as melhorias comprava (13% de todos). Então:
+  rival SEM poder na Bronze (quem não compra fica igual à v12; poder só da Prata em diante, 8 níveis por liga);
+  a 1ª melhoria da vida é GRÁTIS (preço verde "GRÁTIS!", frase "Escolha 1 de graça!" e mão 👆 pulando no 1º cartão);
+  conquista 3 – 0 não conta a partida treino (no v14 243 pessoas ganharam de graça); a diária mede quem pega
+  (reward/daily interact); sem pedir anúncio antes da 2ª partida (a passagem 1ª->2ª perdia 24–35%);
+  evento engaged/3m-xx e engaged/5m-xx (xx = idioma) para saber qual público joga mais.
+- HORÁRIO DO TESTE pesa ~20 s: a mesma v10 fez 2m47 às 20:46 e 2m25 às 16:56. Noite (20–22h de Brasília) = Américas
+  depois da escola (muito espanhol); manhã/tarde = Europa e horário de aula nos EUA (sessões curtas). Comparar versões
+  só no mesmo horário; para passar, começar o teste à noite.
+- Poki v13 (21:46): 2m42, Engaged 26% (passou no Engaged). v14 (09:08, manhã): 2m12, 20%, mas subiu mais na escada
+  (partida até 3: rival 2 terminado 52% x 32%).
 - Evento session/first-visit corrigido na v13: até a v12 era lido depois que a 1ª partida já tinha somado em
   save.partidas, e quase tudo saía como "returning".
 - Poki v12 e v10 de novo (9 out 2026, 500 jogadas cada): os dois 2m25 e 23% (reprovou). Histograma v10 x v12: começo igual,

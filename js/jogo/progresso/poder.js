@@ -6,7 +6,7 @@
 //   Vida       o dano recebido é dividido por (1 + 0,10 por nível): a barra continua de 0 a 100, mas dura mais
 //   Velocidade x(1 + 0,03 por nível) no andar
 // Vale contra máquina (Rivais, Contra o bot, Sobrevivência). No modo 2 jogadores, nunca (os dois ficam iguais).
-// Os rivais também têm poder: sobe ao longo da escada e bastante a cada liga. Quem melhora sobe a escada;
+// Os rivais também têm poder a partir da Prata (v15; na Bronze não): sobe na escada e a cada liga. Quem melhora sobe;
 // quem perde ganha moedas, melhora e volta para a revanche mais forte ("perdi -> melhoro -> mais uma").
 // PODER = 100 + 10 por nível (o número da abertura do rival, da tela de fim e do menu).
 // Por quê: nos testes do Poki (v10 e v12, 2m25) quem jogava 5 min ou mais era ~10% das pessoas e somava quase
@@ -25,7 +25,9 @@ const Poder = (function() {
   function noMax(id) { return nivel(id) >= info(id).max; }
 
   // 40, 50, 65, 85, 105, 135, 175, 225, 290, 370... (a 1ª partida já paga umas 4 ou 5)
-  function custo(id) { return Math.round(40 * Math.pow(1.28, nivel(id)) / 5) * 5; }
+  // v15: a 1ª melhoria da vida é GRÁTIS (com a mão apontando): no v14 só 28% de quem podia comprar comprava
+  function gratis() { return !(save.stats && save.stats.melhorias); }
+  function custo(id) { return gratis() ? 0 : Math.round(40 * Math.pow(1.28, nivel(id)) / 5) * 5; }
   function podeComprar(id) { return !noMax(id) && save.moedas >= custo(id); }
   function algumaPossivel() { return MELHORIAS.some(function(m) { return podeComprar(m.id); }); }
 
@@ -34,19 +36,21 @@ const Poder = (function() {
     save.moedas -= custo(id);
     if (!save.poder) save.poder = { forca: 0, vida: 0, veloc: 0 };
     save.poder[id] = nivel(id) + 1;
+    const eraGratis = gratis();
     save.stats.melhorias = (save.stats.melhorias || 0) + 1;
     salvar();
     const tot = total(doJogador());
-    Poki.medir("upgrade", id, "interact");
+    Poki.medir("upgrade", eraGratis ? "free-" + id : id, "interact");
     if (tot <= 30) Poki.medir("power", "level-" + tot, "reached");
     return true;
   }
 
   function doJogador() { return { forca: nivel("forca"), vida: nivel("vida"), veloc: nivel("veloc") }; }
-  // rival i (0 a 9) da liga: 1 nível por degrau e 12 por liga (rival 10 da Bronze = 9 níveis, PODER 190;
-  // na simulação, quem não compra nada sofre pouco a mais na Bronze; na Prata em diante, melhorar vira necessário)
+  // rival i (0 a 9) da liga. v15: na Bronze os rivais NÃO têm poder (no v14 72% de quem via as melhorias não comprava,
+  // e o poder dos rivais deixava a escada mais difícil para essa maioria); da Prata em diante: 1 nível por degrau
+  // e 8 por liga (Prata: rival 1 = 8 níveis, PODER 180; rival 10 = 17, PODER 270)
   function doRival(i, liga) {
-    const n = Math.round(i + 12 * (liga || 0));
+    const n = liga ? Math.round(i + 8 * liga) : 0;
     const veloc = Math.min(10, Math.floor(n / 5));
     const forca = Math.ceil((n - veloc) / 2);
     return { forca: forca, vida: n - veloc - forca, veloc: veloc };
@@ -63,7 +67,7 @@ const Poder = (function() {
   }
 
   return {
-    nivel: nivel, custo: custo, noMax: noMax, podeComprar: podeComprar, algumaPossivel: algumaPossivel, comprar: comprar,
+    nivel: nivel, custo: custo, gratis: gratis, noMax: noMax, podeComprar: podeComprar, algumaPossivel: algumaPossivel, comprar: comprar,
     doJogador: doJogador, doRival: doRival, total: total, valor: valor, efeito: efeito, aplicar: aplicar
   };
 })();
