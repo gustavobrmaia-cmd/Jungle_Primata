@@ -154,6 +154,9 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   nunca no 2 jogadores. Rivais têm poder: +1 nível por degrau e +12 por liga (King da Bronze = 190, Prata começa em 220).
   Painel ao lado do baú na tela de fim (dá para comprar -> a contagem espera 5 s, 8 s na 1ª vez; comprar devolve 4 s),
   botão "⚡ Melhorar" no menu (selo "!" quando dá para comprar) e "⚡130 VS ⚡110" na abertura do rival.
+  Visual dos cartões no estilo dos botões de modo (o 1º ficou "muito feio" para o dono): cartão colorido com degradê
+  (Força vermelho, Vida verde, Velocidade azul) e borda grossa, ícone num círculo claro, nome em maiúsculas,
+  "+10% → +20%" (agora -> próximo nível), selo "Nv N" no canto e o preço num botão amarelo que pulsa quando dá.
   Simulação (scratchpad/sim/poder.js, novato simulado): rival 5 — sem comprar 26% das rodadas (v12 50%), com 12 níveis 56%
   e 80% das partidas; King com 20 níveis 44% das rodadas (v12 22%). Quem compra sobe mais fácil que na v12; quem não
   compra trava no meio da escada (por isso o painel pulsa e espera).

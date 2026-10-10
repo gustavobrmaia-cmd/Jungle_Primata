@@ -20,8 +20,7 @@ function montarPainelPoder(alvo, aoComprar) {
     const b = document.createElement("button");
     b.className = "poderCarta";
     b.dataset.melhoria = m.id;
-    b.style.setProperty("--cor", m.cor);
-    ["pcIcone", "pcNome", "pcNivel", "pcPreco"].forEach(function(c) {
+    ["pcNivel", "pcIcone", "pcNome", "pcEfeito", "pcPreco"].forEach(function(c) {
       const s = document.createElement("span"); s.className = c; b.appendChild(s);
     });
     b.querySelector(".pcIcone").textContent = m.icone;
@@ -60,7 +59,9 @@ function atualizarPainelPoder(alvo) {
   alvo.querySelectorAll(".poderCarta").forEach(function(b) {
     const id = b.dataset.melhoria, n = Poder.nivel(id), max = Poder.noMax(id);
     b.querySelector(".pcNome").textContent = t("mel_" + id);
-    b.querySelector(".pcNivel").textContent = t("mel_nivel", n) + (n ? " · " + Poder.efeito(id, n) : "");
+    b.querySelector(".pcNivel").textContent = t("mel_nivel", n);
+    // o que tem agora -> o que o próximo nível dá
+    b.querySelector(".pcEfeito").textContent = max ? Poder.efeito(id, n) : (n ? Poder.efeito(id, n) : "0%") + " → " + Poder.efeito(id, n + 1);
     b.querySelector(".pcPreco").textContent = max ? t("mel_max") : "🪙 " + Poder.custo(id);
     b.classList.toggle("pode", Poder.podeComprar(id));
     b.classList.toggle("max", max);

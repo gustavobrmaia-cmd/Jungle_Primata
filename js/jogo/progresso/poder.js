@@ -16,7 +16,7 @@
 const MELHORIAS = [
   { id: "forca", icone: "💥", cor: "#ff8787", passo: 0.10, max: 25 },
   { id: "vida",  icone: "❤️", cor: "#69db7c", passo: 0.10, max: 25 },
-  { id: "veloc", icone: "⚡", cor: "#ffd43b", passo: 0.03, max: 10 }
+  { id: "veloc", icone: "⚡", cor: "#4dabf7", passo: 0.03, max: 10 }
 ];
 
 const Poder = (function() {
