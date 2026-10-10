@@ -127,6 +127,10 @@ function quadro(agora) {
       function() { if (typeof ArteCartas !== "undefined" && ArteCartas.aquecer) ArteCartas.aquecer(); },
       function() { if (typeof Efeitos !== "undefined" && Efeitos.preparar) Efeitos.preparar(); }
     ];
-    aquecer.forEach(function(f, i) { setTimeout(function() { protegido(f); }, 300 + i * 250); });
+    // v14: espera a fonte do jogo (Nunito, ~0,1–0,3 s) para os desenhos guardados já saírem com ela (no máx. 1,5 s)
+    const fonte = document.fonts && document.fonts.load ?
+      Promise.race([document.fonts.load("900 20px Nunito"), new Promise(function(r) { setTimeout(r, 1500); })]).catch(function() {}) :
+      Promise.resolve();
+    fonte.then(function() { aquecer.forEach(function(f, i) { setTimeout(function() { protegido(f); }, 300 + i * 250); }); });
   });
 })();

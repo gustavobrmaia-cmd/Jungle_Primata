@@ -12,7 +12,7 @@ const CONFIG = {
   usarPoki: true,           // false para itch.io / teste local sem o SDK
   chaveSave: "duelo-bolinhas-v1",   // (mantido para não apagar o progresso de quem já jogou)
   debugEventos: false,      // true: mostra no console cada Game Event enviado ao Poki
-  pontosParaVencer: 5,      // a partida acaba quando alguém faz 5 pontos
+  pontosParaVencer: 3,      // a partida acaba quando alguém faz 3 pontos (v14; era 5 e "demorava muito" — o dono)
   multDano: 0.85,           // multiplicador geral de dano (rodada de ~20 s bot x bot; bot consertado na v7)
   pontosPrimeira: 3,        // a 1ª partida da vida é mais curta (até 3): a pessoa chega rápido ao fim e à recompensa
   multTreino: 1.8,          // 1ª partida da vida: o tiro do jogador tira mais vida (rodada de ~15 s em vez de ~30 s)

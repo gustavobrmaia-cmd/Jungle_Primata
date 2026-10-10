@@ -240,7 +240,7 @@ const Efeitos = (function() {
     if (s) return s;
     if (nCacheTxt > 90) { cacheTxt = {}; nCacheTxt = 0; }
     var F = 24, pad = 5, rgb = hexRgb(cor);
-    var fonte = "800 " + F + "px system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    var fonte = "800 " + F + "px Nunito, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
     var m = criarCanvas(4, 4).getContext("2d"); m.font = fonte;
     var w = Math.ceil(m.measureText(txt).width) + pad * 2, h = F + pad * 2 + 4;
     var c = criarCanvas(w, h), g = c.getContext("2d");

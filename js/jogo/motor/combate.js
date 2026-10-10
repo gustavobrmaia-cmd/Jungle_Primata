@@ -465,6 +465,12 @@ function causarDano(M, b, dano, atacante, nx, ny, empurra, fx, fy) {
   if (atacante && atacante !== b) { b.ultimoAtacante = atacante.lado; b.ultimaArmaAtk = atacante.arma; }
   b.flash = 1;
   b.dor = 0.35;
+  // a bolinha amassa na direção do golpe e volta sozinha (animarBolinha) — v14
+  if (dano >= 3 && b.escalaX !== undefined) {
+    const k = Math.min(0.3, 0.08 + dano / 110);
+    if (Math.abs(nx || 0) >= Math.abs(ny || 0)) { b.escalaX = 1 - k; b.escalaY = 1 + k * 0.85; }
+    else { b.escalaX = 1 + k * 0.85; b.escalaY = 1 - k; }
+  }
   if (atacante && atacante !== b) {
     M.stats.dano[atacante.lado - 1] += dano;
     M.stats.acertos[atacante.lado - 1]++;

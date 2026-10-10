@@ -762,7 +762,7 @@ const ArteQueda = (function() {
     var k = txt + "|" + fill + "|" + borda + "|" + px, s = textosC[k];
     if (s) return s;
     if (nTextos > 160) { textosC = {}; nTextos = 0; }
-    var pad = 6, fonte = "800 " + px + "px system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    var pad = 6, fonte = "800 " + px + "px Nunito, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
     var m = cv(4, 4).getContext("2d"); m.font = fonte;
     var w = Math.ceil(m.measureText(txt).width) + pad * 2, h = px + pad * 2 + 4;
     var c = cv(w, h), g = c.getContext("2d");

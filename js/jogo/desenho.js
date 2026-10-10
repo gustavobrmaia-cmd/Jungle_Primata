@@ -230,6 +230,16 @@ function desenharBolinhaNoMundo(ctx, j, M, b, o, tm) {
   d.fogo = ef.fogo > 0; d.furia = ef.furia > 0; d.rapidez = ef.rapidez > 0; d.t = tm;
   const sk = j.skins && j.skins[b.lado - 1];
   d.skin = sk ? sk.corpo : "classico"; d.acessorio = sk ? sk.acessorio : "nenhum";
+  // rastro de velocidade (v14): quem está rápido (melhoria de Velocidade ou carta Rapidez) deixa "fantasmas" para trás
+  if ((b.multVel > 1.001 || ef.rapidez > 0) && Math.abs(b.vx) > 3.5 && fantasma === 0) {
+    ctx.save();
+    for (let k = 3; k >= 1; k--) {
+      ctx.globalAlpha = 0.09 * (4 - k);
+      ctx.fillStyle = b.cor;
+      ctx.beginPath(); ctx.arc(b.x - b.vx * k * 2.2, b.y - b.vy * k * 1.2, b.r * (1 - k * 0.08), 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
   if (temArte.bola) {
     if (!M.cen.semGravidade && !M.cen.inverte) ArteBolinha.sombra(ctx, b.x, chaoEmbaixo(M, b), b.r, chaoEmbaixo(M, b) - b.y - b.r);
     ArteBolinha.desenhar(ctx, d);
@@ -256,7 +266,7 @@ function desenharBolinhaNoMundo(ctx, j, M, b, o, tm) {
   // marcador acima da cabeça no modo 2 jogadores (P1 / P2) para ninguém se perder
   if (!j.demo && (j.modo === "2p" || b.lado === 1)) {
     const txt = j.modo === "2p" ? "P" + b.lado : t("voce_curto");
-    ctx.font = "900 18px system-ui, sans-serif";
+    ctx.font = "900 18px Nunito, system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,10,20,0.75)"; ctx.fillStyle = b.cor;
     const yy = b.y - b.r - 16 - (gravSinal(M.cen, tm) < 0 ? -2 * b.r - 32 : 0);
@@ -398,7 +408,7 @@ function tutorialTeclado(ctx, M, L, passo, tm) {
     setaTuto(ctx, x + 104, y, 1, 0, 0.7);
   } else {
     const nome = nomeTecla(tk.pulo[0]);
-    ctx.font = "900 26px system-ui, sans-serif";
+    ctx.font = "900 26px Nunito, system-ui, sans-serif";
     const w = Math.max(150, ctx.measureText(nome).width + 50);
     painelTuto(ctx, x - w / 2 - 22, y - 50, w + 44, 100);
     teclaTuto(ctx, x, y, nome, tm % 0.9 < 0.3, w);
@@ -514,7 +524,7 @@ function teclaTuto(ctx, x, y, nome, apertada, w) {
   ctx.fillStyle = apertada ? "#ffd43b" : "#f1f3f5";
   retRedondo(ctx, x - w / 2, y - h / 2 + desce, w, h - 4, 12); ctx.fill();
   ctx.fillStyle = "#1b1e28"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.font = "900 " + (nome.length > 2 ? 24 : 30) + "px system-ui, sans-serif";
+  ctx.font = "900 " + (nome.length > 2 ? 24 : 30) + "px Nunito, system-ui, sans-serif";
   ctx.fillText(nome, x, y - 2 + desce);
   ctx.restore();
 }
@@ -537,7 +547,7 @@ function chaoEmbaixo(M, b) {
 
 // ---------- HUD ----------
 function textoContorno(ctx, s, x, y, tam, cor, alinh, contorno) {
-  ctx.font = "900 " + tam + "px system-ui, -apple-system, 'Segoe UI', sans-serif";
+  ctx.font = "900 " + tam + "px Nunito, system-ui, -apple-system, 'Segoe UI', sans-serif";
   ctx.textAlign = alinh || "center";
   ctx.lineJoin = "round";
   ctx.lineWidth = contorno || Math.max(4, tam * 0.16);
@@ -620,10 +630,11 @@ function desenharHud(ctx, j, M, L) {
     if (j.lendaria) textoContorno(ctx, "✨ " + t("lendaria") + " ✨", cx, meio + (j.rival && j.rodada === 1 ? 148 : 74), 26, "#ffd43b");
     if (j.modo === "sobrevivencia") textoContorno(ctx, t("onda_n", j.onda), cx, meio - 96, 44, "#ffd43b");
     ctx.globalAlpha = 1;
-  } else if (j.fase === "luta" && j.tempoFase < 0.7) {
-    const k = j.tempoFase / 0.7;
-    ctx.globalAlpha = 1 - k;
-    textoContorno(ctx, t("lute"), cx, meio + 20, Math.round(90 + k * 60), "#ffd43b");
+  } else if (j.fase === "luta" && j.tempoFase < 0.8) {
+    // LUTE!: entra grande, "bate" no lugar e some subindo um pouco
+    const tf = j.tempoFase, pop = tf < 0.12 ? 1.9 - tf / 0.12 * 1.0 : tf < 0.22 ? 0.9 + (tf - 0.12) / 0.1 * 0.1 : 1;
+    ctx.globalAlpha = tf > 0.55 ? Math.max(0, (0.8 - tf) / 0.25) : 1;
+    escalaEm(ctx, cx, meio, pop, function() { textoContorno(ctx, t("lute"), cx, meio + 20 - Math.max(0, tf - 0.55) * 60, 104, "#ffd43b"); });
     ctx.globalAlpha = 1;
   } else if (j.fase === "fimRodada" && M.ko && M.ko.humano && j.tempoFase <= 1.0) {
     // golpe final do jogador: K.O.! (e PERFEITO! se não levou dano)
@@ -637,18 +648,29 @@ function desenharHud(ctx, j, M, L) {
     const surv = j.modo === "sobrevivencia";
     const txt = surv ? (v === 1 ? t("onda_concluida", j.onda) : t("bot_venceu_rodada")) :
       !v ? t("empate") : j.modo === "bot" ? (v === 1 ? t("voce_venceu_rodada") : t("bot_venceu_rodada")) : t("jogador_venceu_rodada", v);
-    textoContorno(ctx, txt, cx, meio, 58, v ? j.cores[v - 1] : "#fff");
+    const tA = j.tempoFase - (M.ko && M.ko.humano ? 1.0 : 0.4);
+    const pop = tA < 0.12 ? 0.4 + tA / 0.12 * 0.85 : tA < 0.26 ? 1.25 - (tA - 0.12) / 0.14 * 0.25 : 1;
+    // quem joga venceu a rodada: raios girando atrás (contra o bot só quando é a pessoa; 2 jogadores: qualquer um)
+    if (v && (v === 1 || j.modo === "2p")) raiosSol(ctx, cx, meio - 16, 260, v ? j.cores[v - 1] : "#ffd43b", performance.now() / 1000, Math.min(1, tA * 4) * 0.4);
+    escalaEm(ctx, cx, meio - 16, pop, function() { textoContorno(ctx, txt, cx, meio, 58, v ? j.cores[v - 1] : "#fff"); });
     if (!surv) placarGrande(ctx, j, cx, meio + 60);
   } else if (j.fase === "fimPartida" && estado !== "continuar") {
     const v = j.vencedorPartida;
     const surv = j.modo === "sobrevivencia";
     const txt = surv ? t("fim_sobrevivencia", j.onda) : j.modo === "bot" ? (v === 1 ? t("voce_venceu") : t("bot_venceu")) : t("jogador_venceu", v);
     const esc = 1 + 0.06 * Math.sin(j.tempoFase * 6);
-    textoContorno(ctx, txt, cx, meio, Math.round((surv ? 64 : 84) * esc), j.cores[v - 1]);
+    const festa = v && (v === 1 || j.modo === "2p") && !surv;
+    if (festa) raiosSol(ctx, cx, meio - 20, 330, j.cores[v - 1], performance.now() / 1000, Math.min(1, j.tempoFase * 3) * 0.45);
+    const tp = j.tempoFase, pop = tp < 0.15 ? 0.5 + tp / 0.15 * 0.75 : tp < 0.3 ? 1.25 - (tp - 0.15) / 0.15 * 0.25 : 1;
+    escalaEm(ctx, cx, meio - 20, pop, function() { textoContorno(ctx, txt, cx, meio, Math.round((surv ? 64 : 84) * esc), j.cores[v - 1]); });
     if (surv) textoContorno(ctx, t("recorde_onda", Math.max(save.recordeOnda, j.onda)), cx, meio + 64, 34, "#fff");
     else placarGrande(ctx, j, cx, meio + 70);
   }
   ctx.restore();
+  // confete caindo na tela toda quando quem joga vence a partida
+  if (j.fase === "fimPartida" && estado !== "continuar" && j.vencedorPartida && (j.vencedorPartida === 1 || j.modo === "2p") && j.modo !== "sobrevivencia") {
+    confete(ctx, j.tempoFase, CONFIG.largura, typeof alturaTela !== "undefined" ? alturaTela : CONFIG.altura, [j.cores[j.vencedorPartida - 1], "#ffd43b", "#69db7c", "#4dabf7", "#ff8787", "#ffffff"]);
+  }
   // 2 jogadores: lembrete dos controles nos primeiros segundos (contra o bot o tutorial é desenhado, sem texto)
   if (j.modo === "2p" && save.partidas <= 3 && j.rodada <= 2 && (j.fase === "intro" || j.fase === "luta" && j.tempoFase < 7)) {
     const texto = entrada.toque ? t("dica_2p_toque") : dicaTeclas(false);
@@ -680,8 +702,65 @@ function desenharHud(ctx, j, M, L) {
   }
 }
 
+// ---------- ajudantes de "juice" (v14) ----------
+// desenha f() com escala em volta de (x, y) (textos que "pulam")
+function escalaEm(ctx, x, y, esc, f) {
+  if (esc === 1) { f(); return; }
+  ctx.save(); ctx.translate(x, y); ctx.scale(esc, esc); ctx.translate(-x, -y); f(); ctx.restore();
+}
+// estrela de 5 pontas
+function estrela5(ctx, x, y, r, rIn) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? rIn : r;
+    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  ctx.closePath();
+}
+// raios girando atrás de um texto de vitória
+function raiosSol(ctx, x, y, r, cor, tempo, alfa) {
+  if (alfa <= 0) return;
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(tempo * 0.5);
+  ctx.globalAlpha *= alfa;
+  const g = ctx.createRadialGradient(0, 0, 20, 0, 0, r);
+  g.addColorStop(0, cor); g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  for (let i = 0; i < 12; i++) {
+    ctx.rotate(Math.PI / 6);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r, -r * 0.14); ctx.lineTo(r, r * 0.14); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+// confete caindo (posição calculada pelo tempo: não guarda estado)
+function confete(ctx, tempo, largura, altura, cores) {
+  ctx.save();
+  for (let i = 0; i < 90; i++) {
+    const r1 = (Math.sin(i * 12.9898) * 43758.5453) % 1, r2 = (Math.sin(i * 78.233) * 12543.123) % 1, r3 = (Math.sin(i * 39.425) * 24634.633) % 1;
+    const a = Math.abs(r1), b = Math.abs(r2), c = Math.abs(r3);
+    const atraso = c * 0.6, tt = tempo - atraso;
+    if (tt <= 0) continue;
+    const y = -30 + tt * (260 + b * 260), x = a * largura + Math.sin(tt * (2 + b * 3) + i) * 30;
+    if (y > altura + 30) continue;
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(tt * (4 + c * 8) + i);
+    ctx.scale(1, Math.cos(tt * (6 + a * 6)));
+    ctx.fillStyle = cores[i % cores.length];
+    ctx.fillRect(-7, -4, 14, 8);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+// v14: no fim da rodada o placar já mostra o ponto novo (antes só somava depois do letreiro), e ele "pula"
+function pontosNaTela(j, lado) {
+  const M = j.M, v = j.vencedorRodada;
+  const ja = j.fase === "fimRodada" && v === lado && j.modo !== "sobrevivencia" && M && j.tempoFase > (M.ko && M.ko.humano ? 1.0 : 0.4);
+  return j.pontos[lado - 1] + (ja ? 1 : 0);
+}
 function placarGrande(ctx, j, cx, y) {
-  textoContorno(ctx, j.pontos[0] + "  –  " + j.pontos[1], cx, y, 48, "#fff");
+  const a = pontosNaTela(j, 1), b = pontosNaTela(j, 2);
+  textoContorno(ctx, a + "  –  " + b, cx, y, 48, "#fff");
 }
 
 function painelJogador(ctx, j, b, x, y, lado) {
@@ -693,24 +772,52 @@ function painelJogador(ctx, j, b, x, y, lado) {
   const vida = Math.max(0, b.vida) / 100;
   b.vidaLenta = b.vidaLenta === undefined ? vida : Math.max(vida, b.vidaLenta - 0.012);
   const by = y + 30, bh = 22;
-  ctx.fillStyle = "rgba(12,8,30,0.75)";
-  retRedondo(ctx, x0 - 3, by - 3, w + 6, bh + 6, 13); ctx.fill();
+  const agora = performance.now() / 1000;
+  // levou dano: a barra treme um pouco (v14)
+  const treme = b.dor > 0 ? Math.sin(agora * 90) * 5 * (b.dor / 0.35) : 0;
+  ctx.save();
+  ctx.translate(treme, 0);
+  // moldura (vermelha pulsando com pouca vida)
+  const pouca = vida > 0 && vida < 0.25;
+  ctx.fillStyle = "rgba(12,8,30,0.8)";
+  retRedondo(ctx, x0 - 4, by - 4, w + 8, bh + 8, 14); ctx.fill();
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = pouca ? "rgba(255,77,94," + (0.5 + 0.5 * Math.sin(agora * 10)) + ")" : "rgba(255,255,255,0.22)";
+  retRedondo(ctx, x0 - 4, by - 4, w + 8, bh + 8, 14); ctx.stroke();
   const fill = function(f, cor) {
     if (f <= 0) return;
     ctx.fillStyle = cor;
-    const ww = w * f;
+    const ww = w * Math.min(1, f);
     retRedondo(ctx, lado > 0 ? x0 : x0 + w - ww, by, ww, bh, 10); ctx.fill();
   };
   fill(b.vidaLenta, "#ffffff");
-  fill(vida, vida < 0.25 ? "#ff4d5e" : b.cor);
+  fill(vida, pouca ? "#ff4d5e" : b.cor);
   if (b.escudoHP > 0 && b.efeitos.escudo > 0) fill(b.escudoHP / 100, "rgba(77,171,247,0.75)");
-  // pontos da partida
+  // brilho em cima e marcas a cada 25%
+  if (vida > 0) {
+    const ww = w * vida;
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    retRedondo(ctx, (lado > 0 ? x0 : x0 + w - ww) + 4, by + 3, Math.max(0, ww - 8), bh * 0.32, 4); ctx.fill();
+  }
+  ctx.fillStyle = "rgba(12,8,30,0.35)";
+  for (let q = 1; q < 4; q++) ctx.fillRect(x0 + w * q / 4 - 1, by + 3, 2, bh - 6);
+  ctx.restore();
+  // pontos da partida: estrelas; a que acabou de ser ganha "pula" (v14)
+  const meus = pontosNaTela(j, b.lado);
+  const pp = j.popPontos || (j.popPontos = [{ n: 0, t: 0 }, { n: 0, t: 0 }]), reg = pp[b.lado - 1];
+  if (meus > reg.n) { reg.n = meus; reg.t = agora; } else if (meus < reg.n) reg.n = meus;
   for (let i = 0; i < j.alvo && i < 9 && j.modo !== "sobrevivencia"; i++) {
-    const px = lado > 0 ? x0 + 12 + i * 26 : x0 + w - 12 - i * 26;
-    ctx.beginPath(); ctx.arc(px, by + bh + 18, 9, 0, 7);
-    ctx.fillStyle = i < j.pontos[b.lado - 1] ? "#ffd43b" : "rgba(12,8,30,0.6)";
+    const px = lado > 0 ? x0 + 14 + i * 30 : x0 + w - 14 - i * 30, py = by + bh + 19;
+    const cheia = i < meus, nova = cheia && i === meus - 1 && agora - reg.t < 0.6;
+    const u = nova ? (agora - reg.t) / 0.6 : 1;
+    const esc = nova ? 1 + 0.9 * Math.sin(u * Math.PI) * (1 - u * 0.5) : 1;
+    ctx.save();
+    ctx.translate(px, py); ctx.scale(esc, esc); if (nova) ctx.rotate((1 - u) * 1.2);
+    estrela5(ctx, 0, 0, 12, 5.6);
+    ctx.fillStyle = cheia ? "#ffd43b" : "rgba(12,8,30,0.6)";
     ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.stroke();
+    ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.strokeStyle = cheia ? "#b35c00" : "rgba(255,255,255,0.45)"; ctx.stroke();
+    ctx.restore();
   }
   // arma e munição
   const ix = lado > 0 ? x0 + w - 56 : x0 + 56, iy = by + bh + 22;
@@ -721,7 +828,7 @@ function painelJogador(ctx, j, b, x, y, lado) {
   let n = 0;
   for (const id in b.efeitos) {
     if (!(b.efeitos[id] > 0) || !CARTA[id] || !CARTA[id].duracao) continue;
-    const cx2 = lado > 0 ? x0 + 12 + (j.alvo * 26) + 14 + n * 30 : x0 + w - 12 - (j.alvo * 26) - 14 - n * 30;
+    const cx2 = lado > 0 ? x0 + 14 + (j.alvo * 30) + 12 + n * 30 : x0 + w - 14 - (j.alvo * 30) - 12 - n * 30;
     if (temArte.cartas) ArteCartas.icone(ctx, id, cx2, iy, 24);
     n++;
   }
@@ -822,7 +929,7 @@ function desenharReacao(ctx, M, b, tm) {
   ctx.save();
   ctx.globalAlpha = alfa;
   ctx.translate(x, y); ctx.scale(esc, esc);
-  ctx.font = "900 24px system-ui, sans-serif";
+  ctx.font = "900 24px Nunito, system-ui, sans-serif";
   const w = Math.max(40, ctx.measureText(e.s).width + 20), h = 34;
   ctx.fillStyle = "rgba(12,8,30,0.35)";
   arredondado(ctx, -w / 2 + 2, -h / 2 + 3, w, h, 12); ctx.fill();

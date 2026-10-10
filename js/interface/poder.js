@@ -20,7 +20,7 @@ function montarPainelPoder(alvo, aoComprar) {
     const b = document.createElement("button");
     b.className = "poderCarta";
     b.dataset.melhoria = m.id;
-    ["pcNivel", "pcIcone", "pcNome", "pcEfeito", "pcPreco"].forEach(function(c) {
+    ["pcNivel", "pcIcone", "pcNome", "pcEfeito", "pcEstrelas", "pcPreco"].forEach(function(c) {
       const s = document.createElement("span"); s.className = c; b.appendChild(s);
     });
     b.querySelector(".pcIcone").textContent = m.icone;
@@ -29,6 +29,11 @@ function montarPainelPoder(alvo, aoComprar) {
       if (!Poder.comprar(m.id)) { som("clique"); reanimar(b, "sem"); return; }
       som("carta");
       reanimar(b, "comprou");
+      // "+1" subindo do cartão (v14)
+      const mais = document.createElement("span");
+      mais.className = "pcMais"; mais.textContent = "+1";
+      b.appendChild(mais);
+      setTimeout(function() { mais.remove(); }, 850);
       reanimar(topo.querySelector(".poderValor"), "pulou");
       atualizarPainelPoder(alvo);
       atualizarMenuProgresso();
@@ -60,8 +65,13 @@ function atualizarPainelPoder(alvo) {
     const id = b.dataset.melhoria, n = Poder.nivel(id), max = Poder.noMax(id);
     b.querySelector(".pcNome").textContent = t("mel_" + id);
     b.querySelector(".pcNivel").textContent = t("mel_nivel", n);
-    // o que tem agora -> o que o próximo nível dá
-    b.querySelector(".pcEfeito").textContent = max ? Poder.efeito(id, n) : (n ? Poder.efeito(id, n) : "0%") + " → " + Poder.efeito(id, n + 1);
+    // v14: sem porcentagem (cara de arcade): uma frase curta e 5 estrelas por faixa —
+    // bronze (níveis 1–5), prata (6–10), ouro (11–15), diamante (16–20), mestre (21–25)
+    b.querySelector(".pcEfeito").textContent = t("mel_d_" + id);
+    const est = b.querySelector(".pcEstrelas");
+    const faixa = n ? Math.min(4, Math.floor((n - 1) / 5)) : 0, cheias = n ? n - faixa * 5 : 0;
+    est.dataset.faixa = faixa;
+    est.innerHTML = '<span class="cheia">' + "★".repeat(cheias) + '</span><span class="vazia">' + "★".repeat(5 - cheias) + "</span>";
     b.querySelector(".pcPreco").textContent = max ? t("mel_max") : "🪙 " + Poder.custo(id);
     b.classList.toggle("pode", Poder.podeComprar(id));
     b.classList.toggle("max", max);

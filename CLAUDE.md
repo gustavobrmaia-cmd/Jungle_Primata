@@ -36,6 +36,9 @@ Combinado com o dono do jogo. Qualquer versão nova TEM que manter isto:
 - JS puro, sem biblioteca, sem build.
 - Som sintetizado (WebAudio), sem arquivos de áudio.
 - Arte desenhada no canvas ou pixel art pequena.
+- Fonte única embutida (v14): Nunito variável em `fonte/` (latin 39 KB; latin-ext e cirílico só baixam se a língua usar),
+  licença OFL em `fonte/OFL.txt`. Canvas e HTML usam "Nunito, system-ui". O main.js espera a fonte (máx. 1,5 s) antes de
+  preparar os desenhos guardados.
 - Loop de passo fixo (1/60 s). Resolução lógica 1280x720 escalada.
 - Celular em pé suportado (tela mais alta, sem pedir para girar). Contra o bot, em pé, a arena tem CÂMERA (desenho.js:
   `layoutTela`, `atualizarCamera`, `mundoParaTela`/`telaParaMundo`): zoom 1,15–1,8 seguindo as duas bolinhas, chão fixo
@@ -50,7 +53,7 @@ Combinado com o dono do jogo. Qualquer versão nova TEM que manter isto:
 
 ## Pastas (manter organizado: cada arquivo na pasta do que ele faz)
 ```
-index.html, estilo.css
+index.html, estilo.css, fonte/ (Nunito em woff2 + OFL.txt)
 js/
   nucleo/     config.js (ajustes), util.js (ferramentas), save.js (localStorage), main.js (tela e loop; carrega por último)
   poki/       poki.js (SDK e anúncios), eventos.js (Game Events)
@@ -74,7 +77,9 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
 ## O jogo atual: Crazy Balls Duel
 - Duas bolinhas. Contra o bot o jogador é sempre rosa (CORES_BOLINHAS[0], a mesma da prévia no menu) e o bot ganha uma cor
   de tom bem diferente (`coresDiferentes`: matiz >= 75°). Antes as duas eram sorteadas e 21% das partidas ficavam parecidas. Modos: contra o bot, 2 jogadores no mesmo aparelho, e a demo (bot x bot no fundo dos menus).
-- Partida até 5 pontos (a 1ª partida da vida, contra o bot, vai até 3: `CONFIG.pontosPrimeira`). Rodada de 45 s num cenário diferente; últimos 10 s com dano em dobro.
+- Partida até 3 pontos desde a v14 (`CONFIG.pontosParaVencer`; era 5 e o dono achou que demorava muito: na simulação a
+  partida caiu ~40%, rival 1 de ~2 min para ~1 min). Como há menos rodadas para o bot se ajustar dentro da partida, cada
+  rodada perdida enfraquece o bot em 0,15 (era 0,1). Conquista/desafio "5 – 0" agora é 3 – 0 e a "virada" é de 0 – 2. Rodada de 45 s num cenário diferente; últimos 10 s com dano em dobro.
   Se ninguém morrer: queda de braço (quem clicar mais vence; quem tem mais vida começa na frente).
 - Os dois começam a rodada com a mesma arma sorteada; caixas de arma caem (1ª aos 1,5 s, depois a cada ~4 s);
   cartas de habilidade aparecem (1ª aos ~4 s).
@@ -175,11 +180,22 @@ Arquivo novo: colocar na pasta certa. Arte nunca mexe em regra de jogo; motor nu
   primeiras partidas e como casa dos rivais 8–10.
 - Modos: RIVAIS, contra o bot, 2 jogadores, SOBREVIVÊNCIA (ondas de bots cada vez mais fortes; vida passa de uma onda para outra,
   +35 entre ondas; recorde em save.recordeOnda; "Continuar" premiado volta na mesma onda com vida cheia).
+- VISUAL v14 ("tudo mais polido, com mais dopamina" — o dono): camada no fim do estilo.css. Botões com degradê, brilho em
+  cima, borda grossa e sombra; o amarelo principal tem um reflexo passando. Itens das telas entram pulando um depois do
+  outro; cartões de modo com ícone num medalhão (Rivais brilhando), abas em pílula, missões com barra listrada andando e
+  brilho verde quando dá para resgatar, skins com moldura por raridade, diária com o dia de hoje pulando.
+  Na luta: barra de vida com brilho, marcas a cada 25%, treme ao levar dano e moldura vermelha piscando com pouca vida;
+  placar em estrelas que pulam quando o ponto entra (o letreiro do fim da rodada já mostra o placar novo); "LUTE!" entra
+  grande e bate no lugar; vencer rodada/partida tem raios girando atrás e a partida tem confete; a bolinha amassa na
+  direção do golpe; quem está rápido (Velocidade/Rapidez) deixa rastro; arma rara/lendária pegada tem nome maior e anel.
+- PODER v14: cartões sem porcentagem — frase curta ("Bate mais forte", "Aguenta mais", "Corre mais") e 5 estrelas por
+  faixa (bronze 1–5, prata 6–10, ouro 11–15, diamante 16–20, mestre 21–25); "+1" sobe do cartão ao comprar. Na tela de fim
+  deitado só as estrelas (para caber); a frase aparece em pé e na tela Melhorar.
 - Equilíbrio: `node` + simulação bot x bot (script fora do repositório) — medir % de rodadas na queda de braço (~10–35%)
   e duração da partida (2–3,5 min). `CONFIG.multDano` é o ajuste geral.
 
 ## Entrega para o Poki
 - Zip com número de versão (ex.: `jogo-v1.zip`):
-  `git archive --format=zip -o jogo-vX.zip HEAD index.html estilo.css js`
+  `git archive --format=zip -o jogo-vX.zip HEAD index.html estilo.css js fonte`
 - Player Fit Test: média ≥ 3 min e ≥ 25% dos jogadores com mais de 3 min.
   - Meta do dono antes do Web Fit: 4m30–5m de média e ≥ 35% acima de 3 min.

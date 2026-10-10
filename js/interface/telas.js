@@ -161,9 +161,9 @@ function finalizarPartida(j) {
   if (j.lendaria) Progresso.registrar("lendarias", 1);
   if (j.modo === "bot" && j.vencedorPartida === 1) {
     Progresso.registrar("vitorias", 1);
-    if (j.pontos[1] === 0 && j.alvo >= 5) Progresso.registrar("placar5x0", 1);
+    if (j.pontos[1] === 0 && j.alvo >= 3) Progresso.registrar("placar5x0", 1);   // (o id ficou "5x0"; desde a v14 é 3 – 0)
     if (save.nivelBot >= 0.85) Progresso.registrar("botMestre", 1);
-    if ((j.piorDiferenca || 0) >= 3) Progresso.registrar("virada", 1);
+    if ((j.piorDiferenca || 0) >= 2) Progresso.registrar("virada", 1);   // partida até 3: virar de 0 – 2
   }
   if (j.rival) {
     // modo rivais: venceu -> próximo rival (+ moedas e, no 5º/10º, baú); perdeu -> revanche, rival mais fraco

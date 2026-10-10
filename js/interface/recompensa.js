@@ -249,7 +249,7 @@ function desenharEscada(tempo) {
       // quem ainda não apareceu: silhueta com "?"
       g.fillStyle = "#2b2f45"; g.beginPath(); g.arc(x, y, raio, 0, 7); g.fill();
       g.strokeStyle = "rgba(255,255,255,0.25)"; g.lineWidth = 3; g.stroke();
-      g.fillStyle = "rgba(255,255,255,0.5)"; g.font = "900 26px system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillStyle = "rgba(255,255,255,0.5)"; g.font = "900 26px Nunito, system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
       g.fillText("?", x, y + 1);
     }
     if (k < vencidos) {
@@ -261,7 +261,7 @@ function desenharEscada(tempo) {
       g.beginPath(); g.moveTo(-6, 0); g.lineTo(-1, 5); g.lineTo(7, -5); g.stroke();
       g.restore();
     }
-    g.fillStyle = grande ? "#ffd43b" : "rgba(255,255,255,0.6)"; g.font = "900 " + (grande ? 22 : 16) + "px system-ui, sans-serif";
+    g.fillStyle = grande ? "#ffd43b" : "rgba(255,255,255,0.6)"; g.font = "900 " + (grande ? 22 : 16) + "px Nunito, system-ui, sans-serif";
     g.textAlign = "center"; g.textBaseline = "alphabetic";
     g.fillText(grande ? r.nome : String(k + 1), x, y + (grande ? 66 : 48));
   }

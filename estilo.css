@@ -1,11 +1,23 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Fonte do jogo (v14): Nunito, arredondada e grossa, embutida (fonte/, licença OFL em fonte/OFL.txt).
+   Um arquivo por alfabeto: o navegador só baixa o que a língua usa (latin ~39 KB). Sem ela: fonte do sistema. */
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 200 1000; font-display: swap;
+  src: url(fonte/nunito-latin.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 200 1000; font-display: swap;
+  src: url(fonte/nunito-latin-ext.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 200 1000; font-display: swap;
+  src: url(fonte/nunito-cyrillic.woff2) format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+
 html, body {
   width: 100%; height: 100%;
   overflow: hidden;
   background: #0b0d14;
   color: #fff;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+  font-family: Nunito, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -331,3 +343,182 @@ body.retrato #telaPoder .info.pequena { font-size: 30px; max-width: 900px; }
 #telaRecompensa.comPoder.comEscada #canvasEscada { width: 850px; height: 130px; }
 body.retrato #telaRecompensa.comPoder { gap: 14px; }
 body.retrato #telaRecompensa.comPoder.comEscada #canvasEscada { width: 980px; height: 150px; }
+
+/* =====================================================================================================
+   v14 — VISUAL POLIDO (camada por cima do estilo antigo; o dono pediu "tudo mais polido, com mais dopamina")
+   Botões "de brinquedo": degradê, brilho em cima, borda grossa embaixo e sombra; o botão principal tem um
+   reflexo que passa de tempos em tempos. As telas entram com os itens pulando um depois do outro.
+   Cartões (modos, missões, skins, diária) com moldura, brilho e animação quando pedem atenção.
+   ===================================================================================================== */
+h1, h2 { letter-spacing: 0.5px; }
+h1 { animation: flutuar 3.2s ease-in-out infinite; }
+@keyframes flutuar { 50% { transform: rotate(-2deg) translateY(-8px); } }
+h2 {
+  text-shadow: 0 2px 0 #1b1030, 2px 0 0 #1b1030, -2px 0 0 #1b1030, 0 -2px 0 #1b1030, 2px 2px 0 #1b1030,
+    -2px 2px 0 #1b1030, 2px -2px 0 #1b1030, -2px -2px 0 #1b1030, 0 7px 0 #1b1030, 0 10px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* ---- botões ---- */
+button {
+  position: relative; isolation: isolate;
+  background: linear-gradient(180deg, #7178e8 0%, #5459cd 55%, #474bb6 100%);
+  border-bottom: 7px solid #27216b;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 10px 18px rgba(8, 4, 30, 0.35);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+  transition: transform 0.08s ease-out, filter 0.12s;
+}
+button::before {
+  content: ""; position: absolute; z-index: -1; left: 8px; right: 8px; top: 4px; height: 40%;
+  border-radius: 14px 14px 50% 50% / 14px 14px 16px 16px;
+  background: linear-gradient(rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.03));
+  pointer-events: none;
+}
+button:hover { filter: brightness(1.12); transform: translateY(-3px); }
+button:active { transform: translateY(4px) scale(0.98); border-bottom-width: 3px; filter: brightness(0.96); }
+button.skin::before, button.poderCarta::before, button.tecla::before, .hudBotao::before, .abas button::before { display: none; }
+button.grande {
+  overflow: hidden;
+  background: linear-gradient(180deg, #fff27e 0%, #ffd43b 45%, #fab005 100%);
+  border-bottom-color: #b35c00; color: #3b1d00; text-shadow: 0 2px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.6), 0 0 0 4px rgba(255, 212, 59, 0.16), 0 12px 26px rgba(250, 176, 5, 0.32);
+}
+button.grande::after {
+  content: ""; position: absolute; z-index: -1; top: -30%; bottom: -30%; width: 26%; left: -40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+  transform: skewX(-18deg); animation: reflexo 2.8s ease-in-out infinite; pointer-events: none;
+}
+@keyframes reflexo { 0%, 62% { left: -40%; } 92%, 100% { left: 125%; } }
+button.premiado { background: linear-gradient(180deg, #8ce99a 0%, #51cf66 45%, #2f9e44 100%); border-bottom-color: #1b5e28; }
+.hudBotao { border-radius: 16px; border-bottom-width: 5px; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); }
+
+/* ---- selos, moedas e nível ---- */
+.moedas, .nivelJogador {
+  background: linear-gradient(180deg, rgba(48, 38, 112, 0.92), rgba(22, 16, 60, 0.92));
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.15), 0 6px 14px rgba(0, 0, 0, 0.3);
+}
+.moedas { border: 3px solid rgba(255, 212, 59, 0.75); text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+#seloMissoes, #seloPoder { border: 2px solid #fff; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); animation: seloPula 1.4s ease-in-out infinite; }
+@keyframes seloPula { 0%, 70%, 100% { transform: scale(1); } 80% { transform: scale(1.3) rotate(-8deg); } 90% { transform: scale(0.95); } }
+
+/* ---- telas: os itens entram pulando, um depois do outro ---- */
+.tela.aberta > *:not(h1):not(.grande):not(.moedas):not(.nivelJogador) { animation: entrarItem 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) backwards; }
+.tela.aberta > *:nth-child(2) { animation-delay: 0.04s; }
+.tela.aberta > *:nth-child(3) { animation-delay: 0.08s; }
+.tela.aberta > *:nth-child(4) { animation-delay: 0.12s; }
+.tela.aberta > *:nth-child(5) { animation-delay: 0.16s; }
+.tela.aberta > *:nth-child(6) { animation-delay: 0.2s; }
+.tela.aberta > *:nth-child(n+7) { animation-delay: 0.24s; }
+@keyframes entrarItem { from { opacity: 0; transform: translateY(26px) scale(0.9); } }
+.modos > button.modo { animation: entrarItem 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) backwards; }
+.modos > button.modo:nth-child(2) { animation-delay: 0.07s; }
+.modos > button.modo:nth-child(3) { animation-delay: 0.14s; }
+.modos > button.modo:nth-child(4) { animation-delay: 0.21s; }
+
+/* ---- cartões de modo ---- */
+button.modo {
+  border-radius: 28px; border-bottom-width: 9px; padding: 18px 14px;
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.35), 0 14px 26px rgba(8, 4, 30, 0.4);
+}
+.modo .icone {
+  display: flex; align-items: center; justify-content: center; width: 112px; height: 112px; font-size: 62px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 32%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.12) 70%);
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.12), 0 6px 14px rgba(0, 0, 0, 0.18);
+}
+button.modo:hover .icone { animation: balancar 0.6s ease-in-out; }
+@keyframes balancar { 25% { transform: rotate(-10deg) scale(1.1); } 75% { transform: rotate(8deg) scale(1.1); } }
+.modo .nome { font-size: 36px; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.25); line-height: 1.05; }
+.modos button.modo.rivais .nome { text-shadow: 0 2px 0 rgba(255, 255, 255, 0.45); }
+.modo .dica { background: rgba(0, 0, 0, 0.16); border-radius: 14px; padding: 8px 12px; font-size: 16px; }
+.modos button.modo.rivais .dica { background: rgba(255, 255, 255, 0.3); }
+.modos button.modo.rivais { animation: entrarItem 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) backwards, brilhoRivais 2s ease-in-out 0.6s infinite; }
+@keyframes brilhoRivais { 50% { box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.35), 0 0 0 6px rgba(255, 212, 59, 0.35), 0 0 34px rgba(255, 212, 59, 0.45); } }
+body.toque button.modo[data-acao="modo2p"] .icone { width: 84px; height: 84px; font-size: 44px; }
+body.retrato .modo .icone { width: 150px; height: 150px; font-size: 84px; }
+body.retrato .modo .dica { font-size: 26px; }
+body.retrato.toque button.modo[data-acao="modo2p"] .icone { width: 80px; height: 80px; font-size: 42px; }
+
+/* ---- abas ---- */
+.abas button {
+  border-radius: 999px; padding: 10px 24px; background: rgba(36, 30, 80, 0.88);
+  border: 2px solid rgba(255, 255, 255, 0.1); border-bottom: 5px solid rgba(0, 0, 0, 0.4); box-shadow: none;
+}
+.abas button.ativo { background: linear-gradient(180deg, #91a7ff, #4c6ef5); border-color: rgba(255, 255, 255, 0.4); border-bottom-color: #2b3a9e; }
+
+/* ---- cartões (missões, semana, conquistas) ---- */
+.cartao {
+  border-radius: 20px; background: linear-gradient(180deg, rgba(60, 50, 132, 0.95), rgba(34, 27, 82, 0.95));
+  border: 2px solid rgba(255, 255, 255, 0.1); border-bottom: 6px solid rgba(10, 6, 30, 0.6); box-shadow: 0 8px 18px rgba(8, 4, 30, 0.3);
+}
+.cartao.pronto { border-color: #69db7c; border-bottom-color: #2b8a3e; animation: brilharPronto 1.6s ease-in-out infinite; }
+@keyframes brilharPronto { 50% { box-shadow: 0 0 0 5px rgba(105, 219, 124, 0.35), 0 0 26px rgba(105, 219, 124, 0.3); } }
+.cartao .titulo { text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); }
+.cartao .barra { height: 24px; border-radius: 12px; background: rgba(0, 0, 0, 0.42); box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.25); }
+.cartao .barra div {
+  border-radius: 12px; background-color: #40c057;
+  background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.2) 0 9px, transparent 9px 18px), linear-gradient(180deg, #8ce99a, #37b24d);
+  background-size: 25.5px 25.5px, auto; animation: listras 0.9s linear infinite; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35);
+}
+@keyframes listras { to { background-position: 25.5px 0, 0 0; } }
+.cartao .barra span { line-height: 24px; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
+.cartao .premio button.premiado, .cartao .premio button.grande { animation: pulsar 1.2s ease-in-out infinite; }
+
+/* ---- skins ---- */
+button.skin {
+  border-radius: 18px; border: 3px solid rgba(255, 255, 255, 0.08); border-bottom: 6px solid rgba(0, 0, 0, 0.45);
+  background: radial-gradient(circle at 50% 34%, rgba(116, 143, 252, 0.3), rgba(36, 30, 80, 0.95) 68%);
+}
+button.skin.r2 { border-color: rgba(77, 171, 247, 0.6); background: radial-gradient(circle at 50% 34%, rgba(77, 171, 247, 0.5), rgba(26, 38, 92, 0.95) 68%); }
+button.skin.r3 { border-color: rgba(177, 151, 252, 0.65); background: radial-gradient(circle at 50% 34%, rgba(177, 151, 252, 0.55), rgba(44, 28, 96, 0.95) 68%); }
+button.skin.r4 { border-color: rgba(255, 212, 59, 0.75); background: radial-gradient(circle at 50% 34%, rgba(255, 212, 59, 0.55), rgba(74, 46, 18, 0.95) 68%); }
+button.skin, button.skin.r2, button.skin.r3, button.skin.r4 { border-bottom-color: rgba(0, 0, 0, 0.45); }
+button.skin.usando { outline: none; border-color: #69db7c; box-shadow: 0 0 0 4px rgba(105, 219, 124, 0.35), 0 0 24px rgba(105, 219, 124, 0.35); }
+button.skin canvas { filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.35)); transition: transform 0.15s; }
+button.skin.bloqueada canvas { filter: saturate(0.3) brightness(0.72) drop-shadow(0 6px 6px rgba(0, 0, 0, 0.35)); }
+button.skin:hover canvas { transform: translateY(-5px) scale(1.07); }
+button.skin .status { margin-top: 2px; padding: 1px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.3); }
+.previa { border: 3px solid rgba(255, 255, 255, 0.1); box-shadow: inset 0 -50px 70px rgba(0, 0, 0, 0.3), 0 10px 22px rgba(8, 4, 30, 0.35); }
+
+/* ---- recompensa diária ---- */
+.diaCard {
+  border-radius: 20px; background: linear-gradient(180deg, rgba(60, 50, 132, 0.95), rgba(34, 27, 82, 0.95));
+  border: 3px solid rgba(255, 255, 255, 0.08); border-bottom: 6px solid rgba(10, 6, 30, 0.6);
+}
+.diaCard.hoje { border-color: #ffd43b; border-bottom-color: #b35c00; animation: pularDia 1.2s ease-in-out infinite;
+  box-shadow: 0 0 0 5px rgba(255, 212, 59, 0.25), 0 0 30px rgba(255, 212, 59, 0.35); }
+@keyframes pularDia { 0%, 100% { transform: translateY(-6px); } 50% { transform: translateY(-14px); } }
+.diaCard.grande { background: linear-gradient(180deg, rgba(252, 196, 25, 0.6), rgba(74, 46, 18, 0.95)); border-color: rgba(255, 212, 59, 0.55); }
+.diaOk { top: -10px; right: -8px; width: 34px; height: 34px; line-height: 30px; border-radius: 50%; font-size: 22px; color: #fff;
+  background: #2f9e44; border: 3px solid #fff; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3); }
+
+/* ---- poder (v14): estrelas por faixa em vez de porcentagem; "+1" subindo ao comprar ---- */
+.pcEfeito { font-size: 15px; }
+.pcEstrelas { font-size: 15px; letter-spacing: 1px; line-height: 1; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35); }
+.pcEstrelas .vazia { color: rgba(0, 0, 0, 0.28); text-shadow: none; }
+.pcEstrelas[data-faixa="0"] .cheia { color: #ffc078; }
+.pcEstrelas[data-faixa="1"] .cheia { color: #f1f3f5; }
+.pcEstrelas[data-faixa="2"] .cheia { color: #ffe066; }
+.pcEstrelas[data-faixa="3"] .cheia { color: #99e9f2; }
+.pcEstrelas[data-faixa="4"] .cheia { color: #f3a8ff; }
+.pcIcone { width: 46px; height: 46px; font-size: 28px; }
+.pcMais {
+  position: absolute; left: 50%; top: 28%; z-index: 3; font-size: 34px; font-weight: 1000; color: #fff;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45), 0 0 12px rgba(255, 255, 255, 0.6); pointer-events: none;
+  animation: maisUm 0.85s ease-out forwards;
+}
+@keyframes maisUm {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(0.5); }
+  20% { opacity: 1; transform: translate(-50%, -8px) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%, -70px) scale(1); }
+}
+#menuPoder .pcEfeito { font-size: 19px; }
+#menuPoder .pcEstrelas { font-size: 22px; }
+body.retrato .pcEfeito { font-size: 21px; }
+body.retrato .pcEstrelas { font-size: 22px; }
+body.retrato .pcIcone { width: 80px; height: 80px; font-size: 46px; }
+body.retrato #menuPoder .pcEfeito { font-size: 26px; }
+body.retrato #menuPoder .pcEstrelas { font-size: 30px; }
+/* na tela de fim, o cartão de poder fica só com estrelas (a frase aparece na tela Melhorar do menu): cabe tudo deitado */
+#recPoder .pcEfeito { display: none; }
+#recPoder .pcIcone { width: 42px; height: 42px; font-size: 26px; margin-top: 4px; }
+body.retrato #recPoder .pcEfeito { display: block; }
+body.retrato #recPoder .pcIcone { width: 80px; height: 80px; font-size: 46px; }

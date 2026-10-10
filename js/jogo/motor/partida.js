@@ -4,7 +4,7 @@
 // PARTIDA E RODADAS
 // Partida: quem fizer CONFIG.pontosParaVencer pontos primeiro. Cada rodada é num cenário diferente:
 //   "intro"     ~1,3 s: nome do cenário, bolinhas aparecem (ninguém atira ainda)
-//   "luta"      20 s para derrotar o oponente
+//   "luta"      45 s para derrotar o oponente
 //   "queda"     acabou o tempo e os dois estão vivos: queda de braço (quem clicar mais vence).
 //               Quem terminou a luta com mais vida já começa um pouco na frente.
 //   "fimRodada" câmera lenta, ponto para quem venceu
@@ -338,7 +338,12 @@ function passoMundo(j, M, controles, lento) {
   if (M.pegou) {
     M.pegou.forEach(function(p) {
       const b = M.bolinhas[p.lado - 1];
-      if (typeof Efeitos !== "undefined") Efeitos.texto(b.x, b.y - b.r - 34, t("a_" + p.arma), ["#ffffff", "#ffffff", "#d0bfff", "#ffd43b"][ARMA[p.arma].raridade]);
+      const rar = ARMA[p.arma].raridade;
+      if (typeof Efeitos !== "undefined") {
+        // arma rara/lendária: nome maior, anel extra e um tremidinho (v14)
+        Efeitos.texto(b.x, b.y - b.r - 34, t("a_" + p.arma), ["#ffffff", "#ffffff", "#d0bfff", "#ffd43b"][rar], rar >= 2 ? 1.35 : 1.1);
+        if (rar >= 2 && b.humano) { Efeitos.anel(b.x, b.y, rar >= 3 ? "#ffd43b" : "#b197fc", 70); Efeitos.tremer(rar >= 3 ? 6 : 3); }
+      }
       if (!j.demo && (p.lado === 1 || j.modo === "2p")) Poki.medir("weapon", p.arma, "interact");
       if (p.lado === 1) j.viuCaixa = true;
       registrar(j, p.lado, "caixas", 1, { arma: p.arma });
@@ -438,9 +443,11 @@ function fecharRodada(j) {
       }
     }
     // o bot se ajusta já dentro da partida, devagar (sem "elástico" forte): perdeu a rodada -> bot mais fraco
+    // (v14: partida até 3 tem metade das rodadas para o ajuste agir; -0,1 virou -0,15 — na simulação o rival 5/7
+    // ficava bem mais difícil para o novato sem isso)
     const bot = j.bots[1];
     if (bot && v) {
-      const novo = limitar(bot.nivel + (v === 2 ? -0.1 : 0.03), 0, 1);
+      const novo = limitar(bot.nivel + (v === 2 ? -0.15 : 0.03), 0, 1);
       j.bots[1] = criarBot(2, novo, bot.estilo);
     }
     // perdeu sem acertar nada: mostra de novo como mirar e atirar na próxima rodada
